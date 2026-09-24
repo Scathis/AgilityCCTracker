@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}Events{% endblock %}
+{% block content %}
+<h2>Events</h2>
+
+{% if user.role.value in ("staff", "admin") %}
+  {% if not active_event %}
+  <details>
+    <summary role="button" class="secondary">Start event</summary>
+    <form method="post" action="/events">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <label for="name">Name<input type="text" id="name" name="name" required></label>
+      <label for="notes">Notes<textarea id="notes" name="notes"></textarea></label>
+      <button type="submit">Start</button>
+    </form>
+  </details>
+  {% else %}
+  <p>
+    Active event: <strong>{{ active_event.name }}</strong>
+    <form method="post" action="/events/{{ active_event.id }}/stop" style="display:inline">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <button type="submit" class="secondary">Stop event</button>
+    </form>
+  </p>
+  {% endif %}
+{% endif %}
+
+<table>
+  <thead><tr><th>Name</th><th>Started</th><th>Ended</th><th></th></tr></thead>
+  <tbody>
+    {% for event in events %}
+    <tr>
+      <td>{{ event.name }}</td>
+      <td>{{ event.started_at }}</td>
+      <td>{{ event.ended_at or "(active)" }}</td>
+      <td><a href="/events/{{ event.id }}">View</a></td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

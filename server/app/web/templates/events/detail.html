@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+{% block title %}{{ event.name }}{% endblock %}
+{% block content %}
+<h2>{{ event.name }}</h2>
+<p><a href="/events">&larr; Back to events</a></p>
+
+<nav>
+  <ul>
+    <li><a href="/events/{{ event.id }}?tab=attendance" {% if tab == "attendance" %}aria-current="page"{% endif %}>Attendance</a></li>
+    <li><a href="/events/{{ event.id }}?tab=laps" {% if tab == "laps" %}aria-current="page"{% endif %}>Laps</a></li>
+    <li><a href="/events/{{ event.id }}?tab=dd" {% if tab == "dd" %}aria-current="page"{% endif %}>DD</a></li>
+    <li><a href="/events/{{ event.id }}?tab=deaths" {% if tab == "deaths" %}aria-current="page"{% endif %}>Deaths &amp; raggers</a></li>
+    {% if user.role.value in ("staff", "admin") %}
+    <li><a href="/events/{{ event.id }}?tab=manual-gap" {% if tab == "manual-gap" %}aria-current="page"{% endif %}>Manual gap</a></li>
+    {% endif %}
+  </ul>
+</nav>
+
+{% if tab == "attendance" %}
+<table>
+  <thead><tr><th>RSN</th><th>Rank</th><th>Time present</th><th>Plugin?</th><th>Laps</th><th>Loadout</th></tr></thead>
+  <tbody>
+    {% for a in attendees %}
+    <tr>
+      <td><a href="/players/{{ a.player.id }}">{{ a.player.rsn }}</a></td>
+      <td>{{ a.rank }}</td>
+      <td>{{ (a.seconds_present // 60) }}m</td>
+      <td>{{ "✅" if a.player.is_plugin_user else "—" }}</td>
+      <td>{{ a.laps }}</td>
+      <td>
+        {% if a.loadout_gaps is none %}not checked
+        {% elif a.loadout_gaps|length == 0 %}✅ compliant
+        {% else %}❌ {{ a.loadout_gaps|join(", ") }}
+        {% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+{% elif tab == "laps" %}
+<table>
+  <thead><tr><th>RSN</th><th>Laps</th><th>Tickets</th></tr></thead>
+  <tbody>
+    {% for row in leaderboard %}
+    <tr><td><a href="/players/{{ row.player.id }}">{{ row.player.rsn }}</a></td><td>{{ row.laps }}</td><td>{{ row.tickets }}</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+{% elif tab == "dd" %}
+{% for entry in call_summaries %}
+<article>
+  <header>
+    Called {{ entry.call.called_at }}
+    {% if entry.call.broken_at %}&mdash; broken {{ entry.call.broken_at }}{% else %}&mdash; <strong>active</strong>{% endif %}
+    ({{ entry.call.reports }} report(s))
+  </header>
+  <table>
+    <thead><tr><th>RSN</th><th>Arrived after</th><th>Time on tile</th><th>Left early?</th><th>Kept running?</th><th>Laps during DD</th><th>Loadout gaps</th></tr></thead>
+    <tbody>
+      {% for p in entry.presence %}
+      <tr>
+        <td>{{ entry.rsns[p.id] }}</td>
+        <td>{{ (p.arrived_after_ms // 1000) ~ "s" if p.arrived_after_ms is not none else "not observed" }}</td>
+        <td>{{ p.ms_on_tile // 1000 }}s</td>
+        <td>{{ "⚠️" if p.left_before_break else "—" }}</td>
+        <td>{{ "⚠️" if p.seen_running else "—" }}</td>
+        <td>{{ p.laps_during_dd }}</td>
+        <td>{{ p.dd_loadout_failed|join(", ") if p.dd_loadout_failed else "✅" }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</article>
+{% else %}
+<p>No DD calls yet.</p>
+{% endfor %}
+
+{% elif tab == "deaths" %}
+<h3>Deaths</h3>
+<table>
+  <thead><tr><th>RSN</th><th>Died at</th><th>World</th><th>Wildy level</th></tr></thead>
+  <tbody>
+    {% for death, player in deaths %}
+    <tr><td>{{ player.rsn }}</td><td>{{ death.died_at }}</td><td>{{ death.world }}</td><td>{{ death.wildy_level }}</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+<h3>Ragger sightings</h3>
+<table>
+  <thead><tr><th>Seen at</th><th>World</th><th>Notes</th></tr></thead>
+  <tbody>
+    {% for s in sightings %}
+    <tr><td>{{ s.seen_at }}</td><td>{{ s.world or "—" }}</td><td>{{ s.gear_notes or "—" }}</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+{% elif tab == "manual-gap" %}
+<form method="post" action="/events/{{ event.id }}/manual-gap">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <label for="player_id">Player
+    <select id="player_id" name="player_id" required>
+      {% for p in attendees_for_gap %}<option value="{{ p.id }}">{{ p.rsn }}</option>{% endfor %}
+    </select>
+  </label>
+  <label for="loadout_id">Loadout
+    <select id="loadout_id" name="loadout_id" required>
+      {% for l in loadouts %}<option value="{{ l.id }}">{{ l.name }}</option>{% endfor %}
+    </select>
+  </label>
+  <label for="failed">Failed requirement keys (comma-separated)
+    <input type="text" id="failed" name="failed" placeholder="run-helm, run-boots">
+  </label>
+  <label for="notes">Notes<textarea id="notes" name="notes"></textarea></label>
+  <button type="submit">Log gap</button>
+</form>
+{% endif %}
+{% endblock %}

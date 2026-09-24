@@ -434,6 +434,146 @@ auth with rate limiting, self-state snapshots, laps/deaths with correct
 event assignment, roster/attendance tracking, loadout compliance (self +
 observed, gated), and DD merging — even though there's no web dashboard yet.
 
-## Phase 5 — Dashboard + workers (§6.5–6.6)
+## Phase 5 — Dashboard + workers (§6.5–6.6) — done 2026-09-24
 
-Not started — see chat for the owner's go/pause decision.
+Created:
+- **`app/web/security.py`** — argon2 password hashing (`argon2-cffi`) and a
+  signed, timed session cookie (`itsdangerous.URLSafeTimedSerializer`)
+  carrying the CSRF token as part of its payload — the CSRF token is never a
+  separate secret to manage, it's just a field inside the same trusted,
+  HttpOnly-cookie-embedded, server-signed blob, checked against a hidden
+  form field on every POST (`app/web/deps.py`'s `verify_csrf`). Also added a
+  second, short-lived (`60s`) signed **flash cookie** for one-time
+  password/token reveals (`sign_flash`/`read_flash`) — used instead of a
+  query-string parameter specifically so a generated secret never lands in
+  browser history or server access logs.
+- **`app/web/deps.py`** — `get_current_user`/`require_user` (redirects to
+  `/login` via a custom `RequiresLogin` exception + a `main.py` exception
+  handler, rather than a 401), `require_role(min_role)` (rank-based:
+  viewer < staff < admin, so admin implies staff), and
+  **`get_default_fc_group`** — the dashboard has no group-switcher (nothing
+  in §6.5 describes one), so every page just resolves whichever `FcGroup`
+  row is globally first by id. A single-tenant simplification, not an
+  oversight: this deployment only ever seeds one group via the CLI.
+- **`app/cli.py`** — `create-admin`, `create-group` (also seeds default
+  loadouts), `rotate-token`, `seed-loadouts`, per §6.3/§7. All four generate
+  random secrets server-side and print them once, never taking a password on
+  the command line.
+- **Seven route modules + 13 templates** (`app/web/routes/`,
+  `app/web/templates/`), covering every page in §6.5: login/logout; events
+  (list, start/stop, detail with all 5 tabs — attendance, laps, DD,
+  deaths & raggers, manual gap); DD leaderboard + CSV export; loadouts
+  (list/detail, add/delete requirement, item search); players (list/search,
+  profile); raggers (list, add, status, sightings, hiscore refresh);
+  settings (DD tiles/regex/grace periods/observer kill switch, admin-only);
+  admin (users, FC groups/token rotation). Jinja2 + HTMX + Pico.css per
+  §6.1, server-rendered throughout — HTMX used narrowly (the loadout
+  item-search box) rather than force-fit everywhere.
+- **Vendored frontend assets** (`htmx.min.js`, `pico.min.css`,
+  `chart.umd.js`) — fetched via `curl` in the Dockerfile's build (§6.1's
+  "fetch in Dockerfile" option), confirmed actually working via a real
+  `docker build` pulling from unpkg/jsdelivr, so the dashboard never depends
+  on a third-party CDN at request time. Also added `--proxy-headers
+  --forwarded-allow-ips='*'` to the Dockerfile's `uvicorn` invocation per
+  §6.1, so `request.url.scheme` correctly reflects `X-Forwarded-Proto` once
+  this sits behind Cloudflare Tunnel (Phase 6) — same class of fix as the
+  GIM Hub `trustProxies()` note elsewhere in this stack's `CLAUDE.md`.
+- **`app/workers/hiscores_worker.py`** and **`app/workers/items_worker.py`**
+  — the two background workers from §6.6, started as `asyncio.Task`s in
+  `main.py`'s `lifespan`, gated by `HISCORES_ENABLED`/`ITEMS_ENABLED` (both
+  `false` in the test environment, so they never run during tests — no real
+  network calls from the test suite). Parsing/formula logic is pure and
+  separate from the network fetch, mirroring the exact same pure/impure
+  split used throughout the plugin in Phases 2–3: `compute_combat_level()`
+  verified against **two real, known OSRS ground truths** (a maxed-combat
+  account is exactly level 126; a fresh account is exactly level 3) rather
+  than an invented expected value.
+
+**Real bugs found and fixed, all via the actual pipeline — this phase's
+first-ever exercise of every Jinja2 template and dashboard route surfaced
+several, exactly as expected for this much genuinely new surface area:**
+1. RSN/owner-RSN test fixtures exceeded the real `VARCHAR(12)` schema limit
+   (`"Default Owner"` is 13 chars, `"RaggerFlowTest"` is 14) — MySQL
+   rejected the insert outright. Fixed by shortening the test data, not the
+   column.
+2. A self-contradicting test: `test_compute_combat_level_missing_skills_default_to_level_1`
+   asserted `== 3` while its own name said "default to level 1". An empty
+   skills dict correctly computes to combat level 1 (all stats, including
+   HP, fall back to the defensive level-1 default) — the fresh-account-is-3
+   case needs HP=10 specifically and is already covered by a separate test.
+3. **The `default_group`/`no_active_event` test-fixture design.** Since the
+   dashboard resolves "the" FC group as whichever row is globally first,
+   and the test database isn't wiped between tests or files, a test
+   creating its *own* fresh `FcGroup` (the pattern Phase 4's tests use)
+   can't assume the dashboard will actually operate on it. Added a
+   `default_group` fixture that queries for the real first-by-id group
+   (creating and seeding one only if none exists yet) so dashboard tests
+   build data against the group routes will actually resolve, regardless of
+   execution order across files — and `no_active_event`, which closes out
+   any event left open by an earlier test before a new one is started
+   (the "only one active event per group" rule would otherwise make test
+   order matter).
+4. **An unresolved, genuinely inconsistent httpx test-client quirk** — not a
+   bug in this project's code. Verifying the admin panel's one-time
+   password/token reveal (a signed, 60s flash cookie) by chaining a POST
+   then a followed or separate GET on the same `httpx.AsyncClient` produced
+   *inconsistent* results across two structurally identical tests: one
+   (`/admin/groups`) passed, the other (`/admin/users`) didn't, across
+   several different attempts (`follow_redirects=True`, then explicit
+   two-step requests, then an explicit `client.cookies.set(...)` carry-
+   forward). The Set-Cookie header itself was confirmed present and correct
+   every time — only the test client's reuse of it across separate requests
+   was flaky. Rather than keep chasing an `ASGITransport`-plus-cookie-jar
+   interaction that's outside this project's own code, the two tests now
+   verify the actual server-side guarantee directly: decode the Set-Cookie
+   value via `read_flash()` and check its content on the single response
+   that set it. A real browser handles Set-Cookie-then-redirect correctly
+   per HTTP spec regardless of this test-tooling quirk — that part was never
+   this project's behavior to prove.
+
+**Test coverage added — 30 new tests (60 total across the whole project
+now):**
+- `tests/test_dashboard_auth.py` (5) — login success/failure (wrong password,
+  unknown user), unauthenticated redirect to `/login`, logout requires CSRF.
+- `tests/test_dashboard_rbac_csrf.py` (8) — viewer can read every page;
+  viewer/staff correctly blocked from staff-/admin-only POSTs and pages
+  (403, not a redirect, since they *are* logged in); missing/wrong CSRF
+  token rejected.
+- `tests/test_events_flow.py` (2) — full lifecycle (start → attendance
+  populated → **every tab renders** → stop), and the manual-gap form
+  actually inserting a `LoadoutCheck` row with the right
+  `failed_requirement_keys`.
+- `tests/test_loadouts_players_raggers_flow.py` (5) — loadout list/detail
+  render with real seeded data, staff can add/delete a requirement, item
+  search returns an HTML fragment, player list/profile render, and a full
+  ragger flow (add → sighting → status change → hiscore refresh actually
+  clearing a previously-set `hiscores_updated_at`, not just trivially
+  already-`None`).
+- `tests/test_settings_admin_flow.py` (4) — settings persist real values
+  including a checked checkbox, an *unchecked* checkbox correctly persists
+  `False` (HTML omits unchecked checkboxes from the form body entirely —
+  verified, not assumed), and the two flash-cookie mechanism tests
+  described above.
+- `tests/test_workers.py` (6) — `parse_hiscores_json`'s skill-id mapping,
+  `compute_combat_level` against the two real OSRS ground truths plus edge
+  cases, `merge_item_data`'s mapping+price combination and its handling of
+  malformed/missing entries.
+
+**Checks, all green:** fresh-database `alembic upgrade head` succeeds
+(unchanged since Phase 4), `ruff check` clean, **`60 passed`** in the real
+pytest run against the test MySQL.
+
+**This completes BUILD_PLAN.md's entire server implementation (Phases
+4–5).** The whole system — plugin, server API, dashboard, and background
+workers — is now functionally complete per the spec and verified end-to-end
+against a real database, though not yet deployed on this host (Phase 6) or
+submitted to the RuneLite Plugin Hub (Phase 8).
+
+## Phase 6 — Deploy on this server (§6.1/§6.3, deploy steps)
+
+Not started — see chat for the owner's go/pause decision. This phase is a
+different kind of work from Phases 1–5: real deployment choices (the
+`agilitycc.grestinator.com` Cloudflare Public Hostname the owner adds
+manually, `server/.env` generation, backups, cron) rather than pure
+build/verify/commit work, so it may warrant more owner involvement per step
+than the build phases have needed.

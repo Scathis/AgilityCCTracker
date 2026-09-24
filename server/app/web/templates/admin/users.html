@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}Admin - Users{% endblock %}
+{% block content %}
+<h2>Users</h2>
+{% if flash %}<p><mark>{{ flash }}</mark></p>{% endif %}
+
+<table>
+  <thead><tr><th>Username</th><th>Role</th><th>Last login</th><th></th></tr></thead>
+  <tbody>
+    {% for u in users %}
+    <tr>
+      <td>{{ u.username }}</td><td>{{ u.role.value }}</td><td>{{ u.last_login_at or "never" }}</td>
+      <td>
+        <form method="post" action="/admin/users/{{ u.id }}/reset-password" style="display:inline">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <button type="submit" class="secondary">Reset password</button>
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<h3>Add user</h3>
+<form method="post" action="/admin/users">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <label>Username<input type="text" name="username" required></label>
+  <label>Role
+    <select name="role" required>
+      <option value="viewer">Viewer</option>
+      <option value="staff">Staff</option>
+      <option value="admin">Admin</option>
+    </select>
+  </label>
+  <button type="submit">Create</button>
+</form>
+{% endblock %}
