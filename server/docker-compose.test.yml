@@ -1,0 +1,41 @@
+name: agilitycctracker-test
+
+services:
+  mysql:
+    image: mysql:8.4
+    environment:
+      MYSQL_DATABASE: agilitycc_test
+      MYSQL_USER: agilitycc
+      MYSQL_PASSWORD: test
+      MYSQL_ROOT_PASSWORD: test
+    command: ["--character-set-server=utf8mb4", "--collation-server=utf8mb4_0900_ai_ci"]
+    tmpfs: [/var/lib/mysql]
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-ptest"]
+      interval: 5s
+      retries: 20
+    networks: [test-internal]
+
+  tests:
+    build: .
+    command: ["sh", "-c", "pip install --no-cache-dir .[dev] && ruff check . && pytest"]
+    volumes:
+      - ./tests:/app/tests
+    environment:
+      DB_HOST: mysql
+      DB_PORT: "3306"
+      DB_NAME: agilitycc_test
+      DB_USER: agilitycc
+      DB_PASSWORD: test
+      APP_SECRET: test-secret
+      APP_URL: http://localhost
+      PUBLIC_READ: "false"
+      HISCORES_ENABLED: "false"
+      ITEMS_ENABLED: "false"
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks: [test-internal]
+
+networks:
+  test-internal: {}
