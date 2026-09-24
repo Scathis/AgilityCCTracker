@@ -5,12 +5,16 @@ import com.agilitycctracker.collect.DeathTracker;
 import com.agilitycctracker.collect.LapTracker;
 import com.agilitycctracker.collect.RosterTracker;
 import com.agilitycctracker.collect.SelfStateCollector;
+import com.agilitycctracker.dd.DdTracker;
+import com.agilitycctracker.model.DdSection;
 import com.agilitycctracker.model.DeathEvent;
 import com.agilitycctracker.model.IngestBatch;
 import com.agilitycctracker.model.LapEvent;
+import com.agilitycctracker.model.LoadoutCheckDto;
 import com.agilitycctracker.model.RosterSnapshot;
 import com.agilitycctracker.model.SelfState;
 import com.agilitycctracker.model.StatusResponse;
+import com.agilitycctracker.scan.FcMemberScanner;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -58,6 +62,14 @@ public class Uploader
 	@Inject
 	private RosterTracker rosterTracker;
 
+	@Inject
+	private FcMemberScanner fcMemberScanner;
+
+	@Inject
+	private DdTracker ddTracker;
+
+	private Long lastDdSentAt;
+
 	private boolean hasApiUrl()
 	{
 		String url = config.apiUrl();
@@ -95,8 +107,22 @@ public class Uploader
 		List<LapEvent> laps = lapTracker.drain();
 		List<DeathEvent> deaths = deathTracker.drain();
 		RosterSnapshot roster = rosterTracker.consume();
+		List<LoadoutCheckDto> loadoutChecks = fcMemberScanner.drain();
 
-		if (self == null && laps.isEmpty() && deaths.isEmpty() && roster == null)
+		boolean ddClosed = ddTracker.getBrokenAt() != null;
+		boolean ddDue = false;
+		DdSection dd = null;
+		if (ddTracker.isWindowOpen() || ddClosed)
+		{
+			long now = System.currentTimeMillis();
+			if (ddClosed || lastDdSentAt == null || now - lastDdSentAt >= 10_000)
+			{
+				dd = new DdSection(ddTracker.getCalledAt(), ddTracker.getBrokenAt(), ddTracker.summaries());
+				ddDue = true;
+			}
+		}
+
+		if (self == null && laps.isEmpty() && deaths.isEmpty() && roster == null && loadoutChecks.isEmpty() && dd == null)
 		{
 			// Nothing but rsn would be sent - skip the POST entirely.
 			return;
@@ -121,6 +147,14 @@ public class Uploader
 		{
 			builder.roster(roster);
 		}
+		if (!loadoutChecks.isEmpty())
+		{
+			builder.loadoutChecks(loadoutChecks);
+		}
+		if (dd != null)
+		{
+			builder.dd(dd);
+		}
 
 		boolean ok = apiClient.postIngest(builder.build());
 		if (ok)
@@ -129,10 +163,21 @@ public class Uploader
 			{
 				selfStateCollector.markSent(self);
 			}
+			if (ddDue)
+			{
+				lastDdSentAt = System.currentTimeMillis();
+				if (ddClosed)
+				{
+					ddTracker.acknowledgeClosed();
+					lastDdSentAt = null;
+				}
+			}
 		}
 		else
 		{
 			// Nothing is silently lost on a failed upload - put it all back.
+			// (dd isn't restored - DdTracker's live state is untouched by a
+			// failed send, so the same window/samples are simply resent next tick.)
 			if (self != null)
 			{
 				selfStateCollector.restore(self);
@@ -148,6 +193,10 @@ public class Uploader
 			if (roster != null)
 			{
 				rosterTracker.restore(roster);
+			}
+			if (!loadoutChecks.isEmpty())
+			{
+				fcMemberScanner.restore(loadoutChecks);
 			}
 		}
 	}

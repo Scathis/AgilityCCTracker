@@ -1,11 +1,11 @@
 package com.agilitycctracker.model;
 
+import com.agilitycctracker.loadout.Loadout;
+import java.util.List;
 import lombok.Value;
 
 /**
  * GET /api/v1/status. {@code activeEvent} is null when no event is running.
- * Loadout/DD config fields are added in Phase 3 once LoadoutEvaluator/DdTracker
- * exist to consume them.
  */
 @Value
 public class StatusResponse
@@ -15,4 +15,6 @@ public class StatusResponse
 	long serverTime;
 	boolean observerEnabled;
 	ActiveEvent activeEvent;
+	List<Loadout> loadouts;
+	DdConfig dd;
 }

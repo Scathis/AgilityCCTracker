@@ -176,8 +176,123 @@ unit tests passing, zero compiler warnings (confirmed by temporarily adding
 fixing it, then reverting `build.gradle` back to its exact §4.1 verbatim form
 — `git diff build.gradle` shows no diff).
 
-## Phase 3 — Plugin loadouts, scanner, DD, panel (§5.7–5.9)
+## Phase 3 — Plugin loadouts, scanner, DD, panel (§5.7–5.9) — done 2026-09-24
 
-Not started — see chat for the owner's go/pause decision before continuing,
-since this phase adds `scan/FcMemberScanner`, the one class in this whole
-project that reads *other* players.
+**Process change from Phase 2, worth keeping:** every genuinely risky
+RuneLite API surface this phase touches was verified against real
+`runelite/runelite` source via WebFetch *before* writing the code, not fixed
+after a failed compile. Verified up front: `PlayerComposition.ITEM_OFFSET`
+(2048) and `getEquipmentIds()`'s `int[]` return; `WorldView.players()`'s real
+return type (`IndexedObjectSet<? extends Player>`, confirmed iterable);
+`FriendsChatManager`/`NameableContainer<T>`'s `getMembers()` (`T[]`) and
+`findByName(String)` (`T`); and — most error-prone, since a wrong ordinal here
+would silently misattribute gear to the wrong slot — `KitType`'s exact 12-entry
+ordinal order (`HEAD,CAPE,AMULET,WEAPON,TORSO,SHIELD,ARMS,LEGS,HAIR,HANDS,BOOTS,JAW`)
+and `EquipmentInventorySlot`'s exact `slotIdx` values (0-13), confirmed to line
+up 1:1 for every slot this project cares about (`BODY`≈`TORSO`, `GLOVES`≈`HANDS`,
+both at index 4/9 respectively in each enum). Also verified: `NavigationButton.builder()`'s
+field names, `ClientToolbar.addNavigation()`/`removeNavigation()`, `PluginPanel`'s
+protected constructors + `PANEL_WIDTH` constant. **Result: the entire batch
+compiled clean on the first `./gradlew build` attempt** — a real contrast with
+Phase 2's two fix-after-the-fact bugs, and the reason this is called out
+explicitly rather than left as a one-off.
+
+Created:
+- **`loadout/`**: `Slot` (11 values matching the server's JSON contract exactly
+  — no ARMS/HAIR/JAY, since nothing here checks those — with `toEquipmentSlotIdx()`
+  for the local player's own WORN container and `toKitType()`, null for
+  RING/AMMO, for other players' `PlayerComposition`), `Check`, `LoadoutContext`,
+  `Condition`, `Requirement`, `Loadout` (with a small static `find(loadouts, context)`
+  helper shared by all three loadout consumers below), `WornItem`,
+  `LoadoutEvaluator` (pure, per §5.7 — zero RuneLite imports), `ItemNameResolver`
+  (id→normalised-name cache, strips trailing bracketed tags), `SelfLoadoutCheck`
+  (evaluates RUNNING on all 11 slots, since self has full visibility of their
+  own gear).
+- **`dd/`**: `DdTracker` (pure, every method takes an explicit `now` so it's
+  directly unit-testable with a fake clock, no mocking), `DdCallDetector`
+  (chat-message detection, rank-gated), `SelfDdSampler` — deliberately kept
+  *separate* from `FcMemberScanner` rather than folded in, so the "reads
+  other players" boundary stays exactly one class; self's own DD sample needs
+  full 11-slot gear visibility, which would otherwise blur that line.
+- **`scan/FcMemberScanner`** — the one class that reads other players. Runs
+  on `GameTick`, gated on `fcObserver` config + server `observer_enabled` +
+  active event + being in the Wilderness Agility Course region; only ever
+  processes players already on the FC roster; capped at 200 players/scan;
+  every per-player value (worn gear, location) goes out of scope at the end
+  of each loop iteration — nothing about another player is ever stored in a
+  field, only requirement-id gaps and booleans survive past that iteration.
+- **`ui/TrackerPanel`** — connection status, FC/event, laps+tickets this
+  session (session-scoped, not strictly event-scoped — a disclosed
+  simplification, see below), own loadout status, DD status incl. own time on
+  tile, the observed-FC-members gap list, and a "Copy my tile" button (writes
+  `x,y,plane` to the system clipboard, for entering DD tiles on the dashboard).
+  Registered via `NavigationButton`/`ClientToolbar` in `startUp()`, using a
+  generated 16×16 placeholder icon at `src/main/resources/com/agilitycctracker/panel_icon.png`.
+- **New model DTOs**: `DdTile`, `DdConfig`, `LoadoutCheckDto`, `DdPresenceDto`,
+  `DdSection`; `StatusResponse` extended with `loadouts`/`dd`; `IngestBatch`
+  extended with `loadoutChecks`/`dd`.
+- **`AgilityCCTrackerPlugin`**: wired every new component in, routes
+  `ChatMessage` to both `LapTracker` and `DdCallDetector`, calls
+  `SelfLoadoutCheck.refresh()` on WORN changes and after every `/status` poll,
+  drives `FcMemberScanner`/`SelfDdSampler`/`DdTracker.autoCloseIfExpired()`
+  off `GameTick` (matching §5.8's "runs on GameTick", and giving `DdTracker`
+  real ~600ms-per-tick timing rather than the coarser 1s schedule), and adds
+  the panel toggle reacting live to the `showPanel` config item via
+  `ConfigChanged`.
+- **`Uploader`**: now includes `loadoutChecks` (drained from `FcMemberScanner`)
+  and a `dd` section with its own cadence — sent immediately when a window
+  just closed, otherwise at most once per 10s while a window is open (per
+  §5.9's "every 10s and at close"), decoupled from the normal 2s upload tick
+  so an open DD window doesn't spam the server every 2s. `DdTracker`'s own
+  live state is never "restored" on a failed send the way queues are — it's
+  authoritative and continuously updated, so a failed POST just resends the
+  same window/samples next cycle, no data loss.
+
+**Deliberate simplifications, disclosed:** the panel's "laps this session"
+counter (`LapTracker.getSessionLapCount()`/`getSessionTicketsGained()`) is
+session-scoped (since plugin start), not strictly event-scoped — true
+event-boundary tracking would need cross-referencing event start/stop from
+`/status`, out of scope for a sidebar display; the real per-event totals are
+computed server-side from the uploaded lap timestamps regardless, so nothing
+is lost, only this one client-side display label is approximate.
+
+**Unit tests added (47 total across the whole project now), all pure-logic:**
+- `LoadoutEvaluatorTest` (12 cases) — every scenario from §5.10 against the
+  §7 default Running/DD loadouts (hardcoded as test fixtures only — the
+  plugin itself always gets `Loadout` data from `/status`, never bakes it
+  in): shortbow-no-shield passes, crossbow-no-shield fails only
+  `run-xbow-shield`, crossbow+shield passes, blowpipe fails only `run-bow`,
+  empty hand fails both `run-weapon` and `run-bow`, missing
+  helm/legs/boots/necklace each fail their own requirement, RING/AMMO
+  requirements skipped (not failed) when not visible, DD loadout pass/fail.
+- `ItemNameResolverTest` (5 cases) — the exact name-normaliser cases from
+  §5.10 ("Magic shortbow (i)", "Rune crossbow", "Dragon crossbow (cr)",
+  "Toxic blowpipe", "Bow of faerdhinen (c)").
+- `DdCallDetectorTest` (5 cases) — call/break regex phrasing, rank gating,
+  null/empty-safe.
+- `DdTrackerTest` (9 cases) — scripted timelines via the tracker's own
+  explicit `now` param: on-time arrival, late arrival (`arrived_after_ms`),
+  left-before-break after exceeding leave grace, seen-running after exceeding
+  arrive grace with no tile visit, wrong-weapon-at-DD unioned into
+  `ddFailed`, window auto-close at exactly `max_minutes`, a second `openWindow`
+  call while one's already open is a no-op, observations are ignored with no
+  window open, and `acknowledgeClosed()` correctly resets for a fresh call.
+
+**§5.11 Hub-readiness grep checks — all three pass (empty output):**
+```
+grep -rn "getPlayers()\|players()\|getPlayerComposition" src/main/java | grep -v scan/FcMemberScanner
+grep -rn "PlayerSpawned\|PlayerDespawned\|InteractingChanged\|HitsplatApplied\|AnimationChanged\|PlayerChanged" src/main/java
+grep -rn "java.lang.reflect\|Runtime.getRuntime\|ProcessBuilder\|new OkHttpClient\|new Gson" src/main/java
+```
+
+**Checks, all green:** `./gradlew build --no-daemon` → `BUILD SUCCESSFUL`,
+47/47 tests passing, zero compiler warnings.
+
+**This completes the entire RuneLite plugin side of the project (all of
+BUILD_PLAN.md §5).** Everything from Phase 4 onward is the FastAPI server -
+a different language/stack, and the first point where anything gets deployed
+on this host.
+
+## Phase 4 — Server API (§6.1–6.4)
+
+Not started — see chat for the owner's go/pause decision.

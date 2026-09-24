@@ -67,6 +67,11 @@ public class ApiClient
 		return tokenInvalid;
 	}
 
+	public boolean isBackingOff()
+	{
+		return !tokenInvalid && (System.currentTimeMillis() < rateLimitedUntil || skipRemaining.get() > 0);
+	}
+
 	public StatusResponse getStatus()
 	{
 		if (!canAttempt())

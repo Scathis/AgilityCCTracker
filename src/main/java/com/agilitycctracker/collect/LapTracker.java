@@ -37,6 +37,8 @@ public class LapTracker
 	private Integer lastLapCount;
 	private Long lastLapCompletedAt;
 	private int lastTicketCount = -1;
+	private int sessionLapCount;
+	private int sessionTicketsGained;
 
 	public void onChatMessage(ChatMessage event)
 	{
@@ -74,6 +76,19 @@ public class LapTracker
 		lastLapCount = lapCount;
 		lastLapCompletedAt = completedAt;
 		lastTicketCount = currentTickets;
+		sessionLapCount++;
+		sessionTicketsGained += ticketsGained != null ? ticketsGained : 0;
+	}
+
+	/** Session-scoped (not event-scoped) totals, for TrackerPanel display. */
+	public synchronized int getSessionLapCount()
+	{
+		return sessionLapCount;
+	}
+
+	public synchronized int getSessionTicketsGained()
+	{
+		return sessionTicketsGained;
 	}
 
 	/** Removes and returns every queued lap, oldest first. */
@@ -107,6 +122,8 @@ public class LapTracker
 		lastLapCount = null;
 		lastLapCompletedAt = null;
 		lastTicketCount = -1;
+		sessionLapCount = 0;
+		sessionTicketsGained = 0;
 	}
 
 	/** Pure and package-visible for unit testing without mocking RuneLite's ChatMessage. */

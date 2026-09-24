@@ -7,11 +7,23 @@ import com.agilitycctracker.collect.DeathTracker;
 import com.agilitycctracker.collect.LapTracker;
 import com.agilitycctracker.collect.RosterTracker;
 import com.agilitycctracker.collect.SelfStateCollector;
+import com.agilitycctracker.dd.DdCallDetector;
+import com.agilitycctracker.dd.DdTracker;
+import com.agilitycctracker.dd.SelfDdSampler;
+import com.agilitycctracker.loadout.SelfLoadoutCheck;
+import com.agilitycctracker.model.DdConfig;
+import com.agilitycctracker.model.StatusResponse;
+import com.agilitycctracker.scan.FcMemberScanner;
+import com.agilitycctracker.ui.TrackerPanel;
 import com.google.inject.Provides;
+import java.awt.image.BufferedImage;
+import java.io.IOException;
 import java.time.temporal.ChronoUnit;
 import java.util.EnumSet;
 import java.util.Set;
+import javax.imageio.ImageIO;
 import javax.inject.Inject;
+import javax.swing.SwingUtilities;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
 import net.runelite.api.GameState;
@@ -25,12 +37,15 @@ import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.GameTick;
 import net.runelite.api.events.ItemContainerChanged;
 import net.runelite.api.events.StatChanged;
+import net.runelite.api.gameval.InventoryID;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.events.ConfigChanged;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.task.Schedule;
+import net.runelite.client.ui.ClientToolbar;
+import net.runelite.client.ui.NavigationButton;
 
 /**
  * Ties everything together: holds the {@code @Subscribe}/{@code @Schedule}
@@ -86,6 +101,28 @@ public class AgilityCCTrackerPlugin extends Plugin
 	@Inject
 	private StatusHolder statusHolder;
 
+	@Inject
+	private SelfLoadoutCheck selfLoadoutCheck;
+
+	@Inject
+	private FcMemberScanner fcMemberScanner;
+
+	@Inject
+	private DdCallDetector ddCallDetector;
+
+	@Inject
+	private DdTracker ddTracker;
+
+	@Inject
+	private SelfDdSampler selfDdSampler;
+
+	@Inject
+	private TrackerPanel trackerPanel;
+
+	@Inject
+	private ClientToolbar clientToolbar;
+
+	private NavigationButton navigationButton;
 	private long lastAccountHash = -1;
 
 	@Provides
@@ -99,12 +136,57 @@ public class AgilityCCTrackerPlugin extends Plugin
 	{
 		log.info("Wildy Agility FC Tracker started");
 		lastAccountHash = client.getAccountHash();
+
+		trackerPanel.init();
+		if (config.showPanel())
+		{
+			addPanel();
+		}
 	}
 
 	@Override
 	protected void shutDown()
 	{
 		log.info("Wildy Agility FC Tracker stopped");
+		removePanel();
+	}
+
+	private void addPanel()
+	{
+		if (navigationButton != null)
+		{
+			return;
+		}
+		BufferedImage icon = loadIcon();
+		navigationButton = NavigationButton.builder()
+			.tooltip("Wildy Agility FC Tracker")
+			.icon(icon)
+			.panel(trackerPanel)
+			.priority(5)
+			.build();
+		clientToolbar.addNavigation(navigationButton);
+	}
+
+	private void removePanel()
+	{
+		if (navigationButton != null)
+		{
+			clientToolbar.removeNavigation(navigationButton);
+			navigationButton = null;
+		}
+	}
+
+	private BufferedImage loadIcon()
+	{
+		try
+		{
+			return ImageIO.read(getClass().getResourceAsStream("panel_icon.png"));
+		}
+		catch (IOException e)
+		{
+			log.warn("Failed to load panel icon", e);
+			return new BufferedImage(16, 16, BufferedImage.TYPE_INT_ARGB);
+		}
 	}
 
 	private boolean unsupportedWorld()
@@ -126,6 +208,9 @@ public class AgilityCCTrackerPlugin extends Plugin
 		lapTracker.reset();
 		deathTracker.reset();
 		rosterTracker.reset();
+		selfLoadoutCheck.reset();
+		fcMemberScanner.reset();
+		ddTracker.reset();
 		statusHolder.set(null);
 	}
 
@@ -148,6 +233,21 @@ public class AgilityCCTrackerPlugin extends Plugin
 			resetState();
 			lastAccountHash = hash;
 		}
+
+		if (unsupportedWorld())
+		{
+			return;
+		}
+
+		fcMemberScanner.onTick();
+		selfDdSampler.onTick();
+
+		StatusResponse status = statusHolder.get();
+		DdConfig dd = status != null ? status.getDd() : null;
+		if (dd != null)
+		{
+			ddTracker.autoCloseIfExpired(System.currentTimeMillis(), dd.getMaxMinutes());
+		}
 	}
 
 	@Subscribe
@@ -168,6 +268,10 @@ public class AgilityCCTrackerPlugin extends Plugin
 			return;
 		}
 		selfStateCollector.onItemContainerChanged(event);
+		if (event.getContainerId() == InventoryID.WORN)
+		{
+			selfLoadoutCheck.refresh();
+		}
 	}
 
 	@Subscribe
@@ -178,6 +282,7 @@ public class AgilityCCTrackerPlugin extends Plugin
 			return;
 		}
 		lapTracker.onChatMessage(event);
+		ddCallDetector.onChatMessage(event);
 	}
 
 	@Subscribe
@@ -220,17 +325,30 @@ public class AgilityCCTrackerPlugin extends Plugin
 		}
 		apiClient.onConfigChanged();
 		uploader.pollStatus();
+		selfLoadoutCheck.refresh();
+
+		if ("showPanel".equals(event.getKey()))
+		{
+			if (config.showPanel())
+			{
+				addPanel();
+			}
+			else
+			{
+				removePanel();
+			}
+		}
 	}
 
 	@Schedule(period = 1, unit = ChronoUnit.SECONDS)
 	public void onSecondTick()
 	{
-		if (unsupportedWorld())
+		if (!unsupportedWorld())
 		{
-			return;
+			selfStateCollector.onTick();
+			rosterTracker.onTick();
 		}
-		selfStateCollector.onTick();
-		rosterTracker.onTick();
+		SwingUtilities.invokeLater(trackerPanel::refresh);
 	}
 
 	@Schedule(period = 2, unit = ChronoUnit.SECONDS, asynchronous = true)
@@ -243,5 +361,6 @@ public class AgilityCCTrackerPlugin extends Plugin
 	public void onStatusTick()
 	{
 		uploader.pollStatus();
+		selfLoadoutCheck.refresh();
 	}
 }
