@@ -99,6 +99,85 @@ Docker's data-root already lives on `/mnt/120ssd` (see Phase 0 above).
 Committed `Phase 1: scaffold plugin and server` and pushed to
 `origin/claude/zealous-babbage-dw92it`.
 
-## Phase 2 — Plugin core (§5.1–5.6)
+## Phase 2 — Plugin core (§5.1–5.6) — done 2026-09-24
 
-Starting now.
+Created:
+- **Full `AgilityCCTrackerConfig`** per §5.1 (Connection/Sharing/FC observer/
+  Display sections, all 8 keys), replacing Phase 1's minimal 2-key version.
+- **`state/DataState<T>`** exactly as given in §5.3, plus one addition beyond
+  the literal spec: a `reset()` method (clears both pending and lastSent).
+  The exact-spec code had no way to forget a stale `lastSent` across a
+  relogin/world-hop, and `AgilityCCTrackerPlugin`'s required "reset all state
+  on GameStateChanged→LOGIN_SCREEN/HOPPING and on account-hash change" (§5.2)
+  needs exactly that.
+- **`model/`**: `SelfState`, `EquipmentItem`, `LapEvent`, `DeathEvent`,
+  `RosterMember`, `RosterSnapshot`, `IngestBatch`, `StatusResponse`,
+  `ActiveEvent` — all Lombok `@Value` (immutable, proper `equals`, per §5.3's
+  guidance), camelCase fields mapped to the server's snake_case JSON via a
+  `FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES` Gson built with
+  `gson.newBuilder()` inside `ApiClient` (never `new Gson()`, per the Hub
+  rule) — no per-field `@SerializedName` needed. `loadoutChecks`/`dd` sections
+  intentionally not modelled yet; added in Phase 3 once the scanner/DD
+  tracker exist to populate them.
+- **`collect/SelfStateCollector`**, **`LapTracker`**, **`DeathTracker`**,
+  **`RosterTracker`** per §5.4, plus a small helper not explicitly named in
+  the spec: **`collect/WildyLevelReader`** + **`util/WildernessLevel`** —
+  factors the widget-text/coordinate-fallback wilderness-level detection into
+  one shared, pure-testable place instead of duplicating it between
+  SelfStateCollector (self.wildy_level) and DeathTracker (deaths[].wildy_level).
+- **`api/ApiClient`** per §5.5 (token/URL validation, 401/403 latch until
+  config changes, 429 60s backoff, network/5xx skip-next-10-attempts) and
+  **`api/Uploader`** per §5.6 (2s upload tick building one `IngestBatch` from
+  whatever's changed/queued, 60s `/status` poll into a new **`api/StatusHolder`**
+  singleton shared with `RosterTracker`).
+
+**Two real bugs found via the actual compiler, not guessed** (first `./gradlew
+build` attempt, then verified each fix against real RuneLite/runelite source
+via WebFetch before reapplying):
+1. `ConfigChanged` doesn't live in `net.runelite.client.config` — confirmed
+   via `raw.githubusercontent.com/runelite/runelite/master/.../client/events/ConfigChanged.java`
+   that its real package is `net.runelite.client.events`.
+2. `Skill.OVERALL` is now a **deprecated constant literally assigned `null`**
+   (`@Deprecated public static final Skill OVERALL = null;`) and no longer
+   appears in `Skill.values()` at all (confirmed: 24 real skills, Attack
+   through Sailing, no Overall entry) — so §5.4's "skip OVERALL if present"
+   check (`if (skill == Skill.OVERALL) continue;`) was comparing against
+   `null` and was dead code from the moment it was written. Removed entirely
+   rather than kept as a harmless-but-pointless check.
+
+**Deliberate deviations from a literal spec reading, each with reasoning:**
+- `RosterTracker`'s 5s debounce / 60s keep-alive resend is driven off the
+  plugin's existing 1s `@Schedule` tick (`onTick()`) rather than injecting its
+  own `ScheduledExecutorService` — whether RuneLite's Guice injector actually
+  binds one at plugin scope couldn't be verified without a live client to
+  test against (this server has no display — per §8/DEV_SETUP, that's the
+  owner's PC's job), so avoided a design that could compile clean but fail at
+  runtime with a Guice binding error. Fully equivalent behaviour, same debounce
+  timing, and it's pure/testable with a fake clock as a bonus.
+- Tile-based lap-completion detection (§5.4's secondary signal) deferred —
+  it's explicitly a fallback "for lap timing if the chat message is disabled,"
+  and nothing here disables that message.
+- HP/prayer collection (mentioned in §5.4's 1s-tick list) deferred — neither
+  the `self` JSON contract (§5.6) nor the `player_snapshots` schema (§6.2) has
+  a field for it, so there's nothing downstream to consume it yet. Easy to add
+  later if a real use turns up.
+
+**Unit tests added, all pure-logic (no RuneLite `Client` mocking needed,**
+**per §5.10's own preference):**
+- `DataStateTest` — update/consume/restore/reset semantics, 7 cases.
+- `WildernessLevelTest` — widget-text parsing + coordinate fallback, 4 cases.
+- `LapTrackerParseTest` — regex against plain/coloured/comma-thousands/
+  missing-trailing-period/unrelated messages, 5 cases (package-private static
+  `parseLapCount` made testable by keeping the test in the same package).
+
+**Checks, all green:** `./gradlew build --no-daemon` → `BUILD SUCCESSFUL`, all
+unit tests passing, zero compiler warnings (confirmed by temporarily adding
+`-Xlint:deprecation` to `build.gradle`, finding the one real warning above,
+fixing it, then reverting `build.gradle` back to its exact §4.1 verbatim form
+— `git diff build.gradle` shows no diff).
+
+## Phase 3 — Plugin loadouts, scanner, DD, panel (§5.7–5.9)
+
+Not started — see chat for the owner's go/pause decision before continuing,
+since this phase adds `scan/FcMemberScanner`, the one class in this whole
+project that reads *other* players.
