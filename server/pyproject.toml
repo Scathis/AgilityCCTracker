@@ -8,6 +8,7 @@ dependencies = [
     "uvicorn[standard]>=0.32",
     "sqlalchemy[asyncio]>=2.0",
     "asyncmy>=0.2.9",
+    "cryptography>=43.0",
     "alembic>=1.13",
     "pydantic>=2.9",
     "pydantic-settings>=2.5",
@@ -38,7 +39,17 @@ target-version = "py312"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
+# B008 (function call in a default argument) is a real footgun in general,
+# but FastAPI's own `Depends(...)` pattern relies on exactly this and is the
+# framework's documented, idiomatic style - not a bug to fix here.
+ignore = ["B008"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
+# app.db's async engine is a module-level singleton, created once and reused
+# across every test - it must stay bound to one event loop for the whole
+# session, not get a fresh one per test function (pytest-asyncio's default),
+# or SQLAlchemy's connection pool breaks with "attached to a different loop".
+asyncio_default_fixture_loop_scope = "session"
+asyncio_default_test_loop_scope = "session"
 testpaths = ["tests"]

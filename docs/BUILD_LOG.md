@@ -293,6 +293,147 @@ BUILD_PLAN.md §5).** Everything from Phase 4 onward is the FastAPI server -
 a different language/stack, and the first point where anything gets deployed
 on this host.
 
-## Phase 4 — Server API (§6.1–6.4)
+## Phase 4 — Server API (§6.1–6.4) — done 2026-09-24
+
+Created:
+- **`app/models/`** — all 16 tables from §6.2 (`FcGroup`, `Player`,
+  `PlayerSnapshot`, `Event`, `Attendance`, `Lap`, `Death`, `Loadout`,
+  `LoadoutRequirement`, `LoadoutCheck`, `DdCall`, `DdPresence`, `Ragger`,
+  `RaggerSighting`, `User`, `Item`), SQLAlchemy 2.0 typed `Mapped[...]`
+  columns, one file per table-group.
+- **The initial Alembic migration** — generated via `alembic revision
+  --autogenerate` against a **real throwaway MySQL** (a one-off `docker run`
+  mounting the server directory, attached to `docker-compose.test.yml`'s own
+  network) rather than hand-writing 16 tables of DDL. The one thing flagged
+  as a real risk before testing — `players.latest_snapshot_id`'s FK to
+  `player_snapshots.id` (`use_alter=True` in the model, to handle the
+  circular reference with `player_snapshots.player_id → players.id`)
+  appearing embedded directly in the generated `CREATE TABLE players` rather
+  than deferred to a separate step — **turned out to be a non-issue**:
+  `alembic upgrade head` applied cleanly against a fresh database on the
+  first real test, no manual migration fix needed at all.
+- **`app/security.py`** — HMAC-SHA256 token hashing (the plugin's raw token
+  is never stored, only its hash, matching §6.3) and an in-memory
+  sliding-window rate limiter (5 failures/5min/IP → 429).
+- **`app/deps.py`** — the `get_current_fc_group` dependency wiring token
+  auth + the rate limiter into every plugin-facing route.
+- **`app/schemas/`** — Pydantic v2 request/response models matching the
+  plugin's JSON contract field-for-field (snake_case throughout, so no
+  aliasing needed except `self` → `self_state` via `Field(alias="self")`,
+  since `self` can't be a Python attribute name).
+- **`app/services/roster.py`** (`diff_roster`) and **`app/services/dd.py`**
+  (`find_matching_call`/`merge_broken_at`/`merge_presence`) — the pure,
+  DB-free diff/merge math for §6.4 steps 5 and 7, deliberately factored out
+  of the DB-touching orchestration in `api/v1/ingest.py`. **Same pure/impure
+  separation pattern used throughout the plugin in Phases 2–3** — it's what
+  made both sides of this project's trickiest logic unit-testable without
+  heavy mocking.
+- **`app/api/v1/status.py`** and **`app/api/v1/ingest.py`** — the full 8-step
+  ingest orchestration from §6.4: upsert reporter, self-state snapshot
+  (change-only) + self-loadout-check, lap/death insert-if-not-exists with
+  event-window assignment, roster diff → attendance open/close, fc_scan
+  loadout checks (attendance-gated, observer-kill-switched), DD call/presence
+  merge with a 10s send cadence, and laps-during-DD → `seen_running`.
+- **`app/seed.py`** — the §7 default Running/DD loadouts, stored as literal
+  uppercase wire-format strings (`"WEAPON"`, `"NAME_ENDS_WITH"`, …) matching
+  the plugin's Java enum constant names directly — no case translation
+  needed for `slot`/`check_type`.
+- **`app/services/loadouts.py`** — the *one* deliberate DB-lowercase/wire-
+  uppercase mapping point in the whole server: `loadouts.context` is stored
+  as MySQL `ENUM('running','dd')` per the schema, but must serialise as
+  `"RUNNING"`/`"DD"` to match the plugin's Gson enum deserialization.
+  Documented in both `schemas/status.py` and here so it can't silently drift.
+- **Request-body-size-limit middleware** (100KB cap, §6.3) in `main.py`.
+
+**Four real bugs found and fixed, each via an actual failing run, not
+guessed — the last three specifically because real integration tests were
+written against a real database rather than stopping at pure-unit-test
+coverage:**
+1. `asyncmy` needs the `cryptography` package for MySQL 8's default
+   `caching_sha2_password` auth method — not pulled in transitively, added
+   explicitly to `pyproject.toml`.
+2. **Async-engine/event-loop scope mismatch.** `app/db.py`'s async
+   SQLAlchemy `engine` is a module-level singleton that must stay bound to
+   one event loop for its whole process lifetime. Phase 1's `test_healthz.py`
+   used FastAPI's *synchronous* `TestClient` (which runs its own internal
+   event-loop portal thread), while the new Phase 4 tests use
+   `httpx.AsyncClient` under pytest-asyncio's default *per-test-function*
+   event loop — mixing the two caused `RuntimeError: Task ... attached to a
+   different loop` crashes, plus one silent-data-loss symptom (a query
+   returning `None` for a row the app had *just* inserted, because the
+   insert happened via a connection tied to a loop that had already closed
+   by the time the check ran). Fixed by converting `test_healthz.py` to the
+   same shared async `client` fixture as every other test, and setting both
+   `asyncio_default_fixture_loop_scope = "session"` and
+   `asyncio_default_test_loop_scope = "session"` in `pyproject.toml` so the
+   whole test session shares one event loop, matching the engine's real
+   lifetime.
+3. **Transaction isolation level.** Even after fixing #2, the tests'
+   long-lived `db_session` fixture still saw stale data: MySQL defaults to
+   **REPEATABLE READ**, so that fixture's first query fixed a snapshot that
+   never became aware of rows the *app's own separate per-request sessions*
+   committed afterward (each POST through the test client runs its own
+   request-scoped session via `get_session()`). Concretely: a test posting a
+   second, genuinely-different `loadout_failed` list still saw the
+   `loadout_checks` count stay at 1 instead of going to 2. Fixed by binding
+   the `db_session` fixture's connection to **READ COMMITTED** isolation
+   (`conn = await conn.execution_options(isolation_level="READ COMMITTED")`
+   in `tests/conftest.py` — confirmed via the actual passing run that this
+   call does need `await` on an `AsyncConnection`).
+4. A stale Docker image (process lesson, not a code bug): `docker compose
+   run` silently reused a cached image after the Dockerfile was edited to add
+   `COPY alembic.ini`/`COPY alembic` — the container had no `alembic.ini` at
+   all and failed with `No 'script_location' key found`. Fixed by rebuilding
+   with `--build`; worth remembering for any future Dockerfile edit here.
+
+**Other fixes along the way:** `Skill.OVERALL`-style dead weight didn't
+recur here, but a genuine ruff pass was needed — `ruff format` auto-wrapped
+the bulk of E501 line-length violations (mostly in `seed.py`'s dict literals
+and `services/dd.py`'s longer signatures); an earlier `ruff check
+--unsafe-fixes` pass converted the plain `class X(str, enum.Enum)` model
+classes to `enum.StrEnum` (`SnapshotSource`, `LoadoutContext`,
+`LoadoutCheckSource`, `RaggerStatus`, `UserRole`) — a legitimate Python 3.12
+idiom, kept deliberately, not reverted; added a documented `ignore =
+["B008"]` to `pyproject.toml`'s ruff config, since that rule flags FastAPI's
+own idiomatic `Depends(...)` default-argument pattern as a false positive,
+not a real bug.
+
+**Test coverage added — 30 tests, all passing:**
+- `tests/test_roster_service.py` (6) — pure `diff_roster()` tests: new
+  member opens, missing member closes only when the reporter's world
+  matches, does *not* close when the reporter is on a different world
+  (world-hop conservatism), closes nothing when `reporter_world` is unknown,
+  multiple-session selectivity, present-member no-op.
+- `tests/test_dd_service.py` (13) — pure tests against `find_matching_call`
+  (±10s tolerance), `merge_broken_at` (earliest-non-null wins, `staff_edited`
+  freezes the current value), and `merge_presence` (first observation,
+  max/min/OR/union across a second merge, one-sided-`None` handling).
+- `tests/test_status.py` (4) — real integration tests via `httpx.AsyncClient`
+  against the live app + test DB: valid token, invalid token, missing token,
+  and the 429 rate limit after 5 failures.
+- `tests/test_ingest.py` (6) — real integration tests: lap and death
+  idempotency (duplicate POSTs, one row each), event-window assignment
+  (two sequential events plus a gap timestamp resolving to `None`),
+  self-loadout-check change-only storage, the fc_scan attendance-gate
+  (dropped with no `Attendance` row, stored once one exists), and the
+  `observer_enabled` kill switch (fc_scan dropped, self still stored).
+- `tests/test_healthz.py` (1, from Phase 1, converted to the async client).
+
+**Checks, all green:** fresh-database `alembic upgrade head` succeeds, `ruff
+check` clean, `30 passed` in the real pytest run against the test MySQL.
+
+**Worth carrying into Phase 5:** three of this phase's four real bugs
+(event-loop scope, transaction isolation, and arguably the missing
+`cryptography` dependency) would never have surfaced from pure unit tests
+alone — only real integration tests against a real, running database caught
+them. Keep that same standard for Phase 5's dashboard/session/CSRF logic,
+not just unit tests in isolation.
+
+**This means the server can now receive plugin data end-to-end** — token
+auth with rate limiting, self-state snapshots, laps/deaths with correct
+event assignment, roster/attendance tracking, loadout compliance (self +
+observed, gated), and DD merging — even though there's no web dashboard yet.
+
+## Phase 5 — Dashboard + workers (§6.5–6.6)
 
 Not started — see chat for the owner's go/pause decision.

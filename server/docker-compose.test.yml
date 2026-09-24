@@ -18,7 +18,7 @@ services:
 
   tests:
     build: .
-    command: ["sh", "-c", "pip install --no-cache-dir .[dev] && ruff check . && pytest"]
+    command: ["sh", "-c", "pip install --no-cache-dir .[dev] && alembic upgrade head && ruff check . && pytest"]
     volumes:
       - ./tests:/app/tests
     environment:
