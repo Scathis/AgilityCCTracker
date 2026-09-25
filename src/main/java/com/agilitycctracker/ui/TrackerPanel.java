@@ -4,6 +4,7 @@ import com.agilitycctracker.AgilityCCTrackerConfig;
 import com.agilitycctracker.api.ApiClient;
 import com.agilitycctracker.api.StatusHolder;
 import com.agilitycctracker.collect.LapTracker;
+import com.agilitycctracker.collect.SelfStateCollector;
 import com.agilitycctracker.dd.DdTracker;
 import com.agilitycctracker.loadout.SelfLoadoutCheck;
 import com.agilitycctracker.model.ActiveEvent;
@@ -59,6 +60,9 @@ public class TrackerPanel extends PluginPanel
 	private LapTracker lapTracker;
 
 	@Inject
+	private SelfStateCollector selfStateCollector;
+
+	@Inject
 	private SelfLoadoutCheck selfLoadoutCheck;
 
 	@Inject
@@ -69,6 +73,7 @@ public class TrackerPanel extends PluginPanel
 
 	private final JLabel connectionLabel = new JLabel();
 	private final JLabel fcLabel = new JLabel();
+	private final JLabel courseLabel = new JLabel();
 	private final JLabel lapsLabel = new JLabel();
 	private final JLabel loadoutLabel = new JLabel();
 	private final JLabel ddLabel = new JLabel();
@@ -85,7 +90,7 @@ public class TrackerPanel extends PluginPanel
 		removeAll();
 		setLayout(new BorderLayout());
 
-		for (JLabel label : new JLabel[] {connectionLabel, fcLabel, lapsLabel, loadoutLabel, ddLabel})
+		for (JLabel label : new JLabel[] {connectionLabel, fcLabel, courseLabel, lapsLabel, loadoutLabel, ddLabel})
 		{
 			label.setForeground(ColorScheme.TEXT_COLOR);
 		}
@@ -96,6 +101,7 @@ public class TrackerPanel extends PluginPanel
 
 		content.add(connectionLabel);
 		content.add(fcLabel);
+		content.add(courseLabel);
 		content.add(lapsLabel);
 		content.add(loadoutLabel);
 		content.add(ddLabel);
@@ -140,6 +146,10 @@ public class TrackerPanel extends PluginPanel
 			String eventText = event != null ? event.getName() : "no active event";
 			fcLabel.setText("FC: " + status.getFcName() + " - " + eventText);
 		}
+
+		boolean onCourse = selfStateCollector.isOnCourse();
+		courseLabel.setText(onCourse ? "In course area: yes" : "In course area: no");
+		courseLabel.setForeground(onCourse ? ColorScheme.PROGRESS_COMPLETE_COLOR : ColorScheme.TEXT_COLOR);
 
 		lapsLabel.setText("Laps this session: " + lapTracker.getSessionLapCount()
 			+ " (" + lapTracker.getSessionTicketsGained() + " tickets)");

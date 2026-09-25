@@ -163,6 +163,12 @@ public class SelfStateCollector
 		refresh();
 	}
 
+	/** For TrackerPanel's "in course area" indicator - thread-safe to read from the EDT. */
+	public boolean isOnCourse()
+	{
+		return onCourse.get();
+	}
+
 	private SelfState buildSnapshot()
 	{
 		SelfState.SelfStateBuilder builder = SelfState.builder()
