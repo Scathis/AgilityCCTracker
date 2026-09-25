@@ -71,6 +71,13 @@ public class TrackerPanel extends PluginPanel
 
 	public void init()
 	{
+		// This panel is a Guice singleton, but startUp() calls init() again
+		// every time the plugin is re-enabled after being toggled off - clear
+		// out whatever a previous init() built first, so repeated calls are
+		// safe instead of stacking duplicate content panels on top of each
+		// other (BorderLayout doesn't remove a slot's old occupant when a
+		// new one is added to the same slot, it just stops laying it out).
+		removeAll();
 		setLayout(new BorderLayout());
 
 		for (JLabel label : new JLabel[] {connectionLabel, fcLabel, lapsLabel, loadoutLabel, ddLabel})
