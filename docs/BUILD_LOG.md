@@ -693,3 +693,89 @@ unprivileged), tagged consistently with the two pre-existing entries:
 0 4 * * * /bin/bash /mnt/120ssd/agilitycctracker/deploy/backup.sh >> /mnt/120ssd/agilitycctracker/server/backups/backup.log 2>&1 # agilitycctracker-backup
 ```
 Nightly at 04:00, matching the plan's own suggested schedule.
+
+## Phase 7 — Hand back to the owner — done 2026-09-25
+
+1. **FC group created**: `python -m app.cli create-group "Agility CC" "Agility FC"`
+   → `id=1`, display name `Agility CC`, owner RSN `Agility FC` (per the
+   owner's confirmation this session — the channel and its owner share the
+   same name). Seeded the default Running/DD loadouts (§7) automatically.
+   Plugin token generated and relayed to the owner directly in chat only,
+   per this project's established secret-handling convention — never
+   written to any file in the repo. DD tiles left empty, as planned, until
+   captured in-game via the plugin's "Copy my tile" button.
+   **Verified live**: `GET /api/v1/status` with the new token returns the
+   full config (group identity, both seeded loadouts, DD defaults) over
+   `https://agilitycc.grestinator.com`.
+2. **Credentials handed to the owner** (in chat, once, per this project's
+   convention): API URL, plugin token, dashboard URL, admin login.
+3. **Docs written**: `docs/DEV_SETUP.md` (§8, filled in with the real
+   `https://agilitycc.grestinator.com` API URL — the token itself is left
+   as an instruction to ask whoever ran `create-group`, never embedded,
+   since this doc is repo-committed and will eventually be public per
+   Phase 9), `docs/SELF_HOSTING.md` (new — deploy/update/backup/restore/
+   admin-password-reset, generalized from this project's own real Phase 6
+   deploy experience, including the loopback-vs-LAN-IP port-binding gotcha
+   hit and fixed during that phase), `docs/API.md` (new — full `/api/v1`
+   reference per §6.3–6.4, request/response shapes, the ingest processing
+   order, and an explicit "what's never in here" callout for the
+   other-players-data boundary), `docs/PLUGIN_HUB_SUBMISSION.md` (§9,
+   updated to reflect the real repo `github.com/Scathis/AgilityCCTracker`
+   and its new Phase-9 numbering after the Phase 8 reskin was inserted),
+   `docs/FUTURE_NON_HUB.md` (§10, verbatim in substance).
+   **Owner clarified mid-phase**: the RuneLite plugin configuration itself
+   (§8/`DEV_SETUP.md`'s steps 4–5) will be done by the owner directly, not
+   handed off — confirming the doc's purpose is exactly this: a
+   self-contained reference for doing it themselves, not a handoff to a
+   separate person.
+4. **Final report:**
+
+**What was built:** the complete system per `BUILD_PLAN.md` — a RuneLite
+plugin (attendance/lap/DD/loadout tracking, one class with
+elevated-visibility scanning, gaps-only reporting of other players' loadout
+state), a FastAPI + MySQL server (token-authed ingest API, session-authed
+Jinja2 dashboard with role-based access, two background workers for
+hiscores/item prices), deployed for real on this host behind Cloudflare
+Tunnel with nightly backups, and a live FC group ready for in-game use.
+
+**Test results:** plugin — 47/47 JUnit tests passing, `./gradlew build`
+clean (last verified end of Phase 3; no plugin code has changed since).
+Server — **60/60 pytest passing**, re-verified fresh just now
+(`docker compose -f docker-compose.test.yml run --rm tests`, 2.51s), `ruff
+check` clean.
+
+**Known non-blocking issues, not fixed this phase:**
+- `datetime.datetime.utcnow()` is used throughout `app/cli.py` and several
+  route modules — deprecated in favor of timezone-aware
+  `datetime.now(datetime.UTC)` as of Python 3.12, still fully functional
+  (just emits a `DeprecationWarning`, visible in the test run above and in
+  `create-group`/`create-admin`'s own output). Cosmetic/future-proofing
+  only; not touched this phase since it's unrelated to anything actually
+  in scope, but worth a small cleanup pass sometime before it's ever
+  actually removed from the language.
+- The 5 partial-coverage entries carried over from earlier Toshiba/Radarr
+  storage work (unrelated project, noted here only in case of confusion —
+  see `/containers/CLAUDE.md`, not this repo).
+
+**What was deliberately skipped/deferred, and why:**
+- **Phase 8 (OSRS-themed dashboard reskin)** — scoped and added to the plan
+  this session at the owner's request, not yet executed. Pure CSS/template
+  work, no functional risk, can happen anytime before or during the
+  owner's in-game testing.
+- **Phase 9 (Plugin Hub submission)** — explicitly gated on real in-game
+  testing (`DEV_SETUP.md`'s manual checklist) and the owner re-confirming
+  the DD/loadout observer design with RuneLite Hub maintainers first, per
+  the plan's own reasoning. Not started.
+- **DD tiles** — left empty in the seeded config; needs the owner to
+  capture them in-game via the plugin panel's "Copy my tile" button and
+  paste into Settings, per `DEV_SETUP.md`'s checklist.
+
+**Next steps (owner):** configure the RuneLite plugin per `DEV_SETUP.md`
+(API URL + token), work through its manual test checklist in-game, capture
+the two DD tiles, then decide whether to move on Phase 8 (reskin) and/or
+Phase 9 (Hub submission) next.
+
+**Checks:** `docker ps` re-confirmed clean against the original baseline
+(no `/containers`-stack container affected by anything in this phase — no
+new containers were even created, this phase was CLI + docs only).
+Committed and pushed to `origin/claude/zealous-babbage-dw92it`.
