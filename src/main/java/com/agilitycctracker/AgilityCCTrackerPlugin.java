@@ -30,6 +30,7 @@ import net.runelite.api.GameState;
 import net.runelite.api.WorldType;
 import net.runelite.api.events.ActorDeath;
 import net.runelite.api.events.ChatMessage;
+import net.runelite.api.FriendsChatManager;
 import net.runelite.api.events.FriendsChatChanged;
 import net.runelite.api.events.FriendsChatMemberJoined;
 import net.runelite.api.events.FriendsChatMemberLeft;
@@ -316,6 +317,11 @@ public class AgilityCCTrackerPlugin extends Plugin
 	{
 		if (event.isJoined())
 		{
+			FriendsChatManager fc = client.getFriendsChatManager();
+			if (fc != null)
+			{
+				log.info("Joined friends chat - registered owner is: '{}'", fc.getOwner());
+			}
 			rosterTracker.onFriendsChatJoined();
 		}
 	}
