@@ -3,6 +3,7 @@ import secrets
 
 from sqlalchemy import select
 
+from app.models.dd import DdPresence
 from app.models.death import Death
 from app.models.event import Attendance, Event
 from app.models.lap import Lap
@@ -245,3 +246,78 @@ async def test_observer_disabled_drops_fc_scan_but_not_self(client, fc_group, db
         select(LoadoutCheck).where(LoadoutCheck.player_id == self_player.id)
     )
     assert len(self_result.scalars().all()) == 1
+
+
+async def test_dd_presence_merges_multiple_reporters_without_duplicating(
+    client, fc_group, db_session
+):
+    """Real scenario from in-game testing: several plugin users all
+    observing the same DD tile. Each of their reports must merge into one
+    DdPresence row per (call, observed player) - never one row per
+    reporter - and `sources` must record who actually reported it, not the
+    observed player's own name (a real bug found and fixed alongside this
+    test: the reporter's rsn was never threaded into merge_presence())."""
+    group, token = fc_group
+    event = Event(fc_group_id=group.id, name="E", started_at=dt.datetime.utcnow(), ended_at=None)
+    db_session.add(event)
+    await db_session.commit()
+
+    watched_rsn = _rsn()
+    reporter_a = _rsn()
+    reporter_b = _rsn()
+    called_at = to_epoch_ms(dt.datetime.utcnow())
+
+    payload_a = {
+        "rsn": reporter_a,
+        "dd": {
+            "called_at": called_at,
+            "presence": [
+                {
+                    "rsn": watched_rsn,
+                    "arrived_after_ms": 5000,
+                    "ms_on_tile": 20000,
+                    "left_before_break": False,
+                    "seen_running": False,
+                    "observed_ms": 20000,
+                    "dd_failed": [],
+                }
+            ],
+        },
+    }
+    payload_b = {
+        "rsn": reporter_b,
+        "dd": {
+            "called_at": called_at,
+            "presence": [
+                {
+                    "rsn": watched_rsn,
+                    "arrived_after_ms": 3000,
+                    "ms_on_tile": 45000,
+                    "left_before_break": False,
+                    "seen_running": False,
+                    "observed_ms": 45000,
+                    "dd_failed": [],
+                }
+            ],
+        },
+    }
+    assert (
+        await client.post("/api/v1/ingest", json=payload_a, headers=_headers(token))
+    ).status_code == 200
+    assert (
+        await client.post("/api/v1/ingest", json=payload_b, headers=_headers(token))
+    ).status_code == 200
+
+    watched_player = await _get_player(db_session, watched_rsn)
+    result = await db_session.execute(
+        select(DdPresence).where(DdPresence.player_id == watched_player.id)
+    )
+    rows = result.scalars().all()
+
+    # One merged row, not two - the whole point of the merge.
+    assert len(rows) == 1
+    row = rows[0]
+    assert row.ms_on_tile == 45000  # max() of the two reports
+    assert row.arrived_after_ms == 3000  # min() of the two reports
+    assert set(row.sources) == {reporter_a, reporter_b}  # who reported it
+    assert watched_rsn not in row.sources  # not the observed player's own name

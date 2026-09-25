@@ -81,7 +81,7 @@ async def post_ingest(
 
     # Step 7 + 8: DD merge, then laps-during-dd.
     if active_event is not None and batch.dd is not None:
-        await _process_dd(session, active_event, batch.dd)
+        await _process_dd(session, active_event, batch.dd, reporter.rsn)
 
     await session.commit()
     return {"ok": True, "server_time": int(now.replace(tzinfo=dt.UTC).timestamp() * 1000)}
@@ -363,7 +363,9 @@ async def _process_loadout_checks(
         )
 
 
-async def _process_dd(session: AsyncSession, event: Event, dd: DdSectionIn) -> None:
+async def _process_dd(
+    session: AsyncSession, event: Event, dd: DdSectionIn, reporter_rsn: str
+) -> None:
     existing_calls_result = await session.execute(select(DdCall).where(DdCall.event_id == event.id))
     existing_calls = existing_calls_result.scalars().all()
     called_at_ms_by_id = {
@@ -423,7 +425,7 @@ async def _process_dd(session: AsyncSession, event: Event, dd: DdSectionIn) -> N
             observed_ms=presence.observed_ms,
             dd_loadout_failed=tuple(presence.dd_failed),
         )
-        merged = merge_presence(existing_merge, incoming, reporter=presence.rsn)
+        merged = merge_presence(existing_merge, incoming, reporter=reporter_rsn)
 
         # Step 8: laps completed during the window also imply seen_running.
         window_end = dd_call.broken_at or dt.datetime.utcnow()
