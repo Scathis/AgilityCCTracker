@@ -320,7 +320,8 @@ public class AgilityCCTrackerPlugin extends Plugin
 			FriendsChatManager fc = client.getFriendsChatManager();
 			if (fc != null)
 			{
-				log.info("Joined friends chat - registered owner is: '{}'", fc.getOwner());
+				log.info("Joined friends chat - name='{}' owner='{}' myRank={} memberCount={}",
+					fc.getName(), fc.getOwner(), fc.getMyRank(), fc.getMembers().length);
 			}
 			rosterTracker.onFriendsChatJoined();
 		}
