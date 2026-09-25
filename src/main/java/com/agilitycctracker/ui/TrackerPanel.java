@@ -25,6 +25,7 @@ import javax.swing.JPanel;
 import net.runelite.api.Client;
 import net.runelite.api.Player;
 import net.runelite.api.coords.WorldPoint;
+import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.PluginPanel;
 
 /**
@@ -72,6 +73,11 @@ public class TrackerPanel extends PluginPanel
 	{
 		setLayout(new BorderLayout());
 
+		for (JLabel label : new JLabel[] {connectionLabel, fcLabel, lapsLabel, loadoutLabel, ddLabel})
+		{
+			label.setForeground(ColorScheme.TEXT_COLOR);
+		}
+
 		JPanel content = new JPanel();
 		content.setLayout(new BoxLayout(content, BoxLayout.Y_AXIS));
 
@@ -88,7 +94,9 @@ public class TrackerPanel extends PluginPanel
 		content.add(buttonRow);
 
 		observersList.setLayout(new BoxLayout(observersList, BoxLayout.Y_AXIS));
-		content.add(new JLabel("FC members in view:"));
+		JLabel observersHeading = new JLabel("FC members in view:");
+		observersHeading.setForeground(ColorScheme.TEXT_COLOR);
+		content.add(observersHeading);
 		content.add(observersList);
 
 		add(content, BorderLayout.NORTH);
@@ -127,7 +135,9 @@ public class TrackerPanel extends PluginPanel
 			String text = entry.getValue().isEmpty()
 				? entry.getKey() + ": compliant"
 				: entry.getKey() + ": " + String.join(", ", entry.getValue());
-			observersList.add(new JLabel(text));
+			JLabel observerLabel = new JLabel(text);
+			observerLabel.setForeground(ColorScheme.TEXT_COLOR);
+			observersList.add(observerLabel);
 		}
 		observersList.revalidate();
 		observersList.repaint();
