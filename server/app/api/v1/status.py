@@ -81,7 +81,7 @@ async def get_status(
         dd=DdConfigOut(
             tiles=tiles,
             call_regex=fc_group.dd_call_regex or r"^\s*dd\s*!*$",
-            break_regex=fc_group.dd_break_regex or r"^\s*(break|brk)\s*(dd)?\s*!*$",
+            break_regex=fc_group.dd_break_regex or r"^(?=.*\b(?:break|brk)\b)(?=.*\bdd\b).*$",
             min_rank=fc_group.dd_min_rank,
             arrive_grace_s=fc_group.dd_arrive_grace_s,
             leave_grace_s=fc_group.dd_leave_grace_s,
