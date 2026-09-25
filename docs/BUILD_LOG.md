@@ -569,7 +569,7 @@ workers — is now functionally complete per the spec and verified end-to-end
 against a real database, though not yet deployed on this host (Phase 6) or
 submitted to the RuneLite Plugin Hub (Phase 8).
 
-## Phase 6 — Deploy on this server (§6.1/§6.3, deploy steps) — steps 1–5 done 2026-09-25
+## Phase 6 — Deploy on this server (§6.1/§6.3, deploy steps) — done 2026-09-25
 
 Deployed for real (not a throwaway test) on `plexinator-3000`, at this
 repo's own location (`/mnt/120ssd/agilitycctracker` — no separate
@@ -612,16 +612,70 @@ docker-compose.test.yml down` was missed after the last verification pass)
 — harmless (isolated in its own throwaway project/network) but pointless
 resource use once noticed.
 
-**Step 6 (reverse proxy / public exposure) — owner action, in progress.**
-This host's actual mechanism is Cloudflare Tunnel, not the nginx/Caddy
-`deploy/proxy/` snippet the plan assumes (see the Phase 0 finding above) —
-there is no local proxy config to write or reload. The equivalent action
-here is entirely manual and outside this repo: the owner adds a Public
-Hostname for `agilitycc.grestinator.com` → `localhost:8090` in the
-Cloudflare Zero Trust dashboard, same as every other service on this host.
-Owner confirmed proceeding 2026-09-25; step 8's HTTPS checks (`curl -s
-https://agilitycc.grestinator.com/healthz`, dashboard login over HTTPS)
-follow once that's live.
+**Step 6 (reverse proxy / public exposure) — done 2026-09-25.** Owner added
+the Cloudflare Public Hostname (`agilitycc.grestinator.com` →
+`http://192.168.1.130:8090`, matching this stack's usual convention of
+targeting the host's LAN IP rather than `localhost`, since `cloudflared`
+runs as a native host process, not a container).
+
+**Real bug found and fixed: `docker-compose.yml`'s port binding.**
+`server/docker-compose.yml` had `ports: ["127.0.0.1:${API_PORT}:8000"]`
+from Phase 6 step 2 above — a literal reading of the plan's own
+"127.0.0.1-only until public exposure" framing. Once the owner pointed
+cloudflared's ingress at `192.168.1.130:8090` (this host's actual
+established pattern for every tunneled service, confirmed by grepping
+`cloudflared`'s live config), that address was unreachable: a socket bound
+to `127.0.0.1` doesn't accept connections addressed to a different local
+IP, even from a process on the same host. Symptom was `cloudflared`
+logging `dial tcp 192.168.1.130:8090: connect: connection refused` while
+`curl http://127.0.0.1:8090/healthz` worked fine locally the whole time —
+confirmed via `docker logs`-adjacent `journalctl`/`systemctl status
+cloudflared` output, not guessed. Fixed by changing the binding to
+`192.168.1.130:${API_PORT}:8000` and recreating just the `api` container
+(`docker compose -p agilitycctracker up -d`, no rebuild needed) — this
+required an explicit owner confirmation since Claude Code's own
+permission classifier flags any new host-facing port bind as a
+confirm-first action regardless of the plan's prior approval. Verified
+post-fix: `curl http://192.168.1.130:8090/healthz` and
+`curl https://agilitycc.grestinator.com/healthz` both return
+`{"ok":true}`.
+
+**Separate, unrelated snag hit while diagnosing the above: owner-side DNS,
+not this project's bug.** The owner's browser first showed
+`ERR_NAME_NOT_RESOLVED` for `agilitycc.grestinator.com` specifically,
+while other `*.grestinator.com` hostnames worked fine on the same
+network/browser. Root cause: an active VPN on the owner's Windows machine
+was routing DNS through a `10.2.0.1` resolver holding a stale
+negative-cache (`Non-existent domain`) entry for this one record, from an
+earlier lookup before the Public Hostname existed — confirmed via
+`nslookup agilitycc.grestinator.com` (fails, via the VPN's `10.2.0.1`
+resolver) vs. `nslookup agilitycc.grestinator.com 1.1.1.1` (succeeds,
+bypassing it). Resolved by disconnecting the VPN. Worth remembering if a
+freshly-added hostname on this stack ever seems unreachable only for one
+person/device — check for a VPN or third-party DNS resolver before
+assuming a server-side problem.
+
+**§8's HTTPS checks — both pass:** `curl -s
+https://agilitycc.grestinator.com/healthz` → `{"ok":true}`; owner
+confirmed dashboard login over HTTPS works (`grestinator` / a freshly
+generated password — see below).
+
+**Admin password had to be regenerated.** The original `create-admin`
+password from step 4 above was never actually captured by the owner (an
+earlier context-compaction boundary meant it was generated and printed,
+but not before the conversation moved on) — `create-admin grestinator`
+correctly refused to run again (`User 'grestinator' already exists`,
+no CLI reset-password command exists). Reset directly via a one-off
+`docker compose exec api python -c ...` snippet using the app's own
+`hash_password()` (same argon2 hasher the login path verifies against,
+not a hand-rolled hash), rather than adding a throwaway CLI subcommand
+for a one-time need. New password relayed to the owner in chat only, per
+this project's established secret-handling convention.
+
+Next: **`GET /` correctly 404s** (`{"detail":"Not Found"}`) — there is no
+dashboard root/index route in §6.5's spec, only `/login` and the
+authenticated pages beneath it. Not a bug; flagged here since it looks
+like one on first hit.
 
 **Step 7 (backups + cron) — done 2026-09-25.** `deploy/backup.sh`:
 `mysqldump` via `docker compose -p agilitycctracker exec -T mysql`
