@@ -359,32 +359,7 @@ public class AgilityCCTrackerPlugin extends Plugin
 			selfStateCollector.onTick();
 			rosterTracker.onTick();
 		}
-		logFcDiagnosticsIfNeeded();
 		SwingUtilities.invokeLater(trackerPanel::refresh);
-	}
-
-	private long lastFcDiagnosticLogAt = 0;
-
-	/** Temporary diagnostic (see BUILD_LOG.md's in-game testing notes) -
-	 * logs FriendsChatManager's live state every 5s while owner is still
-	 * null, to tell a slow-to-populate value apart from a genuinely stuck
-	 * one without needing another manual leave/rejoin cycle. */
-	private void logFcDiagnosticsIfNeeded()
-	{
-		long now = System.currentTimeMillis();
-		if (now - lastFcDiagnosticLogAt < 5000)
-		{
-			return;
-		}
-		lastFcDiagnosticLogAt = now;
-		FriendsChatManager fc = client.getFriendsChatManager();
-		if (fc == null)
-		{
-			log.info("FC diagnostic (live) - client.getFriendsChatManager() is null");
-			return;
-		}
-		log.info("FC diagnostic (live) - name='{}' owner='{}' myRank={} memberCount={}",
-			fc.getName(), fc.getOwner(), fc.getMyRank(), fc.getMembers().length);
 	}
 
 	@Schedule(period = 2, unit = ChronoUnit.SECONDS, asynchronous = true)

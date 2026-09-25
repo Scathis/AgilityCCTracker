@@ -823,3 +823,68 @@ some visual duplication) — that's still open and needs a fresh in-game
 look after this fix, since a stale/crashed plugin session can leave a UI
 in an odd state that a clean restart may already resolve. Owner is
 re-testing after pulling this fix.
+
+**Real bug #2 — panel text unreadable.** After the crash fix and a clean
+restart, the duplication artifact was gone (confirming it was leftover
+state from the earlier crash cycle, not a separate bug), but the status
+labels rendered as near-invisible low-contrast text. Root cause:
+`TrackerPanel`'s `JLabel`s never had an explicit foreground color set, so
+they fell back to a default that has poor contrast against RuneLite's
+dark panel background. Fixed by setting `ColorScheme.TEXT_COLOR`
+(RuneLite's own standard readable-text color for plugin panels,
+confirmed via real RuneLite source) on every label, including the
+dynamically-created FC-member rows. Committed `8c68f29`. Owner confirmed
+fixed — "connection status is clearly visible now".
+
+**Real bug #3 — the actual root cause of "nothing showing" (roster/
+attendance and FC-member observation both silently blocked).** With the
+crash and rendering fixed, event started ("Test 1") but neither
+attendance nor "FC members in view" ever populated, despite 90 real
+members loaded in the channel. `RosterTracker.isActive()` (and
+`FcMemberScanner`, gated the same way) require the friends chat's actual
+registered owner (`FriendsChatManager.getOwner()`) to match the server's
+configured `fc_groups.owner_rsn`, case-insensitively. Root cause: the
+owner RSN set at Phase 7's `create-group` time — `"Agility FC"` — was
+the owner's *guessed* name (the real owner wasn't online to confirm via
+the in-game crown icon at group-creation time, see Phase 0's notes) and
+turned out to be wrong. The real registered owner is **`"Agility Cc"`**
+— two characters off, but an exact-match comparison doesn't care how
+close a miss is.
+
+**Diagnosis process, since this took several rounds to pin down and is
+worth remembering:** a one-shot log at the `FriendsChatChanged(joined=true)`
+event consistently showed `name='null' owner='null' memberCount=0` —
+initially assumed to be a data-population timing issue (the event firing
+before RuneLite finishes loading the channel snapshot), which is real but
+was a red herring here. The actual test that mattered was a **live,
+periodic** re-check (every 5s, unconditional — an earlier
+null-gated version of this same check silently never fired at all across
+an 18-second window despite confirmed-running `onSecondTick()`, which
+itself remains unexplained but stopped mattering once switched to an
+unconditional heartbeat) — that produced the real live values:
+`name='Disc Yt Kick' owner='Agility Cc' myRank=UNRANKED memberCount=90`.
+**Lesson for future onboarding of a new FC:** don't trust a guessed owner
+RSN — confirm it either by having the real owner online to check their
+in-game crown icon, or (now proven reliable) by reading it directly from
+a live `FriendsChatManager.getOwner()` call after being in the channel
+for more than a few seconds.
+
+**Fix applied directly to production data** (not a code change — the
+group's `owner_rsn` is data, not config baked into a migration): a
+one-off `docker compose exec api python -c ...` snippet loading the
+`FcGroup` row (`id=1`) via SQLAlchemy and updating `owner_rsn` from
+`'Agility FC'` to `'Agility Cc'`, committed directly. Verified live:
+`GET /api/v1/status` with the plugin token now returns
+`"fc_owner": "Agility Cc"`.
+
+**Diagnostic logging left in the codebase (commit `<pending>`):** the
+one-shot join-event log (`Joined friends chat - name=... owner=...
+myRank=... memberCount=...`) is kept permanently — low-noise (fires once
+per FC join) and exactly what would have shortcut this whole diagnosis
+if it had existed from Phase 3. The periodic 5s heartbeat added mid-
+diagnosis was removed once the real values were captured — appropriate
+for a one-off live debugging session, not something to leave running
+forever in normal use.
+
+Owner re-testing attendance/roster/FC-member-observation now that the
+owner RSN is corrected.
