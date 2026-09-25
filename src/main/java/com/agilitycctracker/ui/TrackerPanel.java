@@ -22,9 +22,11 @@ import javax.swing.BoxLayout;
 import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
+import javax.swing.SwingUtilities;
 import net.runelite.api.Client;
 import net.runelite.api.Player;
 import net.runelite.api.coords.WorldPoint;
+import net.runelite.client.callback.ClientThread;
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.PluginPanel;
 
@@ -40,6 +42,9 @@ public class TrackerPanel extends PluginPanel
 {
 	@Inject
 	private Client client;
+
+	@Inject
+	private ClientThread clientThread;
 
 	@Inject
 	private AgilityCCTrackerConfig config;
@@ -111,11 +116,16 @@ public class TrackerPanel extends PluginPanel
 
 		add(content, BorderLayout.NORTH);
 
-		refresh();
+		// init() runs on the client thread (called from startUp()), so this
+		// one read is safe directly - every other refresh() call goes
+		// through onSecondTick(), which passes localRsn in instead.
+		Player local = client.getLocalPlayer();
+		refresh(local != null ? local.getName() : null);
 	}
 
-	/** Called from the plugin's 1s schedule tick. Must run on the EDT (RuneLite calls this via SwingUtilities.invokeLater). */
-	public void refresh()
+	/** Called from the plugin's 1s schedule tick. Must run on the EDT (RuneLite calls this via SwingUtilities.invokeLater).
+	 * localRsn is read by the caller on the client thread beforehand (never touched here directly - see ddStatus()). */
+	public void refresh(String localRsn)
 	{
 		connectionLabel.setText("Connection: " + connectionStatus());
 
@@ -137,7 +147,7 @@ public class TrackerPanel extends PluginPanel
 		List<String> failed = selfLoadoutCheck.getLastFailed();
 		loadoutLabel.setText(failed.isEmpty() ? "Loadout: compliant" : "Loadout: " + failed.size() + " gap(s)");
 
-		ddLabel.setText(ddStatus());
+		ddLabel.setText(ddStatus(localRsn));
 
 		observersList.removeAll();
 		for (Map.Entry<String, List<String>> entry : fcMemberScanner.getLastResults().entrySet())
@@ -170,19 +180,17 @@ public class TrackerPanel extends PluginPanel
 		return "OK";
 	}
 
-	private String ddStatus()
+	private String ddStatus(String localRsn)
 	{
 		if (!ddTracker.isWindowOpen())
 		{
 			return "DD: inactive";
 		}
-		Player local = client.getLocalPlayer();
-		String rsn = local != null ? local.getName() : null;
 		long elapsedMs = System.currentTimeMillis() - ddTracker.getCalledAt();
 		String elapsed = (elapsedMs / 1000) + "s";
-		if (rsn != null)
+		if (localRsn != null)
 		{
-			var sample = ddTracker.getSample(rsn);
+			var sample = ddTracker.getSample(localRsn);
 			long msOnTile = sample != null ? sample.getMsOnTile() : 0;
 			return "DD: active " + elapsed + " - own time on tile " + (msOnTile / 1000) + "s";
 		}
@@ -191,14 +199,22 @@ public class TrackerPanel extends PluginPanel
 
 	private void copyMyTile()
 	{
-		Player local = client.getLocalPlayer();
-		if (local == null)
+		// Button clicks fire on Swing's EDT, but reading the local player's
+		// position is a client.* call RuneLite requires happen on the
+		// client thread - hop there for the read, then back to the EDT for
+		// the actual clipboard write (an AWT/Swing operation).
+		clientThread.invoke(() ->
 		{
-			return;
-		}
-		WorldPoint point = local.getWorldLocation();
-		String text = point.getX() + "," + point.getY() + "," + point.getPlane();
-		Toolkit.getDefaultToolkit().getSystemClipboard().setContents(new StringSelection(text), null);
+			Player local = client.getLocalPlayer();
+			if (local == null)
+			{
+				return;
+			}
+			WorldPoint point = local.getWorldLocation();
+			String text = point.getX() + "," + point.getY() + "," + point.getPlane();
+			SwingUtilities.invokeLater(() ->
+				Toolkit.getDefaultToolkit().getSystemClipboard().setContents(new StringSelection(text), null));
+		});
 	}
 
 	@Override

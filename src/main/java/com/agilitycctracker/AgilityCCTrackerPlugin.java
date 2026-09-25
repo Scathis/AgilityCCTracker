@@ -27,6 +27,7 @@ import javax.swing.SwingUtilities;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
 import net.runelite.api.GameState;
+import net.runelite.api.Player;
 import net.runelite.api.WorldType;
 import net.runelite.api.events.ActorDeath;
 import net.runelite.api.events.ChatMessage;
@@ -379,7 +380,11 @@ public class AgilityCCTrackerPlugin extends Plugin
 			selfStateCollector.onTick();
 			rosterTracker.onTick();
 		}
-		SwingUtilities.invokeLater(trackerPanel::refresh);
+		// This method runs on the client thread, so read here (not inside
+		// TrackerPanel.refresh(), which runs on the EDT via invokeLater).
+		Player local = client.getLocalPlayer();
+		String localRsn = local != null ? local.getName() : null;
+		SwingUtilities.invokeLater(() -> trackerPanel.refresh(localRsn));
 	}
 
 	@Schedule(period = 2, unit = ChronoUnit.SECONDS, asynchronous = true)
