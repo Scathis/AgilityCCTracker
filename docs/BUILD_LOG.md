@@ -779,3 +779,47 @@ Phase 9 (Hub submission) next.
 (no `/containers`-stack container affected by anything in this phase — no
 new containers were even created, this phase was CLI + docs only).
 Committed and pushed to `origin/claude/zealous-babbage-dw92it`.
+
+## Post-Phase-7 in-game testing — owner started 2026-09-25
+
+Owner set up a dev environment on their own Windows PC (Git, Temurin JDK
+11, IntelliJ Community — per `DEV_SETUP.md`), cloned the repo, ran the
+Gradle `run` task to launch RuneLite in developer mode with the plugin
+loaded, and worked through the one-time Jagex-account credentials step
+(`--insecure-write-credentials`) since their account logs in via the
+Jagex Launcher. Configured the plugin (`apiUrl`/token) and got it running
+logged in against the live server.
+
+**Real bug #1 found via this first live run — `main` merged into
+`origin/main` per the owner's PR #2, so all further work (including this
+fix) now happens directly on `main`, not the feature branch**, per the
+owner's decision once everything was merged.
+
+`AssertionError: must be called on client thread` firing every 60
+seconds, from `SelfLoadoutCheck.readOwnGear()` (reading the WORN item
+container) via `AgilityCCTrackerPlugin.onStatusTick()`. Root cause:
+`onStatusTick()` is `@Schedule(..., asynchronous = true)` — needed
+because it also calls `uploader.pollStatus()`, a genuine blocking HTTP
+call — but it called `selfLoadoutCheck.refresh()` directly from that same
+async thread, and that method reads a live `ItemContainer` via
+`client.getItemContainer()`, which RuneLite asserts must happen on the
+client thread. This is exactly the rule `BUILD_PLAN.md` §5.6 documents
+for `Uploader` itself ("Never call `client.*` from the async thread") —
+it just wasn't applied to this one call site in the plugin's scheduling
+glue. Caught from the actual RuneLite log output in IntelliJ's Run
+console, not guessed. Fixed by injecting `ClientThread`
+(`net.runelite.client.callback.ClientThread`, verified against real
+RuneLite source — `invoke(Runnable)` runs the given task on the client
+thread) and wrapping just that one call:
+`clientThread.invoke(selfLoadoutCheck::refresh)`. Verified: `./gradlew
+build` clean, 47/47 tests still passing. Committed and pushed straight to
+`main` (`30954df`).
+
+Note: this specific crash happens in a *different* scheduled method than
+`TrackerPanel.refresh()` (a separate, correctly-synchronous 1s
+`@Schedule`), so it likely wasn't the actual cause of the panel-rendering
+oddity the owner also reported in the same session (blank status labels,
+some visual duplication) — that's still open and needs a fresh in-game
+look after this fix, since a stale/crashed plugin session can leave a UI
+in an odd state that a clean restart may already resolve. Owner is
+re-testing after pulling this fix.
