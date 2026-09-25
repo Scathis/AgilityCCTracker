@@ -569,11 +569,62 @@ workers — is now functionally complete per the spec and verified end-to-end
 against a real database, though not yet deployed on this host (Phase 6) or
 submitted to the RuneLite Plugin Hub (Phase 8).
 
-## Phase 6 — Deploy on this server (§6.1/§6.3, deploy steps)
+## Phase 6 — Deploy on this server (§6.1/§6.3, deploy steps) — steps 1–5 done 2026-09-25
 
-Not started — see chat for the owner's go/pause decision. This phase is a
-different kind of work from Phases 1–5: real deployment choices (the
-`agilitycc.grestinator.com` Cloudflare Public Hostname the owner adds
-manually, `server/.env` generation, backups, cron) rather than pure
-build/verify/commit work, so it may warrant more owner involvement per step
-than the build phases have needed.
+Deployed for real (not a throwaway test) on `plexinator-3000`, at this
+repo's own location (`/mnt/120ssd/agilitycctracker` — no separate
+`/opt/agilitycctracker` checkout, matching the Phase 0 owner answer):
+
+1. **`server/.env` generated** with strong random secrets
+   (`openssl rand -hex 32` for `APP_SECRET`, `openssl rand -hex 24` for both
+   DB passwords), mode 600, `APP_URL=https://agilitycc.grestinator.com`,
+   `API_PORT=8090`. Never committed — `.gitignore` already covers it from
+   Phase 1.
+2. **`docker compose -p agilitycctracker up -d --build`** from `server/` —
+   its own compose project (`agilitycctracker`), own network
+   (`agilitycctracker_internal`), own named volume (`agilitycctracker_db_data`,
+   landing on the SSD-backed Docker data-root at `/mnt/120ssd`, not the
+   tight root disk, since that's this host's actual `data-root` regardless
+   of which compose project creates the volume). API bound to
+   `127.0.0.1:8090` only — genuinely not publicly reachable yet, matching
+   the plan's own "🛑 before public exposure" framing for what comes next.
+3. **`alembic upgrade head` ran cleanly** on first real boot (confirmed via
+   `docker logs`: `Running upgrade  -> 101845981bbd, initial`), then uvicorn
+   started normally.
+4. **Bootstrap admin created**: `docker compose exec api python -m app.cli
+   create-admin grestinator` → generated password relayed to the owner
+   directly in chat (never written to a file, matching how every other
+   generated secret in this project has been handled).
+5. **Verified locally**: `curl http://127.0.0.1:8090/healthz` → `{"ok":true}`.
+
+**Safety check (§1.3's server-safety rules) — passed:** captured a full
+`docker ps` baseline (28 containers) before deploying, diffed against the
+post-deploy state — the *only* difference is the two new
+`agilitycctracker-{api,mysql}-1` containers appearing; every pre-existing
+`/containers`-stack container (gimhub-app included) is untouched, none
+restarted. Disk: 81GB free on `/mnt/120ssd` post-deploy (was 82GB before),
+negligible footprint.
+
+**Housekeeping along the way:** found and cleaned up a leftover
+`agilitycctracker-test-mysql-1` container/network from an earlier Phase
+4/5 test-pipeline run that never got torn down (`docker compose -f
+docker-compose.test.yml down` was missed after the last verification pass)
+— harmless (isolated in its own throwaway project/network) but pointless
+resource use once noticed.
+
+**Remaining steps — both are explicit 🛑 checkpoints in the plan, raised
+with the owner rather than auto-actioned:**
+- **Step 6 (reverse proxy / public exposure).** This host's actual
+  mechanism is Cloudflare Tunnel, not the nginx/Caddy `deploy/proxy/`
+  snippet the plan assumes (see the Phase 0 finding above) — there is no
+  local proxy config to write or reload. The equivalent action here is
+  entirely manual and outside this repo: the owner adds a Public Hostname
+  for `agilitycc.grestinator.com` → `localhost:8090` in the Cloudflare Zero
+  Trust dashboard, same as every other service on this host.
+- **Step 7 (backups + cron).** `deploy/backup.sh` doesn't exist yet — not
+  written until the owner confirms they want it now, per the plan's own
+  "🛑 ask before adding the cron entry" instruction.
+
+Step 8's checks (HTTPS healthz, dashboard login over HTTPS) can't run until
+step 6 happens. Not committing yet either — nothing in Phase 6 so far has
+touched tracked files besides this doc.
