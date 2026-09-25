@@ -2,7 +2,7 @@ import asyncio
 import logging
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Request
+from fastapi import Depends, FastAPI, Request
 from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -10,7 +10,8 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from app.api.v1.ingest import router as ingest_router
 from app.api.v1.status import router as status_router
 from app.config import settings
-from app.web.deps import RequiresLogin
+from app.models.user import User
+from app.web.deps import RequiresLogin, get_current_user
 from app.web.routes.admin import router as admin_router
 from app.web.routes.auth import router as auth_router
 from app.web.routes.dd import router as dd_router
@@ -87,3 +88,8 @@ except RuntimeError:
 @app.get("/healthz")
 async def healthz() -> dict:
     return {"ok": True}
+
+
+@app.get("/")
+async def index(user: User | None = Depends(get_current_user)) -> RedirectResponse:
+    return RedirectResponse(url="/events" if user is not None else "/login", status_code=303)

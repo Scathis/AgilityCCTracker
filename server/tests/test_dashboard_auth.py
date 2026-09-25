@@ -25,6 +25,20 @@ async def test_unauthenticated_access_redirects_to_login(client):
     assert response.headers["location"] == "/login"
 
 
+async def test_root_redirects_to_login_when_logged_out(client):
+    response = await client.get("/", follow_redirects=False)
+    assert response.status_code == 303
+    assert response.headers["location"] == "/login"
+
+
+async def test_root_redirects_to_events_when_logged_in(client, make_user, login_as):
+    user = await make_user(UserRole.VIEWER, username="rootredirect")
+    login_as(user)
+    response = await client.get("/", follow_redirects=False)
+    assert response.status_code == 303
+    assert response.headers["location"] == "/events"
+
+
 async def test_logout_requires_csrf_and_clears_session(client, make_user, login_as):
     user = await make_user(UserRole.VIEWER, username="logoutuser")
     csrf = login_as(user)
