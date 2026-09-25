@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}{{ loadout.name }}{% endblock %}
+{% block content %}
+<h2>{{ loadout.name }} ({{ loadout.context.value }})</h2>
+<p><a href="/loadouts">&larr; Back to loadouts</a></p>
+<table>
+  <thead><tr><th>Key</th><th>Label</th><th>Slot</th><th>Check</th><th>Args</th><th>Conditional?</th><th></th></tr></thead>
+  <tbody>
+    {% for r in requirements %}
+    <tr>
+      <td>{{ r.req_key }}</td><td>{{ r.label }}</td><td>{{ r.slot }}</td><td>{{ r.check_type }}</td>
+      <td>{{ r.args|join(", ") if r.args else "—" }}</td>
+      <td>{{ "yes" if r.when_json else "—" }}</td>
+      <td>
+        {% if user.role.value in ("staff", "admin") %}
+        <form method="post" action="/loadouts/{{ loadout.id }}/requirements/{{ r.id }}/delete" style="display:inline">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <button type="submit" class="secondary">Delete</button>
+        </form>
+        {% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+{% if user.role.value in ("staff", "admin") %}
+<h3>Add requirement</h3>
+<p><small>Conditional ("when") requirements aren't editable here - create those via the CLI/seed data.</small></p>
+<form method="post" action="/loadouts/{{ loadout.id }}/requirements">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <label for="req_key">Key<input type="text" id="req_key" name="req_key" required></label>
+  <label for="label">Label<input type="text" id="label" name="label" required></label>
+  <label for="slot">Slot
+    <select id="slot" name="slot" required>
+      {% for s in ["HEAD","CAPE","AMULET","WEAPON","TORSO","SHIELD","LEGS","HANDS","BOOTS","RING","AMMO"] %}
+      <option value="{{ s }}">{{ s }}</option>
+      {% endfor %}
+    </select>
+  </label>
+  <label for="check_type">Check
+    <select id="check_type" name="check_type" required>
+      {% for c in ["FILLED","EMPTY","NAME_ENDS_WITH","NAME_NOT_ENDS_WITH","ITEM_IN","ITEM_NOT_IN"] %}
+      <option value="{{ c }}">{{ c }}</option>
+      {% endfor %}
+    </select>
+  </label>
+  <label for="args">Args (comma-separated name suffixes or item ids)<input type="text" id="args" name="args"></label>
+  <label for="sort">Sort order<input type="number" id="sort" name="sort" value="0"></label>
+  <button type="submit">Add</button>
+</form>
+
+<h3>Item search</h3>
+<input type="search" name="q" placeholder="Search items by name..." hx-get="/items/search" hx-trigger="keyup changed delay:300ms" hx-target="#item-results">
+<div id="item-results"></div>
+{% endif %}
+{% endblock %}

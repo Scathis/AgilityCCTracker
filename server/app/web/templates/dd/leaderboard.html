@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}DD Leaderboard{% endblock %}
+{% block content %}
+<h2>DD Leaderboard</h2>
+<p><a href="/dd/leaderboard.csv">Download CSV</a></p>
+
+{% if top3 %}
+<div class="grid">
+  {% for rsn, ms in top3 %}
+  <article><header>#{{ loop.index }}</header><p>{{ rsn }}</p><p>{{ (ms // 60000) }}m {{ (ms // 1000) % 60 }}s</p></article>
+  {% endfor %}
+</div>
+{% endif %}
+
+<table>
+  <thead><tr><th>#</th><th>RSN</th><th>Time on tile</th></tr></thead>
+  <tbody>
+    {% for rsn, ms in leaderboard %}
+    <tr><td>{{ loop.index }}</td><td><a href="/players?q={{ rsn }}">{{ rsn }}</a></td><td>{{ (ms // 60000) }}m {{ (ms // 1000) % 60 }}s</td></tr>
+    {% else %}
+    <tr><td colspan="3">No DD data yet.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

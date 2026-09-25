@@ -1,0 +1,27 @@
+# Gradle / Java
+.gradle/
+build/
+out/
+*.class
+!gradle/wrapper/gradle-wrapper.jar
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+
+# Secrets
+.env
+server/.env
+server/backups/
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# OS
+.DS_Store

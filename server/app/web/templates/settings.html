@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}Settings{% endblock %}
+{% block content %}
+<h2>Settings</h2>
+<form method="post" action="/settings">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+
+  <fieldset>
+    <legend>DD tiles</legend>
+    <label>Tile 1 X<input type="number" name="tile1_x" value="{{ tiles[0].x }}" required></label>
+    <label>Tile 1 Y<input type="number" name="tile1_y" value="{{ tiles[0].y }}" required></label>
+    <label>Tile 1 plane<input type="number" name="tile1_plane" value="{{ tiles[0].plane }}"></label>
+    <label>Tile 2 X<input type="number" name="tile2_x" value="{{ tiles[1].x }}" required></label>
+    <label>Tile 2 Y<input type="number" name="tile2_y" value="{{ tiles[1].y }}" required></label>
+    <label>Tile 2 plane<input type="number" name="tile2_plane" value="{{ tiles[1].plane }}"></label>
+  </fieldset>
+
+  <fieldset>
+    <legend>DD detection</legend>
+    <label>Call regex<input type="text" name="call_regex" value="{{ group.dd_call_regex or '' }}" required></label>
+    <label>Break regex<input type="text" name="break_regex" value="{{ group.dd_break_regex or '' }}" required></label>
+    <label>Min rank to call DD<input type="number" name="min_rank" value="{{ group.dd_min_rank }}" required></label>
+    <label>Arrive grace (seconds)<input type="number" name="arrive_grace_s" value="{{ group.dd_arrive_grace_s }}" required></label>
+    <label>Leave grace (seconds)<input type="number" name="leave_grace_s" value="{{ group.dd_leave_grace_s }}" required></label>
+    <label>Max minutes per call<input type="number" name="max_minutes" value="{{ group.dd_max_minutes }}" required></label>
+    <label>
+      <input type="checkbox" name="crossbow_counts_as_bow" {% if group.dd_crossbow_counts_as_bow %}checked{% endif %}>
+      Crossbow counts as a bow at DD
+    </label>
+  </fieldset>
+
+  <fieldset>
+    <legend>Observer</legend>
+    <label>
+      <input type="checkbox" name="observer_enabled" {% if group.observer_enabled %}checked{% endif %}>
+      Enable FC observer (loadout/DD scanning of other members)
+    </label>
+  </fieldset>
+
+  <button type="submit">Save</button>
+</form>
+{% endblock %}

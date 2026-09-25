@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}Raggers{% endblock %}
+{% block content %}
+<h2>Raggers</h2>
+
+{% if user.role.value in ("staff", "admin") %}
+<details>
+  <summary role="button" class="secondary">Log a new ragger</summary>
+  <form method="post" action="/raggers">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <label for="rsn">RSN<input type="text" id="rsn" name="rsn" required></label>
+    <label for="threat_notes">Notes<textarea id="threat_notes" name="threat_notes"></textarea></label>
+    <button type="submit">Log</button>
+  </form>
+</details>
+{% endif %}
+
+<table>
+  <thead><tr><th>RSN</th><th>Status</th><th>Combat level</th><th>Notes</th><th></th></tr></thead>
+  <tbody>
+    {% for r in raggers %}
+    <tr>
+      <td>{{ r.rsn }}</td>
+      <td>{{ r.status.value }}</td>
+      <td>{{ r.combat_level or "—" }}</td>
+      <td>{{ r.threat_notes or "—" }}</td>
+      <td>
+        {% if user.role.value in ("staff", "admin") %}
+        <details>
+          <summary role="button" class="secondary">Actions</summary>
+          <form method="post" action="/raggers/{{ r.id }}/status">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <select name="status">
+              <option value="active" {% if r.status.value == "active" %}selected{% endif %}>Active</option>
+              <option value="cleared" {% if r.status.value == "cleared" %}selected{% endif %}>Cleared</option>
+            </select>
+            <button type="submit">Set status</button>
+          </form>
+          <form method="post" action="/raggers/{{ r.id }}/sightings">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <select name="event_id">
+              <option value="">(no event)</option>
+              {% for e in events %}<option value="{{ e.id }}">{{ e.name }}</option>{% endfor %}
+            </select>
+            <input type="number" name="world" placeholder="World">
+            <input type="text" name="gear_notes" placeholder="Gear notes">
+            <button type="submit">Log sighting</button>
+          </form>
+          <form method="post" action="/raggers/{{ r.id }}/refresh">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <button type="submit" class="secondary">Refresh hiscores</button>
+          </form>
+        </details>
+        {% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

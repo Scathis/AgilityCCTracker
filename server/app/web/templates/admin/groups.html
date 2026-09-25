@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Admin - FC Groups{% endblock %}
+{% block content %}
+<h2>FC Groups</h2>
+{% if flash %}<p><mark>{{ flash }}</mark></p>{% endif %}
+
+<table>
+  <thead><tr><th>Name</th><th>Owner RSN</th><th>Created</th><th></th></tr></thead>
+  <tbody>
+    {% for g in groups %}
+    <tr>
+      <td>{{ g.name }}</td><td>{{ g.owner_rsn }}</td><td>{{ g.created_at }}</td>
+      <td>
+        <form method="post" action="/admin/groups/{{ g.id }}/rotate-token" style="display:inline">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <button type="submit" class="secondary">Rotate token</button>
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}
