@@ -371,17 +371,18 @@ public class AgilityCCTrackerPlugin extends Plugin
 	 * one without needing another manual leave/rejoin cycle. */
 	private void logFcDiagnosticsIfNeeded()
 	{
-		FriendsChatManager fc = client.getFriendsChatManager();
-		if (fc == null)
-		{
-			return;
-		}
 		long now = System.currentTimeMillis();
-		if (fc.getOwner() != null || now - lastFcDiagnosticLogAt < 5000)
+		if (now - lastFcDiagnosticLogAt < 5000)
 		{
 			return;
 		}
 		lastFcDiagnosticLogAt = now;
+		FriendsChatManager fc = client.getFriendsChatManager();
+		if (fc == null)
+		{
+			log.info("FC diagnostic (live) - client.getFriendsChatManager() is null");
+			return;
+		}
 		log.info("FC diagnostic (live) - name='{}' owner='{}' myRank={} memberCount={}",
 			fc.getName(), fc.getOwner(), fc.getMyRank(), fc.getMembers().length);
 	}
