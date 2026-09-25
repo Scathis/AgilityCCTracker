@@ -569,11 +569,213 @@ workers — is now functionally complete per the spec and verified end-to-end
 against a real database, though not yet deployed on this host (Phase 6) or
 submitted to the RuneLite Plugin Hub (Phase 8).
 
-## Phase 6 — Deploy on this server (§6.1/§6.3, deploy steps)
+## Phase 6 — Deploy on this server (§6.1/§6.3, deploy steps) — done 2026-09-25
 
-Not started — see chat for the owner's go/pause decision. This phase is a
-different kind of work from Phases 1–5: real deployment choices (the
-`agilitycc.grestinator.com` Cloudflare Public Hostname the owner adds
-manually, `server/.env` generation, backups, cron) rather than pure
-build/verify/commit work, so it may warrant more owner involvement per step
-than the build phases have needed.
+Deployed for real (not a throwaway test) on `plexinator-3000`, at this
+repo's own location (`/mnt/120ssd/agilitycctracker` — no separate
+`/opt/agilitycctracker` checkout, matching the Phase 0 owner answer):
+
+1. **`server/.env` generated** with strong random secrets
+   (`openssl rand -hex 32` for `APP_SECRET`, `openssl rand -hex 24` for both
+   DB passwords), mode 600, `APP_URL=https://agilitycc.grestinator.com`,
+   `API_PORT=8090`. Never committed — `.gitignore` already covers it from
+   Phase 1.
+2. **`docker compose -p agilitycctracker up -d --build`** from `server/` —
+   its own compose project (`agilitycctracker`), own network
+   (`agilitycctracker_internal`), own named volume (`agilitycctracker_db_data`,
+   landing on the SSD-backed Docker data-root at `/mnt/120ssd`, not the
+   tight root disk, since that's this host's actual `data-root` regardless
+   of which compose project creates the volume). API bound to
+   `127.0.0.1:8090` only — genuinely not publicly reachable yet, matching
+   the plan's own "🛑 before public exposure" framing for what comes next.
+3. **`alembic upgrade head` ran cleanly** on first real boot (confirmed via
+   `docker logs`: `Running upgrade  -> 101845981bbd, initial`), then uvicorn
+   started normally.
+4. **Bootstrap admin created**: `docker compose exec api python -m app.cli
+   create-admin grestinator` → generated password relayed to the owner
+   directly in chat (never written to a file, matching how every other
+   generated secret in this project has been handled).
+5. **Verified locally**: `curl http://127.0.0.1:8090/healthz` → `{"ok":true}`.
+
+**Safety check (§1.3's server-safety rules) — passed:** captured a full
+`docker ps` baseline (28 containers) before deploying, diffed against the
+post-deploy state — the *only* difference is the two new
+`agilitycctracker-{api,mysql}-1` containers appearing; every pre-existing
+`/containers`-stack container (gimhub-app included) is untouched, none
+restarted. Disk: 81GB free on `/mnt/120ssd` post-deploy (was 82GB before),
+negligible footprint.
+
+**Housekeeping along the way:** found and cleaned up a leftover
+`agilitycctracker-test-mysql-1` container/network from an earlier Phase
+4/5 test-pipeline run that never got torn down (`docker compose -f
+docker-compose.test.yml down` was missed after the last verification pass)
+— harmless (isolated in its own throwaway project/network) but pointless
+resource use once noticed.
+
+**Step 6 (reverse proxy / public exposure) — done 2026-09-25.** Owner added
+the Cloudflare Public Hostname (`agilitycc.grestinator.com` →
+`http://192.168.1.130:8090`, matching this stack's usual convention of
+targeting the host's LAN IP rather than `localhost`, since `cloudflared`
+runs as a native host process, not a container).
+
+**Real bug found and fixed: `docker-compose.yml`'s port binding.**
+`server/docker-compose.yml` had `ports: ["127.0.0.1:${API_PORT}:8000"]`
+from Phase 6 step 2 above — a literal reading of the plan's own
+"127.0.0.1-only until public exposure" framing. Once the owner pointed
+cloudflared's ingress at `192.168.1.130:8090` (this host's actual
+established pattern for every tunneled service, confirmed by grepping
+`cloudflared`'s live config), that address was unreachable: a socket bound
+to `127.0.0.1` doesn't accept connections addressed to a different local
+IP, even from a process on the same host. Symptom was `cloudflared`
+logging `dial tcp 192.168.1.130:8090: connect: connection refused` while
+`curl http://127.0.0.1:8090/healthz` worked fine locally the whole time —
+confirmed via `docker logs`-adjacent `journalctl`/`systemctl status
+cloudflared` output, not guessed. Fixed by changing the binding to
+`192.168.1.130:${API_PORT}:8000` and recreating just the `api` container
+(`docker compose -p agilitycctracker up -d`, no rebuild needed) — this
+required an explicit owner confirmation since Claude Code's own
+permission classifier flags any new host-facing port bind as a
+confirm-first action regardless of the plan's prior approval. Verified
+post-fix: `curl http://192.168.1.130:8090/healthz` and
+`curl https://agilitycc.grestinator.com/healthz` both return
+`{"ok":true}`.
+
+**Separate, unrelated snag hit while diagnosing the above: owner-side DNS,
+not this project's bug.** The owner's browser first showed
+`ERR_NAME_NOT_RESOLVED` for `agilitycc.grestinator.com` specifically,
+while other `*.grestinator.com` hostnames worked fine on the same
+network/browser. Root cause: an active VPN on the owner's Windows machine
+was routing DNS through a `10.2.0.1` resolver holding a stale
+negative-cache (`Non-existent domain`) entry for this one record, from an
+earlier lookup before the Public Hostname existed — confirmed via
+`nslookup agilitycc.grestinator.com` (fails, via the VPN's `10.2.0.1`
+resolver) vs. `nslookup agilitycc.grestinator.com 1.1.1.1` (succeeds,
+bypassing it). Resolved by disconnecting the VPN. Worth remembering if a
+freshly-added hostname on this stack ever seems unreachable only for one
+person/device — check for a VPN or third-party DNS resolver before
+assuming a server-side problem.
+
+**§8's HTTPS checks — both pass:** `curl -s
+https://agilitycc.grestinator.com/healthz` → `{"ok":true}`; owner
+confirmed dashboard login over HTTPS works (`grestinator` / a freshly
+generated password — see below).
+
+**Admin password had to be regenerated.** The original `create-admin`
+password from step 4 above was never actually captured by the owner (an
+earlier context-compaction boundary meant it was generated and printed,
+but not before the conversation moved on) — `create-admin grestinator`
+correctly refused to run again (`User 'grestinator' already exists`,
+no CLI reset-password command exists). Reset directly via a one-off
+`docker compose exec api python -c ...` snippet using the app's own
+`hash_password()` (same argon2 hasher the login path verifies against,
+not a hand-rolled hash), rather than adding a throwaway CLI subcommand
+for a one-time need. New password relayed to the owner in chat only, per
+this project's established secret-handling convention.
+
+Next: **`GET /` correctly 404s** (`{"detail":"Not Found"}`) — there is no
+dashboard root/index route in §6.5's spec, only `/login` and the
+authenticated pages beneath it. Not a bug; flagged here since it looks
+like one on first hit.
+
+**Step 7 (backups + cron) — done 2026-09-25.** `deploy/backup.sh`:
+`mysqldump` via `docker compose -p agilitycctracker exec -T mysql`
+(reads `DB_NAME`/`MYSQL_ROOT_PASSWORD` from `server/.env`, never echoed),
+gzipped to `server/backups/agilitycc-<timestamp>.sql.gz` (gitignored —
+only the script is tracked), pruning anything older than 14 days via
+`find -mtime +14 -delete`. Tested manually before scheduling: produced a
+64KB dump with all 17 tables (16 schema tables + `alembic_version`) —
+confirmed by counting `CREATE TABLE` statements in the decompressed
+output, not just checking the file exists. Cron entry added directly to
+the owner's own crontab (no sudo needed, unlike the sudoers-file pattern
+used elsewhere in this stack — a per-user crontab edit is always
+unprivileged), tagged consistently with the two pre-existing entries:
+```
+0 4 * * * /bin/bash /mnt/120ssd/agilitycctracker/deploy/backup.sh >> /mnt/120ssd/agilitycctracker/server/backups/backup.log 2>&1 # agilitycctracker-backup
+```
+Nightly at 04:00, matching the plan's own suggested schedule.
+
+## Phase 7 — Hand back to the owner — done 2026-09-25
+
+1. **FC group created**: `python -m app.cli create-group "Agility CC" "Agility FC"`
+   → `id=1`, display name `Agility CC`, owner RSN `Agility FC` (per the
+   owner's confirmation this session — the channel and its owner share the
+   same name). Seeded the default Running/DD loadouts (§7) automatically.
+   Plugin token generated and relayed to the owner directly in chat only,
+   per this project's established secret-handling convention — never
+   written to any file in the repo. DD tiles left empty, as planned, until
+   captured in-game via the plugin's "Copy my tile" button.
+   **Verified live**: `GET /api/v1/status` with the new token returns the
+   full config (group identity, both seeded loadouts, DD defaults) over
+   `https://agilitycc.grestinator.com`.
+2. **Credentials handed to the owner** (in chat, once, per this project's
+   convention): API URL, plugin token, dashboard URL, admin login.
+3. **Docs written**: `docs/DEV_SETUP.md` (§8, filled in with the real
+   `https://agilitycc.grestinator.com` API URL — the token itself is left
+   as an instruction to ask whoever ran `create-group`, never embedded,
+   since this doc is repo-committed and will eventually be public per
+   Phase 9), `docs/SELF_HOSTING.md` (new — deploy/update/backup/restore/
+   admin-password-reset, generalized from this project's own real Phase 6
+   deploy experience, including the loopback-vs-LAN-IP port-binding gotcha
+   hit and fixed during that phase), `docs/API.md` (new — full `/api/v1`
+   reference per §6.3–6.4, request/response shapes, the ingest processing
+   order, and an explicit "what's never in here" callout for the
+   other-players-data boundary), `docs/PLUGIN_HUB_SUBMISSION.md` (§9,
+   updated to reflect the real repo `github.com/Scathis/AgilityCCTracker`
+   and its new Phase-9 numbering after the Phase 8 reskin was inserted),
+   `docs/FUTURE_NON_HUB.md` (§10, verbatim in substance).
+   **Owner clarified mid-phase**: the RuneLite plugin configuration itself
+   (§8/`DEV_SETUP.md`'s steps 4–5) will be done by the owner directly, not
+   handed off — confirming the doc's purpose is exactly this: a
+   self-contained reference for doing it themselves, not a handoff to a
+   separate person.
+4. **Final report:**
+
+**What was built:** the complete system per `BUILD_PLAN.md` — a RuneLite
+plugin (attendance/lap/DD/loadout tracking, one class with
+elevated-visibility scanning, gaps-only reporting of other players' loadout
+state), a FastAPI + MySQL server (token-authed ingest API, session-authed
+Jinja2 dashboard with role-based access, two background workers for
+hiscores/item prices), deployed for real on this host behind Cloudflare
+Tunnel with nightly backups, and a live FC group ready for in-game use.
+
+**Test results:** plugin — 47/47 JUnit tests passing, `./gradlew build`
+clean (last verified end of Phase 3; no plugin code has changed since).
+Server — **60/60 pytest passing**, re-verified fresh just now
+(`docker compose -f docker-compose.test.yml run --rm tests`, 2.51s), `ruff
+check` clean.
+
+**Known non-blocking issues, not fixed this phase:**
+- `datetime.datetime.utcnow()` is used throughout `app/cli.py` and several
+  route modules — deprecated in favor of timezone-aware
+  `datetime.now(datetime.UTC)` as of Python 3.12, still fully functional
+  (just emits a `DeprecationWarning`, visible in the test run above and in
+  `create-group`/`create-admin`'s own output). Cosmetic/future-proofing
+  only; not touched this phase since it's unrelated to anything actually
+  in scope, but worth a small cleanup pass sometime before it's ever
+  actually removed from the language.
+- The 5 partial-coverage entries carried over from earlier Toshiba/Radarr
+  storage work (unrelated project, noted here only in case of confusion —
+  see `/containers/CLAUDE.md`, not this repo).
+
+**What was deliberately skipped/deferred, and why:**
+- **Phase 8 (OSRS-themed dashboard reskin)** — scoped and added to the plan
+  this session at the owner's request, not yet executed. Pure CSS/template
+  work, no functional risk, can happen anytime before or during the
+  owner's in-game testing.
+- **Phase 9 (Plugin Hub submission)** — explicitly gated on real in-game
+  testing (`DEV_SETUP.md`'s manual checklist) and the owner re-confirming
+  the DD/loadout observer design with RuneLite Hub maintainers first, per
+  the plan's own reasoning. Not started.
+- **DD tiles** — left empty in the seeded config; needs the owner to
+  capture them in-game via the plugin panel's "Copy my tile" button and
+  paste into Settings, per `DEV_SETUP.md`'s checklist.
+
+**Next steps (owner):** configure the RuneLite plugin per `DEV_SETUP.md`
+(API URL + token), work through its manual test checklist in-game, capture
+the two DD tiles, then decide whether to move on Phase 8 (reskin) and/or
+Phase 9 (Hub submission) next.
+
+**Checks:** `docker ps` re-confirmed clean against the original baseline
+(no `/containers`-stack container affected by anything in this phase — no
+new containers were even created, this phase was CLI + docs only).
+Committed and pushed to `origin/claude/zealous-babbage-dw92it`.
