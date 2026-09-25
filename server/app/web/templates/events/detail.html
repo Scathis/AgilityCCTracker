@@ -17,65 +17,19 @@
 </nav>
 
 {% if tab == "attendance" %}
-<table>
-  <thead><tr><th>RSN</th><th>Rank</th><th>Time present</th><th>Plugin?</th><th>Laps</th><th>Loadout</th></tr></thead>
-  <tbody>
-    {% for a in attendees %}
-    <tr>
-      <td><a href="/players/{{ a.player.id }}">{{ a.player.rsn }}</a></td>
-      <td>{{ a.rank }}</td>
-      <td>{{ (a.seconds_present // 60) }}m</td>
-      <td>{{ "✅" if a.player.is_plugin_user else "—" }}</td>
-      <td>{{ a.laps }}</td>
-      <td>
-        {% if a.loadout_gaps is none %}not checked
-        {% elif a.loadout_gaps|length == 0 %}✅ compliant
-        {% else %}❌ {{ a.loadout_gaps|join(", ") }}
-        {% endif %}
-      </td>
-    </tr>
-    {% endfor %}
-  </tbody>
-</table>
+<div {% if event.ended_at is none %}hx-get="/events/{{ event.id }}?tab=attendance" hx-trigger="every 8s" hx-target="this" hx-swap="innerHTML"{% endif %}>
+  {% include "events/_attendance.html" %}
+</div>
 
 {% elif tab == "laps" %}
-<table>
-  <thead><tr><th>RSN</th><th>Laps</th><th>Tickets</th></tr></thead>
-  <tbody>
-    {% for row in leaderboard %}
-    <tr><td><a href="/players/{{ row.player.id }}">{{ row.player.rsn }}</a></td><td>{{ row.laps }}</td><td>{{ row.tickets }}</td></tr>
-    {% endfor %}
-  </tbody>
-</table>
+<div {% if event.ended_at is none %}hx-get="/events/{{ event.id }}?tab=laps" hx-trigger="every 8s" hx-target="this" hx-swap="innerHTML"{% endif %}>
+  {% include "events/_laps.html" %}
+</div>
 
 {% elif tab == "dd" %}
-{% for entry in call_summaries %}
-<article>
-  <header>
-    Called {{ entry.call.called_at }}
-    {% if entry.call.broken_at %}&mdash; broken {{ entry.call.broken_at }}{% else %}&mdash; <strong>active</strong>{% endif %}
-    ({{ entry.call.reports }} report(s))
-  </header>
-  <table>
-    <thead><tr><th>RSN</th><th>Arrived after</th><th>Time on tile</th><th>Left early?</th><th>Kept running?</th><th>Laps during DD</th><th>Loadout gaps</th></tr></thead>
-    <tbody>
-      {% for p in entry.presence %}
-      <tr>
-        <td>{{ entry.rsns[p.id] }}</td>
-        <td>{{ (p.arrived_after_ms // 1000) ~ "s" if p.arrived_after_ms is not none else "not observed" }}</td>
-        <td>{{ p.ms_on_tile // 1000 }}s</td>
-        <td>{{ "⚠️" if p.left_before_break else "—" }}</td>
-        <td>{{ "⚠️" if p.seen_running else "—" }}</td>
-        <td>{{ p.laps_during_dd }}</td>
-        <td>{{ p.dd_loadout_failed|join(", ") if p.dd_loadout_failed else "✅" }}</td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-</article>
-{% else %}
-<p>No DD calls yet.</p>
-{% endfor %}
+<div {% if event.ended_at is none %}hx-get="/events/{{ event.id }}?tab=dd" hx-trigger="every 5s" hx-target="this" hx-swap="innerHTML"{% endif %}>
+  {% include "events/_dd.html" %}
+</div>
 
 {% elif tab == "deaths" %}
 <h3>Deaths</h3>

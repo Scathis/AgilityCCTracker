@@ -55,10 +55,30 @@ async def test_full_event_lifecycle_and_every_tab_renders(
         response = await client.get(f"/events/{event.id}?tab={tab}")
         assert response.status_code == 200, f"tab={tab} failed: {response.text[:300]}"
 
+    # While the event is active, attendance/laps/dd poll themselves via
+    # HTMX - a normal page load includes the polling attribute and the
+    # full page chrome; an HX-Request should get back just that tab's
+    # fragment (no nav, no <h2> page title).
+    for tab in ("attendance", "laps", "dd"):
+        full_page = await client.get(f"/events/{event.id}?tab={tab}")
+        assert f'hx-get="/events/{event.id}?tab={tab}"' in full_page.text
+        assert "EvtFlowPlyr" in full_page.text or tab != "attendance"
+
+        fragment = await client.get(
+            f"/events/{event.id}?tab={tab}", headers={"HX-Request": "true"}
+        )
+        assert fragment.status_code == 200
+        assert "<nav>" not in fragment.text
+        assert "Tuesday mass" not in fragment.text
+
     stop = await client.post(
         f"/events/{event.id}/stop", data={"csrf_token": csrf}, follow_redirects=False
     )
     assert stop.status_code == 303
+
+    # A finished event's tabs shouldn't poll anymore - nothing left to watch.
+    stopped_page = await client.get(f"/events/{event.id}?tab=attendance")
+    assert "hx-get=" not in stopped_page.text
 
     list_response = await client.get("/events")
     assert list_response.status_code == 200

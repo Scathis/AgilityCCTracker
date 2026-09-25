@@ -1,0 +1,8 @@
+<table>
+  <thead><tr><th>RSN</th><th>Laps</th><th>Tickets</th></tr></thead>
+  <tbody>
+    {% for row in leaderboard %}
+    <tr><td><a href="/players/{{ row.player.id }}">{{ row.player.rsn }}</a></td><td>{{ row.laps }}</td><td>{{ row.tickets }}</td></tr>
+    {% endfor %}
+  </tbody>
+</table>

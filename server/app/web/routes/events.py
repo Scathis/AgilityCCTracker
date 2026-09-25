@@ -117,6 +117,13 @@ async def event_detail(
     elif tab == "manual-gap":
         context.update(await _manual_gap_tab(session, group, event))
 
+    # The attendance/laps/DD tabs poll themselves via HTMX while an event is
+    # active (see detail.html) - on a poll, return just that tab's fragment
+    # instead of the whole page (which would otherwise nest a full page
+    # inside the polled container).
+    if request.headers.get("HX-Request") == "true" and tab in ("attendance", "laps", "dd"):
+        return templates.TemplateResponse(request, f"events/_{tab}.html", context)
+
     return templates.TemplateResponse(request, "events/detail.html", context)
 
 

@@ -1,0 +1,27 @@
+{% for entry in call_summaries %}
+<article>
+  <header>
+    Called {{ entry.call.called_at }}
+    {% if entry.call.broken_at %}&mdash; broken {{ entry.call.broken_at }}{% else %}&mdash; <strong>active</strong>{% endif %}
+    ({{ entry.call.reports }} report(s))
+  </header>
+  <table>
+    <thead><tr><th>RSN</th><th>Arrived after</th><th>Time on tile</th><th>Left early?</th><th>Kept running?</th><th>Laps during DD</th><th>Loadout gaps</th></tr></thead>
+    <tbody>
+      {% for p in entry.presence %}
+      <tr>
+        <td>{{ entry.rsns[p.id] }}</td>
+        <td>{{ (p.arrived_after_ms // 1000) ~ "s" if p.arrived_after_ms is not none else "not observed" }}</td>
+        <td>{{ p.ms_on_tile // 1000 }}s</td>
+        <td>{{ "⚠️" if p.left_before_break else "—" }}</td>
+        <td>{{ "⚠️" if p.seen_running else "—" }}</td>
+        <td>{{ p.laps_during_dd }}</td>
+        <td>{{ p.dd_loadout_failed|join(", ") if p.dd_loadout_failed else "✅" }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</article>
+{% else %}
+<p>No DD calls yet.</p>
+{% endfor %}

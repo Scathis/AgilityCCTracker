@@ -1,0 +1,20 @@
+<table>
+  <thead><tr><th>RSN</th><th>Rank</th><th>Time present</th><th>Plugin?</th><th>Laps</th><th>Loadout</th></tr></thead>
+  <tbody>
+    {% for a in attendees %}
+    <tr>
+      <td><a href="/players/{{ a.player.id }}">{{ a.player.rsn }}</a></td>
+      <td>{{ a.rank }}</td>
+      <td>{{ (a.seconds_present // 60) }}m</td>
+      <td>{{ "✅" if a.player.is_plugin_user else "—" }}</td>
+      <td>{{ a.laps }}</td>
+      <td>
+        {% if a.loadout_gaps is none %}not checked
+        {% elif a.loadout_gaps|length == 0 %}✅ compliant
+        {% else %}❌ {{ a.loadout_gaps|join(", ") }}
+        {% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
