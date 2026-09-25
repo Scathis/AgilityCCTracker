@@ -7,12 +7,9 @@
 
   <fieldset>
     <legend>DD tiles</legend>
-    <label>Tile 1 X<input type="number" name="tile1_x" value="{{ tiles[0].x }}" required></label>
-    <label>Tile 1 Y<input type="number" name="tile1_y" value="{{ tiles[0].y }}" required></label>
-    <label>Tile 1 plane<input type="number" name="tile1_plane" value="{{ tiles[0].plane }}"></label>
-    <label>Tile 2 X<input type="number" name="tile2_x" value="{{ tiles[1].x }}" required></label>
-    <label>Tile 2 Y<input type="number" name="tile2_y" value="{{ tiles[1].y }}" required></label>
-    <label>Tile 2 plane<input type="number" name="tile2_plane" value="{{ tiles[1].plane }}"></label>
+    <p>Tile 1: {{ tiles[0].x }}, {{ tiles[0].y }}, {{ tiles[0].plane }}</p>
+    <p>Tile 2: {{ tiles[1].x }}, {{ tiles[1].y }}, {{ tiles[1].plane }}</p>
+    <p><small>Fixed for now, not editable here - contact whoever manages the server to change these.</small></p>
   </fieldset>
 
   <fieldset>

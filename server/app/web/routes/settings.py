@@ -24,12 +24,6 @@ async def settings_page(
 
 @router.post("/settings")
 async def update_settings(
-    tile1_x: int = Form(...),
-    tile1_y: int = Form(...),
-    tile1_plane: int = Form(0),
-    tile2_x: int = Form(...),
-    tile2_y: int = Form(...),
-    tile2_plane: int = Form(0),
     call_regex: str = Form(...),
     break_regex: str = Form(...),
     min_rank: int = Form(...),
@@ -43,10 +37,7 @@ async def update_settings(
     user: User = Depends(require_role(UserRole.ADMIN)),
     _csrf: User = Depends(verify_csrf),
 ):
-    group.dd_tiles = [
-        {"x": tile1_x, "y": tile1_y, "plane": tile1_plane},
-        {"x": tile2_x, "y": tile2_y, "plane": tile2_plane},
-    ]
+    # DD tiles are deliberately not settable from this form - see settings.html.
     group.dd_call_regex = call_regex
     group.dd_break_regex = break_regex
     group.dd_min_rank = min_rank

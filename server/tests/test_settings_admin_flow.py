@@ -5,16 +5,11 @@ from app.web.security import read_flash
 async def test_settings_update_persists(client, make_user, login_as, default_group, db_session):
     admin = await make_user(UserRole.ADMIN)
     csrf = login_as(admin)
+    original_tiles = default_group.dd_tiles
 
     response = await client.post(
         "/settings",
         data={
-            "tile1_x": "3097",
-            "tile1_y": "3936",
-            "tile1_plane": "0",
-            "tile2_x": "3098",
-            "tile2_y": "3936",
-            "tile2_plane": "0",
             "call_regex": r"^\s*dd\s*!*$",
             "break_regex": r"^\s*(break|brk)\s*(dd)?\s*!*$",
             "min_rank": "3",
@@ -30,7 +25,10 @@ async def test_settings_update_persists(client, make_user, login_as, default_gro
     assert response.status_code == 303
 
     await db_session.refresh(default_group)
-    assert default_group.dd_tiles[0]["x"] == 3097
+    # DD tiles are deliberately not settable from this form - confirm a
+    # settings save leaves them untouched, not just that the (removed)
+    # tile fields are absent from the request.
+    assert default_group.dd_tiles == original_tiles
     assert default_group.dd_min_rank == 3
     assert default_group.observer_enabled is True
     assert default_group.dd_crossbow_counts_as_bow is True
@@ -46,12 +44,6 @@ async def test_settings_checkbox_unchecked_persists_false(
     await client.post(
         "/settings",
         data={
-            "tile1_x": "0",
-            "tile1_y": "0",
-            "tile1_plane": "0",
-            "tile2_x": "0",
-            "tile2_y": "0",
-            "tile2_plane": "0",
             "call_regex": "dd",
             "break_regex": "brk",
             "min_rank": "3",
