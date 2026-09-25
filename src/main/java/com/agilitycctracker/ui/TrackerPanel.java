@@ -80,6 +80,7 @@ public class TrackerPanel extends PluginPanel
 
 		JPanel content = new JPanel();
 		content.setLayout(new BoxLayout(content, BoxLayout.Y_AXIS));
+		content.setBackground(ColorScheme.DARK_GRAY_COLOR);
 
 		content.add(connectionLabel);
 		content.add(fcLabel);
@@ -90,10 +91,12 @@ public class TrackerPanel extends PluginPanel
 		JButton copyTileButton = new JButton("Copy my tile");
 		copyTileButton.addActionListener(e -> copyMyTile());
 		JPanel buttonRow = new JPanel(new FlowLayout(FlowLayout.LEFT));
+		buttonRow.setBackground(ColorScheme.DARK_GRAY_COLOR);
 		buttonRow.add(copyTileButton);
 		content.add(buttonRow);
 
 		observersList.setLayout(new BoxLayout(observersList, BoxLayout.Y_AXIS));
+		observersList.setBackground(ColorScheme.DARK_GRAY_COLOR);
 		JLabel observersHeading = new JLabel("FC members in view:");
 		observersHeading.setForeground(ColorScheme.TEXT_COLOR);
 		content.add(observersHeading);
