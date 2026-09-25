@@ -304,7 +304,71 @@ Commit (without `.env`).
    (owner does in-game testing on their PC per `DEV_SETUP.md`).
 Commit + push.
 
-### Phase 8 — Plugin Hub submission (later, with the owner)
+### Phase 8 — Dashboard visual overhaul: OSRS-themed reskin
+
+Added after Phase 6 deploy/verification, ahead of Plugin Hub submission since
+that's already gated on in-game testing anyway — pure CSS/template work, no
+schema, route, or plugin changes, so it can happen in parallel with the owner
+doing that testing.
+
+Goal: reskin the existing Jinja2 + HTMX + Pico.css dashboard (§6.5, all pages
+already built in Phase 5) to read as an Old School RuneScape interface rather
+than a generic Pico.css site, without touching any route/business logic.
+
+1. **Replace Pico.css's theme layer, not its structure.** Keep Pico's
+   semantic-HTML-driven layout (no framework rip-out, no new build step —
+   this project has none and shouldn't gain one), but override its CSS custom
+   properties and add a project stylesheet
+   (`app/web/static/vendor/osrs-theme.css`, vendored/committed like the
+   existing `pico.min.css`/`htmx.min.js`, loaded after Pico's own so it wins
+   the cascade) covering:
+   - **Palette:** OSRS interface brown/parchment (`#3e3529` panel brown,
+     `#c8a878`/`#e8d5a8` parchment backgrounds, `#ffb833`-ish gold for
+     headings/links/active states, red for failed loadout/DD-check states —
+     reuse the same semantic red/green Pico already uses for
+     pass/fail badges so the loadout-compliance and DD-status pages stay
+     legible, just recolored).
+   - **Typography:** a RuneScape-style display font for headings/nav only
+     (e.g. `rsbold`/`runescape_uf`-alike webfont — self-hosted as a `.woff2`
+     under `app/web/static/vendor/fonts/`, never a Google Fonts/CDN link, to
+     keep the "no third-party dependency at request time" rule from §6.1);
+     body text/tables stay on a readable system sans-serif — OSRS's own UI
+     mixes exactly this way (bold display font for headers, plain font for
+     dense text) and a fully-`runescape_uf` table would hurt readability at
+     the data density this dashboard has (loadout tables, DD leaderboards).
+   - **Chrome:** stone/wood-bordered panel treatment for `<article>`/card
+     containers (border-image or a simple beveled `border` + `box-shadow`
+     approximation — no need for pixel-perfect 9-slice art), OSRS-style
+     button treatment for Pico's `button`/`[role=button]` (brown gradient,
+     gold-on-hover text) applied globally via the same CSS variables Pico
+     already exposes, not per-page overrides.
+2. **Nav/header:** reskin the shared layout template's top nav to resemble
+   the OSRS chat/interface tab bar look (icons per section optional — reuse
+   the plugin's own generated placeholder icon style if a quick option is
+   wanted, or skip icons entirely and keep it text-only gold-on-brown).
+3. **No functional changes.** Every existing route, form, HTMX fragment, and
+   test in `tests/test_dashboard_*`/`tests/test_events_flow.py`/etc. must
+   keep passing unmodified — this phase only touches `templates/*.html`
+   (class names / structure only where needed for the new CSS, not behavior)
+   and adds the new stylesheet + font asset. If any template change risks
+   breaking an HTMX fragment's expected structure (the `/items/search`
+   partial in particular), check that route's test still passes before
+   moving on, not just eyeball the page.
+4. **Scope check against the CSP precedent elsewhere on this host:** since
+   this dashboard sits behind Cloudflare Tunnel with no CSP header of its
+   own currently, there's no CSP-vs-webfont conflict to worry about the way
+   `osrshub.grestinator.com`'s hand-built CSP mattered for that site — but
+   keep the font/CSS self-hosted regardless, on general principle (matches
+   this project's existing "vendor everything, no CDN at request time"
+   rule, not a new one).
+**Checks:** `docker compose -f docker-compose.test.yml run --rm tests` still
+green (proves no functional regression), then a manual visual pass — log in
+as each of the three roles and check every page in §6.5's list renders
+correctly styled, plus one HTMX-fragment page (loadout item search) to
+confirm partial-swap styling isn't broken. Commit + push (this repo's normal
+per-phase pattern, per the Phase 0 owner answer).
+
+### Phase 9 — Plugin Hub submission (later, with the owner)
 
 Only after in-game testing and after the owner re-confirms the DD observer with
 the RuneLite devs. See §9.
@@ -1024,7 +1088,7 @@ repo — Gradle downloads the released client.
 
 ---
 
-## 9. `docs/PLUGIN_HUB_SUBMISSION.md` (write in Phase 7; execute in Phase 8)
+## 9. `docs/PLUGIN_HUB_SUBMISSION.md` (write in Phase 7; execute in Phase 9)
 
 1. Repo must be **public** (the Hub builds from it). Consider whether `server/`
    should stay in the same repo (fine) — no secrets are committed.
