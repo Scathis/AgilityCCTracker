@@ -147,6 +147,12 @@ public class AgilityCCTrackerPlugin extends Plugin
 		{
 			addPanel();
 		}
+
+		// §5.6: "poll immediately on startup" - without this, statusHolder
+		// stays null (roster/observer features silently do nothing) until
+		// the first 60s scheduled poll, which this spec line exists
+		// specifically to avoid.
+		pollStatusImmediately();
 	}
 
 	@Override
@@ -227,6 +233,20 @@ public class AgilityCCTrackerPlugin extends Plugin
 		{
 			resetState();
 		}
+		else if (state == GameState.LOGGED_IN)
+		{
+			// resetState() (above) may have just cleared statusHolder to
+			// null moments before this fires - poll again here rather than
+			// only relying on startUp()'s one-shot poll, since the exact
+			// ordering between startUp() and the client's own initial
+			// LOGIN_SCREEN transition isn't something this plugin controls.
+			pollStatusImmediately();
+		}
+	}
+
+	private void pollStatusImmediately()
+	{
+		new Thread(uploader::pollStatus, "AgilityCCTracker-status-poll").start();
 	}
 
 	@Subscribe
