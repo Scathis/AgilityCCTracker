@@ -612,19 +612,30 @@ docker-compose.test.yml down` was missed after the last verification pass)
 — harmless (isolated in its own throwaway project/network) but pointless
 resource use once noticed.
 
-**Remaining steps — both are explicit 🛑 checkpoints in the plan, raised
-with the owner rather than auto-actioned:**
-- **Step 6 (reverse proxy / public exposure).** This host's actual
-  mechanism is Cloudflare Tunnel, not the nginx/Caddy `deploy/proxy/`
-  snippet the plan assumes (see the Phase 0 finding above) — there is no
-  local proxy config to write or reload. The equivalent action here is
-  entirely manual and outside this repo: the owner adds a Public Hostname
-  for `agilitycc.grestinator.com` → `localhost:8090` in the Cloudflare Zero
-  Trust dashboard, same as every other service on this host.
-- **Step 7 (backups + cron).** `deploy/backup.sh` doesn't exist yet — not
-  written until the owner confirms they want it now, per the plan's own
-  "🛑 ask before adding the cron entry" instruction.
+**Step 6 (reverse proxy / public exposure) — owner action, in progress.**
+This host's actual mechanism is Cloudflare Tunnel, not the nginx/Caddy
+`deploy/proxy/` snippet the plan assumes (see the Phase 0 finding above) —
+there is no local proxy config to write or reload. The equivalent action
+here is entirely manual and outside this repo: the owner adds a Public
+Hostname for `agilitycc.grestinator.com` → `localhost:8090` in the
+Cloudflare Zero Trust dashboard, same as every other service on this host.
+Owner confirmed proceeding 2026-09-25; step 8's HTTPS checks (`curl -s
+https://agilitycc.grestinator.com/healthz`, dashboard login over HTTPS)
+follow once that's live.
 
-Step 8's checks (HTTPS healthz, dashboard login over HTTPS) can't run until
-step 6 happens. Not committing yet either — nothing in Phase 6 so far has
-touched tracked files besides this doc.
+**Step 7 (backups + cron) — done 2026-09-25.** `deploy/backup.sh`:
+`mysqldump` via `docker compose -p agilitycctracker exec -T mysql`
+(reads `DB_NAME`/`MYSQL_ROOT_PASSWORD` from `server/.env`, never echoed),
+gzipped to `server/backups/agilitycc-<timestamp>.sql.gz` (gitignored —
+only the script is tracked), pruning anything older than 14 days via
+`find -mtime +14 -delete`. Tested manually before scheduling: produced a
+64KB dump with all 17 tables (16 schema tables + `alembic_version`) —
+confirmed by counting `CREATE TABLE` statements in the decompressed
+output, not just checking the file exists. Cron entry added directly to
+the owner's own crontab (no sudo needed, unlike the sudoers-file pattern
+used elsewhere in this stack — a per-user crontab edit is always
+unprivileged), tagged consistently with the two pre-existing entries:
+```
+0 4 * * * /bin/bash /mnt/120ssd/agilitycctracker/deploy/backup.sh >> /mnt/120ssd/agilitycctracker/server/backups/backup.log 2>&1 # agilitycctracker-backup
+```
+Nightly at 04:00, matching the plan's own suggested schedule.
