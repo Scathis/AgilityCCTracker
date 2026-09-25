@@ -38,6 +38,7 @@ import net.runelite.api.events.GameTick;
 import net.runelite.api.events.ItemContainerChanged;
 import net.runelite.api.events.StatChanged;
 import net.runelite.api.gameval.InventoryID;
+import net.runelite.client.callback.ClientThread;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.events.ConfigChanged;
 import net.runelite.client.eventbus.Subscribe;
@@ -121,6 +122,9 @@ public class AgilityCCTrackerPlugin extends Plugin
 
 	@Inject
 	private ClientToolbar clientToolbar;
+
+	@Inject
+	private ClientThread clientThread;
 
 	private NavigationButton navigationButton;
 	private long lastAccountHash = -1;
@@ -361,6 +365,10 @@ public class AgilityCCTrackerPlugin extends Plugin
 	public void onStatusTick()
 	{
 		uploader.pollStatus();
-		selfLoadoutCheck.refresh();
+		// selfLoadoutCheck.refresh() reads the local player's worn-item
+		// container, which RuneLite requires happen on the client thread -
+		// this @Schedule method is asynchronous (needed for pollStatus()'s
+		// blocking HTTP call), so hop back for just this call.
+		clientThread.invoke(selfLoadoutCheck::refresh);
 	}
 }
