@@ -18,6 +18,7 @@ import java.util.Set;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import net.runelite.api.Client;
+import net.runelite.api.FriendsChatManager;
 import net.runelite.api.Item;
 import net.runelite.api.ItemContainer;
 import net.runelite.api.Player;
@@ -61,6 +62,19 @@ public class SelfDdSampler
 		}
 		Player local = client.getLocalPlayer();
 		if (local == null || local.getName() == null)
+		{
+			return;
+		}
+
+		// Owner request: ranked members are usually busy with other FC
+		// duties during a DD call (calling it, watching chat, managing the
+		// queue) rather than actually participating - excluded from DD
+		// presence entirely, self included. This is a separate, hardcoded
+		// rule from the group's configurable dd.min_rank (who's *allowed to
+		// call* DD) - not the same concept, even though both currently
+		// happen to use the same threshold.
+		FriendsChatManager fc = client.getFriendsChatManager();
+		if (fc != null && fc.getMyRank() != null && fc.getMyRank().getValue() >= 0)
 		{
 			return;
 		}

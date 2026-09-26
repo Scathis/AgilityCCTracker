@@ -27,6 +27,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import net.runelite.api.Client;
+import net.runelite.api.FriendsChatManager;
+import net.runelite.api.FriendsChatMember;
 import net.runelite.api.Player;
 import net.runelite.api.PlayerComposition;
 import net.runelite.api.coords.WorldPoint;
@@ -112,6 +114,7 @@ public class FcMemberScanner
 		Loadout runningLoadout = Loadout.find(status.getLoadouts(), LoadoutContext.RUNNING);
 		Loadout ddLoadout = Loadout.find(status.getLoadouts(), LoadoutContext.DD);
 		List<DdTile> tiles = status.getDd() != null ? status.getDd().getTiles() : Collections.emptyList();
+		FriendsChatManager fc = client.getFriendsChatManager();
 		long now = System.currentTimeMillis();
 
 		int scanned = 0;
@@ -143,10 +146,19 @@ public class FcMemberScanner
 				queueIfChanged(rsn, runningLoadout.getId(), failed);
 			}
 
-			List<String> ddFailed = (onDdTile && ddLoadout != null)
-				? evaluator.evaluate(ddLoadout, worn, VISIBLE_SLOTS)
-				: Collections.emptyList();
-			ddTracker.onObservation(rsn, onDdTile, inCourseArea, ddFailed, now);
+			// Owner request: ranked members are usually busy with other FC
+			// duties during a DD call rather than actually participating -
+			// excluded from DD presence entirely (see the matching check
+			// and its longer comment in SelfDdSampler.onTick()).
+			FriendsChatMember member = fc != null ? fc.findByName(rsn) : null;
+			boolean isRanked = member != null && member.getRank() != null && member.getRank().getValue() >= 0;
+			if (!isRanked)
+			{
+				List<String> ddFailed = (onDdTile && ddLoadout != null)
+					? evaluator.evaluate(ddLoadout, worn, VISIBLE_SLOTS)
+					: Collections.emptyList();
+				ddTracker.onObservation(rsn, onDdTile, inCourseArea, ddFailed, now);
+			}
 
 			// worn/location/rsn all go out of scope here - never stored past this iteration.
 		}

@@ -991,3 +991,41 @@ tests still green (no new pure-logic surface here that isn't already
 covered by existing `DdTracker`/`FcMemberScanner` patterns - the new
 `getCurrentlyInCourse()`/heartbeat wiring follows the exact same
 `inCourseArea` boolean already exercised indirectly elsewhere).
+
+## Plugin feature: ranked members excluded from DD presence — done 2026-09-26
+
+Owner feedback: ranked FC members are usually busy with other duties
+during a DD call (calling it, watching chat, managing the queue) rather
+than actually participating, so they "shouldn't be in the DD table in
+any way." Excluded from DD presence entirely - both `SelfDdSampler`
+(the reporter's own presence, checked via `FriendsChatManager.getMyRank()`)
+and `FcMemberScanner` (observed players, via `fc.findByName(rsn).getRank()`)
+now skip the `DdTracker.onObservation(...)` call for anyone whose rank is
+anything other than `UNRANKED` (value `-1`) - i.e. Friend and above.
+
+**Deliberately a separate, hardcoded rule from the group's configurable
+`dd.min_rank`** (who's *allowed to call* DD) even though both currently
+happen to use the same threshold (`0`) - one is "who may call it", the
+other is "who's structurally too busy to be judged for participating in
+it." If `min_rank` is ever changed later, this exclusion should not move
+with it.
+
+**Client-side only, necessarily** - the server has no independent
+knowledge of live FC ranks (only whatever the plugin chooses to send),
+so this can't be enforced or double-checked server-side; it relies on
+the plugin actually filtering before upload. Regular loadout-gap
+tracking (the RUNNING check, non-DD) is untouched by this - a ranked
+member doing normal laps outside of a DD call is still tracked
+normally, and still counts toward the course-sighting heartbeat for
+attendance purposes even during a DD call (they're still legitimately
+at the event, just not something to judge for DD compliance).
+
+Not retroactively applied to already-stored DD presence rows from the
+first in-game DD test - this is a going-forward behavior change, not a
+data cleanup request.
+
+No new unit tests - `FcMemberScanner`/`SelfDdSampler` have never had
+direct tests (both need a live `Client`/`FriendsChatManager` to
+exercise meaningfully, which this project's testing approach
+deliberately avoids mocking - see §5.10's own stated preference for
+pure-logic tests). `./gradlew build`: 47/47 still passing, clean.
