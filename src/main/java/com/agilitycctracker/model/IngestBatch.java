@@ -20,4 +20,8 @@ public class IngestBatch
 	RosterSnapshot roster;
 	List<LoadoutCheckDto> loadoutChecks;
 	DdSection dd;
+	/** Sent every upload cycle regardless of change, unlike every other
+	 * field here - a live heartbeat of who was just sighted at the course,
+	 * not a durable event. See Uploader#upload() and BUILD_LOG.md. */
+	List<String> courseSightings;
 }

@@ -76,3 +76,9 @@ class IngestBatchIn(BaseModel):
     roster: RosterSnapshotIn | None = None
     loadout_checks: list[LoadoutCheckIn] = Field(default_factory=list, max_length=300)
     dd: DdSectionIn | None = None
+    # RSNs actually sighted at the course this upload cycle (self + anyone
+    # observed in-course) - sent every cycle regardless of whether anything
+    # else changed, unlike the rest of this payload. Keeps attendance
+    # sessions alive; see _process_course_sightings() and
+    # workers/attendance_timeout_worker.py.
+    course_sightings: list[str] = Field(default_factory=list, max_length=200)

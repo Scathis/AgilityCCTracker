@@ -888,3 +888,106 @@ forever in normal use.
 
 Owner re-testing attendance/roster/FC-member-observation now that the
 owner RSN is corrected.
+
+## Post-Phase-7 feature: attendance auto-timeout — done 2026-09-26
+
+Owner feedback after initial DD testing: "does it just keep ticking up
+from when a ID gets added" - attendance's `left_at` only ever closed when
+the roster diff saw someone leave the FC *channel* entirely
+(`services/roster.py`'s `diff_roster`), so an AFK member who never
+actually left the channel had their "time present" tick up forever
+regardless of whether they were still doing the course. This was a real
+gap in what "attendance" meant, not a bug in the existing roster-diff
+logic itself (which is correct for what it does).
+
+**Design (confirmed with owner via three quick decisions):**
+1. **What counts as a sighting** — any signal: a lap, a self-reported
+   `on_course`, or being observed in-course by another plugin user.
+2. **Timeout** — 2 minutes of no sighting (owner's own number, tighter
+   than the 10/15/30-minute options offered).
+3. **Return behavior** — a new attendance record, not reopening the old
+   one (falls out naturally from the existing roster-diff `to_open` logic
+   once a prior session is closed — no extra code needed for this part).
+
+**Mechanism:**
+- New `attendance.last_sighted_at` column (Alembic
+  `ec14febc22d0_add_attendance_last_sighted_at`), distinct from
+  `joined_at`/`left_at` which still track channel membership.
+- New `IngestBatch.course_sightings` (plugin) / `IngestBatchIn.course_sightings`
+  (server): a list of RSNs sighted at the course *this specific upload
+  cycle* - the reporter's own RSN when `SelfStateCollector.isOnCourse()`,
+  plus whichever FC roster members `FcMemberScanner` currently sees in the
+  course region (`FcMemberScanner.getCurrentlyInCourse()`, rebuilt fresh
+  every tick it scans at all, cleared the instant it stops). Deliberately
+  sent on **every** upload regardless of whether anything else changed -
+  every other `IngestBatch` field is omitted-if-unchanged, but a
+  heartbeat that only sends when something *changes* isn't a heartbeat.
+  Not restored on a failed upload either (unlike every other field here) -
+  it's a live signal, not a durable event, so an occasional dropped
+  heartbeat during a network blip is an acceptable/expected cost, not a
+  bug to guard against.
+- Server: `_process_course_sightings()` in `api/v1/ingest.py` bumps
+  `last_sighted_at` on an *existing open* attendance row only - it
+  deliberately never opens a new one itself (that stays the roster diff's
+  job), so a stray sighting can't invent attendance for someone who was
+  never actually a real roster member.
+- New background worker (`workers/attendance_timeout_worker.py`,
+  `attendance_timeout_worker_loop`, checks every 30s, wired unconditionally
+  into `main.py`'s lifespan - no feature flag, since this is core
+  internal DB-only logic, not an optional external integration like the
+  hiscores/items workers): closes any attendance row whose
+  `last_sighted_at` is more than 120s old, setting `left_at =
+  last_sighted_at` (their last *confirmed* moment present, not "now" -
+  matches the existing roster-diff close's own convention of using the
+  snapshot timestamp rather than wall-clock time).
+
+**Migration safety, since `attendance` already had real rows from live
+testing:** the new column can't just be `NOT NULL` with no backfill -
+MySQL would reject it outright. Backfilled every existing row's
+`last_sighted_at` to the migration's own execution time (not `joined_at`)
+specifically so a currently-open, actively-in-use session wouldn't look
+instantly stale to the timeout worker the moment this deployed - already-
+closed rows don't care what value they get, since the worker only ever
+looks at `left_at IS NULL` rows. Took a fresh backup
+(`deploy/backup.sh`) before applying, confirmed post-deploy: existing
+rows backfilled correctly, `left_at` untouched on already-open sessions,
+container healthy, no errors.
+
+**Incidental fix bundled into the same migration, unrelated to this
+feature:** `alembic revision --autogenerate` also flagged that
+`players.latest_snapshot_id`'s foreign key (declared in the model since
+Phase 4 with `use_alter=True` for the circular players↔player_snapshots
+reference) was never actually applied to the real schema - a latent gap
+since the very first migration, "confirmed as a non-issue" at the time
+only because `alembic upgrade head` happened to still succeed without
+it. Verified safe to add now (the only place `latest_snapshot_id` is
+ever set, `ingest.py`/`hiscores_worker.py`, always assigns a
+freshly-inserted snapshot's own id, so no orphaned references could
+exist). Confirmed applied via `SHOW CREATE TABLE players` post-deploy.
+
+**Separate, not-fixed-now finding surfaced while writing this feature's
+tests:** `BUILD_PLAN.md` §6.2 documents "Timestamps `DATETIME(3)` in
+UTC" (millisecond precision) as the schema convention, but no model
+anywhere actually declares that precision (`mapped_column(DateTime())`
+throughout, no `fsp` argument) - a project-wide, pre-existing gap between
+the written spec and the real schema, not something this feature
+introduced. Surfaced because a microsecond-precision Python `datetime`
+round-tripped through a real DB column comes back truncated to whole
+seconds, which broke an exact-equality test assertion until loosened to
+second-level tolerance. Not fixed here - would mean touching all 16
+tables' timestamp columns via a fresh migration, well beyond this
+feature's scope - just flagged so it doesn't get silently re-discovered
+from scratch later.
+
+**Tests:** 71 server tests passing (up from 63) - new coverage: pure
+`should_close()` edge cases (exactly-at-timeout stays open, one second
+past closes, recently-sighted stays open), a dedicated
+`test_attendance_timeout_worker.py` exercising `run_once()` against a
+real DB (closes a stale session, leaves a fresh one alone, never touches
+an already-closed one), and `test_ingest.py` coverage for
+`_process_course_sightings()` (bumps an existing open session, does not
+invent a new one for someone never actually attending). Plugin: 47
+tests still green (no new pure-logic surface here that isn't already
+covered by existing `DdTracker`/`FcMemberScanner` patterns - the new
+`getCurrentlyInCourse()`/heartbeat wiring follows the exact same
+`inCourseArea` boolean already exercised indirectly elsewhere).

@@ -1,5 +1,26 @@
+import datetime as dt
+
+from app.workers.attendance_timeout_worker import TIMEOUT_S, should_close
 from app.workers.hiscores_worker import compute_combat_level, parse_hiscores_json
 from app.workers.items_worker import merge_item_data
+
+
+def test_should_close_at_exactly_timeout_stays_open():
+    now = dt.datetime.utcnow()
+    last_sighted = now - dt.timedelta(seconds=TIMEOUT_S)
+    assert should_close(last_sighted, now) is False
+
+
+def test_should_close_past_timeout():
+    now = dt.datetime.utcnow()
+    last_sighted = now - dt.timedelta(seconds=TIMEOUT_S + 1)
+    assert should_close(last_sighted, now) is True
+
+
+def test_should_close_recently_sighted_stays_open():
+    now = dt.datetime.utcnow()
+    last_sighted = now - dt.timedelta(seconds=5)
+    assert should_close(last_sighted, now) is False
 
 
 def test_parse_hiscores_json_maps_skill_ids_to_names():

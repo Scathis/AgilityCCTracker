@@ -20,6 +20,7 @@ from app.web.routes.loadouts import router as loadouts_router
 from app.web.routes.players import router as players_router
 from app.web.routes.raggers import router as raggers_router
 from app.web.routes.settings import router as settings_router
+from app.workers.attendance_timeout_worker import attendance_timeout_worker_loop
 from app.workers.hiscores_worker import hiscores_worker_loop
 from app.workers.items_worker import items_worker_loop
 
@@ -31,6 +32,7 @@ MAX_BODY_BYTES = 100 * 1024
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     tasks: list[asyncio.Task] = []
+    tasks.append(asyncio.create_task(attendance_timeout_worker_loop()))
     if settings.hiscores_enabled:
         tasks.append(asyncio.create_task(hiscores_worker_loop()))
     if settings.items_enabled:

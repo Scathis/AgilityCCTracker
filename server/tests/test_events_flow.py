@@ -45,6 +45,7 @@ async def test_full_event_lifecycle_and_every_tab_renders(
             event_id=event.id,
             player_id=player.id,
             joined_at=dt.datetime.utcnow(),
+            last_sighted_at=dt.datetime.utcnow(),
             rank=0,
             world=330,
         )
@@ -103,6 +104,7 @@ async def test_manual_gap_form_submission(
             event_id=event.id,
             player_id=player.id,
             joined_at=dt.datetime.utcnow(),
+            last_sighted_at=dt.datetime.utcnow(),
             rank=0,
             world=330,
         )

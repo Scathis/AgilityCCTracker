@@ -173,6 +173,7 @@ async def test_fc_scan_loadout_check_needs_an_attendance_row(client, fc_group, d
             event_id=event.id,
             player_id=new_player.id,
             joined_at=dt.datetime.utcnow(),
+            last_sighted_at=dt.datetime.utcnow(),
             rank=0,
             world=330,
         )
@@ -213,6 +214,7 @@ async def test_observer_disabled_drops_fc_scan_but_not_self(client, fc_group, db
             event_id=event.id,
             player_id=scanned_player.id,
             joined_at=dt.datetime.utcnow(),
+            last_sighted_at=dt.datetime.utcnow(),
             rank=0,
             world=330,
         )
@@ -321,3 +323,63 @@ async def test_dd_presence_merges_multiple_reporters_without_duplicating(
     assert row.arrived_after_ms == 3000  # min() of the two reports
     assert set(row.sources) == {reporter_a, reporter_b}  # who reported it
     assert watched_rsn not in row.sources  # not the observed player's own name
+
+
+async def test_course_sighting_keeps_open_attendance_alive(client, fc_group, db_session):
+    group, token = fc_group
+    event = Event(fc_group_id=group.id, name="E", started_at=dt.datetime.utcnow(), ended_at=None)
+    db_session.add(event)
+    await db_session.commit()
+    await db_session.refresh(event)
+
+    watched_rsn = _rsn()
+    watched_player = Player(
+        rsn=watched_rsn, first_seen=dt.datetime.utcnow(), last_seen=dt.datetime.utcnow()
+    )
+    db_session.add(watched_player)
+    await db_session.commit()
+    await db_session.refresh(watched_player)
+
+    stale_time = dt.datetime.utcnow() - dt.timedelta(minutes=5)
+    db_session.add(
+        Attendance(
+            event_id=event.id,
+            player_id=watched_player.id,
+            joined_at=stale_time,
+            last_sighted_at=stale_time,
+            rank=0,
+            world=330,
+        )
+    )
+    await db_session.commit()
+
+    reporter_rsn = _rsn()
+    payload = {"rsn": reporter_rsn, "course_sightings": [watched_rsn]}
+    assert (
+        await client.post("/api/v1/ingest", json=payload, headers=_headers(token))
+    ).status_code == 200
+
+    result = await db_session.execute(
+        select(Attendance).where(Attendance.player_id == watched_player.id)
+    )
+    attendance = result.scalar_one()
+    assert attendance.left_at is None
+    assert attendance.last_sighted_at > stale_time
+
+
+async def test_course_sighting_does_not_open_a_new_attendance_record(client, fc_group, db_session):
+    """A sighting alone can't invent attendance for someone with no
+    existing open session - that stays the roster diff's job."""
+    group, token = fc_group
+    event = Event(fc_group_id=group.id, name="E", started_at=dt.datetime.utcnow(), ended_at=None)
+    db_session.add(event)
+    await db_session.commit()
+
+    never_attended_rsn = _rsn()
+    payload = {"rsn": _rsn(), "course_sightings": [never_attended_rsn]}
+    assert (
+        await client.post("/api/v1/ingest", json=payload, headers=_headers(token))
+    ).status_code == 200
+
+    result = await db_session.execute(select(Attendance).where(Attendance.event_id == event.id))
+    assert result.scalars().all() == []

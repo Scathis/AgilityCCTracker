@@ -75,6 +75,10 @@ async def post_ingest(
         reporter_world = batch.self_state.world if batch.self_state is not None else None
         await _process_roster(session, fc_group.id, active_event, reporter_world, batch.roster, now)
 
+    # Step 5b: course sightings keep an open attendance session alive.
+    if active_event is not None and batch.course_sightings:
+        await _process_course_sightings(session, active_event, batch.course_sightings, now)
+
     # Step 6: observer-reported loadout checks.
     if active_event is not None and fc_group.observer_enabled and batch.loadout_checks:
         await _process_loadout_checks(session, active_event, batch.loadout_checks)
@@ -312,6 +316,7 @@ async def _process_roster(
                 event_id=event.id,
                 player_id=player.id,
                 joined_at=snapshot_ts,
+                last_sighted_at=snapshot_ts,
                 rank=member.rank,
                 world=member.world,
             )
@@ -327,6 +332,28 @@ async def _process_roster(
             attendance = attendance_by_player_id[session_info.player_id]
             attendance.world = member.world
             attendance.rank = member.rank
+
+
+async def _process_course_sightings(
+    session: AsyncSession, event: Event, sightings: list[str], now: dt.datetime
+) -> None:
+    """Keeps an already-open attendance session alive - never opens a new
+    one (that stays the roster diff's job, so a sighting alone can't invent
+    an attendance record for someone who was never actually a roster
+    member). If a player's session has already been auto-closed by
+    workers/attendance_timeout_worker.py, this is a no-op for them until the
+    next roster snapshot reopens a fresh session - see BUILD_LOG.md."""
+    result = await session.execute(
+        select(Attendance)
+        .join(Player, Attendance.player_id == Player.id)
+        .where(
+            Attendance.event_id == event.id,
+            Attendance.left_at.is_(None),
+            Player.rsn.in_(sightings),
+        )
+    )
+    for attendance in result.scalars().all():
+        attendance.last_sighted_at = now
 
 
 async def _process_loadout_checks(

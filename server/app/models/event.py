@@ -29,3 +29,8 @@ class Attendance(Base):
     left_at: Mapped[dt.datetime | None] = mapped_column(DateTime(), nullable=True)
     rank: Mapped[int] = mapped_column(Integer)
     world: Mapped[int] = mapped_column(Integer)
+    # Last time this player was actually sighted at the course (a lap, a
+    # self-reported on_course ping, or being observed in-course by another
+    # plugin user) - distinct from joined_at/left_at, which track FC-channel
+    # membership. Drives the auto-timeout close in workers/attendance_timeout_worker.py.
+    last_sighted_at: Mapped[dt.datetime] = mapped_column(DateTime())

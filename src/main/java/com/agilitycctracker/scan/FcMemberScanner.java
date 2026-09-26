@@ -19,9 +19,11 @@ import java.util.Deque;
 import java.util.EnumMap;
 import java.util.EnumSet;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import net.runelite.api.Client;
@@ -81,20 +83,31 @@ public class FcMemberScanner
 
 	private final Map<String, List<String>> lastLoadoutResult = new HashMap<>();
 	private final Deque<LoadoutCheckDto> queue = new ArrayDeque<>();
+	// Rebuilt fresh every tick this scans at all (see the two early returns
+	// below, which also clear it) - a live snapshot of "who did I just see
+	// in the course area", read by Uploader every cycle for the
+	// course_sightings heartbeat (BUILD_LOG.md: attendance auto-timeout).
+	// Deliberately not queue/drain semantics like loadout checks - this is
+	// a live heartbeat, not a durable event that needs restore-on-failure.
+	private final Set<String> currentlyInCourse = ConcurrentHashMap.newKeySet();
 
 	public void onTick()
 	{
 		StatusResponse status = statusHolder.get();
 		if (!config.fcObserver() || status == null || !status.isObserverEnabled() || status.getActiveEvent() == null)
 		{
+			currentlyInCourse.clear();
 			return;
 		}
 
 		Player local = client.getLocalPlayer();
 		if (local == null || local.getWorldLocation().getRegionID() != WILDERNESS_AGILITY_COURSE_REGION)
 		{
+			currentlyInCourse.clear();
 			return;
 		}
+
+		currentlyInCourse.clear();
 
 		Loadout runningLoadout = Loadout.find(status.getLoadouts(), LoadoutContext.RUNNING);
 		Loadout ddLoadout = Loadout.find(status.getLoadouts(), LoadoutContext.DD);
@@ -118,6 +131,10 @@ public class FcMemberScanner
 			WorldPoint location = p.getWorldLocation();
 			boolean onDdTile = isOnAnyTile(location, tiles);
 			boolean inCourseArea = location.getRegionID() == WILDERNESS_AGILITY_COURSE_REGION;
+			if (inCourseArea)
+			{
+				currentlyInCourse.add(rsn);
+			}
 			Map<Slot, WornItem> worn = readVisibleGear(p);
 
 			if (runningLoadout != null)
@@ -204,6 +221,12 @@ public class FcMemberScanner
 		{
 			return new HashMap<>(lastLoadoutResult);
 		}
+	}
+
+	/** For Uploader's course_sightings heartbeat - RSNs of FC members seen in the course area as of the most recent tick. */
+	public Set<String> getCurrentlyInCourse()
+	{
+		return new HashSet<>(currentlyInCourse);
 	}
 
 	public List<LoadoutCheckDto> drain()

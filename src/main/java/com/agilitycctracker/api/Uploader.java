@@ -18,7 +18,10 @@ import com.agilitycctracker.scan.FcMemberScanner;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import lombok.extern.slf4j.Slf4j;
@@ -109,6 +112,17 @@ public class Uploader
 		RosterSnapshot roster = rosterTracker.consume();
 		List<LoadoutCheckDto> loadoutChecks = fcMemberScanner.drain();
 
+		// Deliberately not part of the "nothing changed, skip the POST"
+		// check below - this is a live heartbeat (BUILD_LOG.md's attendance
+		// auto-timeout), not a durable event, so it's fine if a skipped
+		// upload occasionally drops one, but it must never itself be
+		// suppressed just because nothing else happened to change.
+		Set<String> courseSightings = new HashSet<>(fcMemberScanner.getCurrentlyInCourse());
+		if (selfStateCollector.isOnCourse())
+		{
+			courseSightings.add(rsn);
+		}
+
 		boolean ddClosed = ddTracker.getBrokenAt() != null;
 		boolean ddDue = false;
 		DdSection dd = null;
@@ -122,7 +136,8 @@ public class Uploader
 			}
 		}
 
-		if (self == null && laps.isEmpty() && deaths.isEmpty() && roster == null && loadoutChecks.isEmpty() && dd == null)
+		if (self == null && laps.isEmpty() && deaths.isEmpty() && roster == null
+			&& loadoutChecks.isEmpty() && dd == null && courseSightings.isEmpty())
 		{
 			// Nothing but rsn would be sent - skip the POST entirely.
 			return;
@@ -142,6 +157,10 @@ public class Uploader
 		if (!deaths.isEmpty())
 		{
 			builder.deaths(deaths);
+		}
+		if (!courseSightings.isEmpty())
+		{
+			builder.courseSightings(new ArrayList<>(courseSightings));
 		}
 		if (roster != null)
 		{
