@@ -50,3 +50,12 @@ async def test_logout_requires_csrf_and_clears_session(client, make_user, login_
     good = await client.post("/logout", data={"csrf_token": csrf}, follow_redirects=False)
     assert good.status_code == 303
     assert good.headers["location"] == "/login"
+
+
+async def test_login_rate_limited_after_five_failures(client):
+    for _ in range(5):
+        response = await client.post("/login", data={"username": "nosuchuser", "password": "x"})
+        assert response.status_code == 401
+
+    limited = await client.post("/login", data={"username": "nosuchuser", "password": "x"})
+    assert limited.status_code == 429

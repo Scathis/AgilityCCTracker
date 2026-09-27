@@ -1029,3 +1029,56 @@ direct tests (both need a live `Client`/`FriendsChatManager` to
 exercise meaningfully, which this project's testing approach
 deliberately avoids mocking - see §5.10's own stated preference for
 pure-logic tests). `./gradlew build`: 47/47 still passing, clean.
+
+## Server hardening: 4 findings from an owner-run security pass — done 2026-09-26
+
+Owner ran their own quick audit while other work was in progress and
+handed over 4 findings. Verified each directly against the code (not
+taken on faith) before fixing:
+
+1. **No rate limiting on `/login`** (`app/web/routes/auth.py`) — the
+   plugin-token endpoint (`app/deps.py`) already had a dedicated
+   `RateLimiter` (5 failures/5min/IP → 429, per §6.3), the human-facing
+   dashboard login had nothing at all. Added a **separate**
+   `dashboard_login_rate_limiter` instance (`app/security.py`) - same
+   shape (5/5min), deliberately not sharing state with the plugin-token
+   limiter, since a failed plugin-token auth from an IP shouldn't lock
+   that IP out of the human login and vice versa; they're different
+   attack surfaces with no reason to couple.
+2. **Leaderboard data had no plausibility bounds** (`app/schemas/ingest.py`)
+   — `lap_time_ms`/`tickets_gained`/`gear_value`/`risk_value` were plain
+   unbounded ints. Since the plugin is open Java, trivially forkable, and
+   a real target for someone hardcoding absurd lap times to climb a
+   competitive leaderboard, added real (researched, not guessed) bounds:
+   `lap_time_ms` floor of 30,000ms (the wiki's own stated theoretical
+   fastest lap is 67 ticks / ~40.2s under perfect play - the floor sits
+   comfortably below that so no real lap is ever rejected), `tickets_gained`
+   capped at 1 (the wiki confirms exactly one ticket per lap, always, no
+   variance), `gear_value`/`risk_value` bounded to `[0,
+   2147483647]` (OSRS's own classic 32-bit cash-stack ceiling). **Explicitly
+   a partial mitigation, not a full fix** - a batch of fabricated laps with
+   plausible-looking spaced-out `completed_at` timestamps would still get
+   through, since nothing here cross-checks claimed timestamps against
+   real wall-clock pacing; that needs actual server-side game-state
+   verification, well beyond a "catch the laziest cheats for free" pass.
+3. **No `max_length` on any `rsn`/`name` field** (`app/schemas/ingest.py`)
+   while the real `players.rsn` column is `VARCHAR(12)` - an oversized
+   name previously caused an unhandled MySQL truncation error (a raw
+   500) instead of a clean Pydantic 422. Added a shared `Rsn = Annotated[str,
+   Field(max_length=12)]` type alias, applied everywhere an RSN/member
+   name appears in the ingest schema (including `course_sightings`,
+   added the same session as this audit).
+4. **CSRF token compared with `!=` instead of `hmac.compare_digest`**
+   (`app/web/deps.py`). Practical risk was already low (high-entropy,
+   HttpOnly, cookie-delivered over HTTPS - not realistically
+   exploitable), but a free fix while already touching the file. Also
+   tightened the null-handling in the same line (`expected` computed
+   once, `submitted` coerced to `str` before the constant-time compare).
+
+**Tests:** 77 passing (up from 71) - new coverage: 5 failed dashboard
+logins → 429 on the 6th, an oversized RSN → 422, an implausibly fast lap
+time → 422, confirmation a genuinely real lap time (45s) is still
+accepted (proving the floor doesn't reject real play), more than one
+ticket in a single lap → 422, a negative `gear_value` → 422. `ruff
+check` clean. Deployed - migration-free (schema/validation-only changes,
+no DB structure change), confirmed healthy post-deploy.

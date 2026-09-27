@@ -383,3 +383,47 @@ async def test_course_sighting_does_not_open_a_new_attendance_record(client, fc_
 
     result = await db_session.execute(select(Attendance).where(Attendance.event_id == event.id))
     assert result.scalars().all() == []
+
+
+async def test_oversized_rsn_rejected_with_422(client, fc_group):
+    _, token = fc_group
+    payload = {"rsn": "ThisNameIsWayTooLong"}
+    response = await client.post("/api/v1/ingest", json=payload, headers=_headers(token))
+    assert response.status_code == 422
+
+
+async def test_implausibly_fast_lap_time_rejected_with_422(client, fc_group):
+    _, token = fc_group
+    payload = {
+        "rsn": _rsn(),
+        "laps": [{"lap_count": 1, "completed_at": 1_700_000_000_000, "lap_time_ms": 500}],
+    }
+    response = await client.post("/api/v1/ingest", json=payload, headers=_headers(token))
+    assert response.status_code == 422
+
+
+async def test_a_real_lap_time_is_accepted(client, fc_group):
+    _, token = fc_group
+    payload = {
+        "rsn": _rsn(),
+        "laps": [{"lap_count": 1, "completed_at": 1_700_000_000_000, "lap_time_ms": 45_000}],
+    }
+    response = await client.post("/api/v1/ingest", json=payload, headers=_headers(token))
+    assert response.status_code == 200
+
+
+async def test_more_than_one_ticket_per_lap_rejected_with_422(client, fc_group):
+    _, token = fc_group
+    payload = {
+        "rsn": _rsn(),
+        "laps": [{"lap_count": 1, "completed_at": 1_700_000_000_000, "tickets_gained": 5}],
+    }
+    response = await client.post("/api/v1/ingest", json=payload, headers=_headers(token))
+    assert response.status_code == 422
+
+
+async def test_negative_gear_value_rejected_with_422(client, fc_group):
+    _, token = fc_group
+    payload = {"rsn": _rsn(), "self": {"gear_value": -1}}
+    response = await client.post("/api/v1/ingest", json=payload, headers=_headers(token))
+    assert response.status_code == 422

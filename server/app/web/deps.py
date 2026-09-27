@@ -1,6 +1,8 @@
 """Dashboard auth/RBAC/CSRF dependencies. Separate from app/deps.py, which is
 plugin-token auth for the /api/v1/* routes."""
 
+import hmac
+
 from fastapi import Depends, HTTPException, Request
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -85,6 +87,7 @@ async def verify_csrf(request: Request, user: User = Depends(require_user)) -> U
     payload = _session_payload(request)
     form = await request.form()
     submitted = form.get("csrf_token")
-    if payload is None or not submitted or submitted != payload.get("csrf"):
+    expected = payload.get("csrf") if payload else None
+    if not submitted or not expected or not hmac.compare_digest(str(submitted), expected):
         raise HTTPException(status_code=403, detail="CSRF validation failed")
     return user

@@ -58,3 +58,9 @@ class RateLimiter:
 
 
 auth_rate_limiter = RateLimiter(max_failures=5, window_seconds=300.0)
+
+# Separate instance from auth_rate_limiter (plugin token auth) so failures
+# on one surface never lock out the other from the same IP - different
+# attack surfaces, different callers, should tune/trip independently even
+# though they currently share the same 5-per-5-minutes shape.
+dashboard_login_rate_limiter = RateLimiter(max_failures=5, window_seconds=300.0)
