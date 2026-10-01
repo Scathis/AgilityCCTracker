@@ -124,6 +124,7 @@ body {
 h1, h2, h3, h4, h5, h6,
 body > nav strong,
 body > nav a,
+body > nav button,
 .slot-summary-label,
 .slot-badge {
   font-family: "RuneScape", var(--pico-font-family);
