@@ -13,5 +13,5 @@ templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 # happening to the OSRS theme CSS on 2026-10-01 (the server had the fix,
 # Cloudflare was still serving the previous version). A new URL per bump
 # sidesteps needing a manual cache purge entirely.
-ASSET_VERSION = 4
+ASSET_VERSION = 5
 templates.env.globals["asset_version"] = ASSET_VERSION

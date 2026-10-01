@@ -149,10 +149,20 @@ body > nav button.secondary {
   --pico-secondary: #ffb833;
   --pico-secondary-background: transparent;
   --pico-secondary-border: #ffb833;
-  --pico-secondary-inverse: #3e3529;
+  /* Idle text: gold, readable against the transparent/dark nav background.
+   * Was #3e3529 - the exact hex of the nav bar's own background above,
+   * which made the button text invisible (the actual bug this fixes). */
+  --pico-secondary-inverse: #ffb833;
 }
-body > nav button.secondary:hover {
-  --pico-secondary-background: #ffb833;
+/* Pico's hover/focus/active state reads *-hover-background, not
+ * -background - the old rule set the wrong variable name and was a no-op,
+ * silently falling back to Pico's stock blue-grey on hover. Text color
+ * swaps to dark here since it's now sitting on a gold hover background. */
+body > nav button.secondary:hover,
+body > nav button.secondary:focus,
+body > nav button.secondary:active {
+  --pico-secondary-hover-background: #ffb833;
+  --pico-secondary-inverse: #3e3529;
 }
 
 /* Cards/tables get a visible carved border to read as in-game interface
