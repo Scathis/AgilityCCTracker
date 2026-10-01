@@ -134,3 +134,53 @@ async def test_manual_gap_form_submission(
     )
     checks = check_result.scalars().all()
     assert any(c.failed_requirement_keys == ["run-helm", "run-boots"] for c in checks)
+
+
+async def test_attendance_status_shows_present_vs_away(
+    client, make_user, login_as, default_group, no_active_event, db_session
+):
+    staff = await make_user(UserRole.STAFF)
+    csrf = login_as(staff)
+
+    await client.post(
+        "/events", data={"name": "Status Test Event", "notes": "", "csrf_token": csrf}
+    )
+    result = await db_session.execute(
+        select(Event).where(Event.fc_group_id == default_group.id, Event.ended_at.is_(None))
+    )
+    event = result.scalar_one()
+
+    present_player = await _make_player(db_session, "StillHere")
+    away_player = await _make_player(db_session, "LeftEarly")
+    db_session.add(
+        Attendance(
+            event_id=event.id,
+            player_id=present_player.id,
+            joined_at=dt.datetime.utcnow(),
+            last_sighted_at=dt.datetime.utcnow(),
+            left_at=None,
+            rank=0,
+            world=330,
+        )
+    )
+    left_time = dt.datetime.utcnow() - dt.timedelta(minutes=10)
+    db_session.add(
+        Attendance(
+            event_id=event.id,
+            player_id=away_player.id,
+            joined_at=left_time - dt.timedelta(minutes=5),
+            last_sighted_at=left_time,
+            left_at=left_time,
+            rank=0,
+            world=330,
+        )
+    )
+    await db_session.commit()
+
+    response = await client.get(f"/events/{event.id}?tab=attendance")
+    assert response.status_code == 200
+    text = response.text
+    present_idx = text.index("StillHere")
+    away_idx = text.index("LeftEarly")
+    assert "🟢 Present" in text[present_idx:present_idx + 300]
+    assert "⚪ Away" in text[away_idx:away_idx + 300]

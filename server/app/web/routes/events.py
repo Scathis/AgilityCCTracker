@@ -155,10 +155,19 @@ async def _attendance_tab(session: AsyncSession, group: FcGroup, event: Event) -
                 "seconds_present": 0,
                 "loadout_gaps": None,
                 "laps": 0,
+                # Summed across every session this player's had this event
+                # (joined/left/rejoined), so "currently present" can't just
+                # be read off seconds_present - tracked separately here.
+                "currently_present": False,
+                "last_left_at": None,
             },
         )
         left = attendance.left_at or now
         entry["seconds_present"] += int((left - attendance.joined_at).total_seconds())
+        if attendance.left_at is None:
+            entry["currently_present"] = True
+        elif entry["last_left_at"] is None or attendance.left_at > entry["last_left_at"]:
+            entry["last_left_at"] = attendance.left_at
 
     if running is not None:
         for player_id, entry in by_player.items():
