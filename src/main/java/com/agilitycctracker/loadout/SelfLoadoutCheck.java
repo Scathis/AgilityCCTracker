@@ -9,6 +9,7 @@ import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import net.runelite.api.ChatMessageType;
@@ -68,7 +69,7 @@ public class SelfLoadoutCheck
 
 		if (config.loadoutWarnings() && !failed.isEmpty())
 		{
-			warnInChat(running, failed);
+			warnInChat(failed);
 		}
 	}
 
@@ -93,24 +94,10 @@ public class SelfLoadoutCheck
 		return worn;
 	}
 
-	private void warnInChat(Loadout loadout, List<String> failedIds)
+	private void warnInChat(List<String> failedSlots)
 	{
-		StringBuilder sb = new StringBuilder("FC loadout: ");
-		boolean first = true;
-		for (Requirement req : loadout.getRequirements())
-		{
-			if (!failedIds.contains(req.getId()))
-			{
-				continue;
-			}
-			if (!first)
-			{
-				sb.append(", ");
-			}
-			sb.append(req.getLabel().toLowerCase());
-			first = false;
-		}
-		client.addChatMessage(ChatMessageType.GAMEMESSAGE, "", "<col=ff0000>" + sb + "</col>", null);
+		String joined = failedSlots.stream().map(String::toLowerCase).collect(Collectors.joining(", "));
+		client.addChatMessage(ChatMessageType.GAMEMESSAGE, "", "<col=ff0000>FC loadout: " + joined + "</col>", null);
 	}
 
 	/** For TrackerPanel display - never empty-vs-null ambiguous. */

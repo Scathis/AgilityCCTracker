@@ -1082,3 +1082,127 @@ accepted (proving the floor doesn't reject real play), more than one
 ticket in a single lap → 422, a negative `gear_value` → 422. `ruff
 check` clean. Deployed - migration-free (schema/validation-only changes,
 no DB structure change), confirmed healthy post-deploy.
+
+## Loadout system redesign: interactive "character sheet" editor — done 2026-10-01
+
+Owner request: completely redesign the loadout rule editor into an
+interactive, RuneScape-equipment-tab-styled UI - click a slot, pick which
+specific items are acceptable there, flag non-compliance against the
+picked list rather than the old pattern-matching rule language.
+
+**Design decisions (confirmed via 4 quick questions before building):**
+1. Replace the old rule system entirely (FILLED/NAME_ENDS_WITH/ITEM_IN/
+   conditional "when" rules) rather than run two systems side by side.
+2. An unconfigured slot = fully unrestricted (matches the old optional-
+   slot convention, e.g. ring/ammo).
+3. Drop cross-slot conditionals (the old "crossbow needs a shield too"
+   rule) - simplify the actual rule rather than keep expressing it.
+4. Show real item icons (OSRS Wiki-hosted) in the slot grid, not just
+   text - confirmed worth the extra work over a text-only layout.
+
+**New per-slot model** (one `LoadoutRequirement` row per slot now, not
+per arbitrary named rule - `UNIQUE(loadout_id, slot)`): `required`
+(bool) + `allowed_item_ids` (JSON list). Three real states, no row at
+all being a fourth (fully unrestricted):
+- `required=true`, empty list → must wear *something*, any item (covers
+  what the old `FILLED` check did for helm/legs/boots/amulet).
+- `required=true`, populated list → must wear one of those specific
+  items.
+- `required=false`, populated list → empty is fine, but if something
+  *is* worn there, it must still be one of the allowed items.
+
+Dropped entirely: `req_key`, `label`, `check_type`, `args`, `when_json`,
+`sort` columns. The slot name itself (e.g. `"WEAPON"`) is now the
+natural, stable key used in `failed_requirement_keys`/`dd_loadout_failed`
+arrays - render order is a fixed equipment-tab position
+(`services/loadouts.py`'s `SLOT_ORDER`), not a configurable per-row sort.
+
+**Plugin side:** deleted `loadout/Check.java` and `loadout/Condition.java`
+entirely. `Requirement` is now just `{Slot, required, allowedItemIds}`.
+`LoadoutEvaluator` rewritten around the three states above - still pure,
+still zero RuneLite imports, still only ever returns slot-name strings,
+never item data. `SelfLoadoutCheck`'s chat warning no longer looks up a
+per-requirement label (there isn't one anymore) - it just lowercases and
+joins the failed slot names directly. `LoadoutEvaluatorTest` fully
+rewritten (9 cases covering all three states + RING/AMMO visibility
+gating, replacing the old check/condition-based fixtures).
+`./gradlew build`: 47/47 passing, clean.
+
+**Server side:**
+- `app/models/loadout.py`: `LoadoutRequirement` redefined per above.
+- `app/schemas/status.py` / `app/services/loadouts.py`: wire shape is now
+  `{slot, required, allowed_item_ids}` per requirement, ordered by the
+  fixed `SLOT_ORDER` list.
+- `app/seed.py`: a new FC group now gets two *empty* Running/DD loadout
+  shells, no default rules - the old defaults were expressed as
+  name-pattern/conditional rules with no clean mapping onto the new
+  model, and "build a runner loadout" was explicitly the point of this
+  redesign, so staff build the real rules themselves via the new editor
+  rather than inheriting a guessed starting set.
+- `app/web/routes/loadouts.py`: full rewrite. New routes: toggle a
+  slot's `required` flag, add/remove an allowed item, and a per-slot
+  item search (`/loadouts/{id}/slots/{slot}/search`, replacing the old
+  flat `/items/search`). Every mutation route detects `HX-Request` and
+  returns just that slot's re-rendered fragment (matching the pattern
+  already established for the event tabs' auto-refresh) instead of a
+  full page reload - search results are directly clickable "Add" buttons
+  that swap the slot in place.
+- New templates: `loadouts/_slot.html` (one slot's card - icons, a
+  `required` checkbox, the allowed-item list with remove buttons, and
+  the inline search box; reused identically by the full page and every
+  HTMX fragment response, so there's exactly one place a slot's markup
+  is defined) and `loadouts/_item_search_results.html`. `detail.html`
+  rewritten around a CSS grid matching the real OSRS equipment tab's
+  slot positions (head top-center, cape/neck/ammo row, weapon/body/
+  shield row, legs, hands/boots/ring), each slot a native `<details>`
+  element (collapsed by default, no custom JS needed for the
+  expand/collapse interaction).
+- Item icons resolved via the OSRS Wiki's own `Special:FilePath/<name>.png`
+  redirect (verified working directly, including names with spaces and
+  parentheses like "Studded body (g)", before building anything on top
+  of it) - no local icon library to source or maintain, with a broken-
+  image fallback (`onerror` hides the `<img>`) if the wiki ever can't
+  resolve a name.
+- **Real bug caught before it shipped:** the first draft of the HTMX
+  fragment path built its own template context from scratch and forgot
+  `csrf_token` entirely - would have rendered forms that 403'd on every
+  submit. Caught by re-reading the code before testing, not by a failed
+  test (no test exercises the literal rendered HTML's form fields).
+- 9 new/rewritten server tests (require-with-no-list, add/remove an
+  allowed item end-to-end against a real `Item` row, unknown item id
+  rejected with 404, full-page render using the new grid markers).
+  **80 server tests passing** (up from 71).
+
+**Migration (`cf1345efaa36`):** the old rule shape has no meaningful
+mapping onto the new one, so existing `loadout_requirements` rows are
+cleared (`DELETE FROM loadout_requirements`) rather than migrated -
+`loadout_checks`/`dd_presence` history is untouched (those only ever
+stored opaque requirement-key strings, already historical regardless).
+Took a fresh backup first and captured the live group's pre-migration
+rules for reference before clearing them:
+
+| Slot | Old rule |
+|---|---|
+| WEAPON | must be worn, name ends with "bow" |
+| HEAD / LEGS / BOOTS / AMULET | must be worn, any item |
+| SHIELD | must be worn *only if* weapon is a crossbow (dropped per decision #3) |
+| DD: WEAPON | must be worn, name ends with "bow" |
+
+**Owner action needed:** the live Running/DD loadouts are now fully
+unrestricted (no rows at all) until rebuilt via the new editor at
+`/loadouts/1` and `/loadouts/2` - this is expected, not a bug, per
+seed.py's new empty-shell behavior and decision #1 above.
+
+**Verified live on production** (not just against tests): logged in,
+searched for "magic shortbow" via the real endpoint, added item id 861
+to the WEAPON slot via the real HTMX POST, confirmed the fragment
+re-rendered with the correct icon and delete control, then removed it
+again to leave the slot clean for the owner's own setup.
+
+**Unrelated bug noticed during this deploy, not fixed (out of scope):**
+the daily `items_worker` failed mid-run right after this deploy -
+`(1264, "Out of range value for column 'ge_price'")` for item id 20011,
+whose current GE price (2.29 billion) exceeds the `ge_price` column's
+plain `INT` range (max ~2.147 billion). Pre-existing, unrelated to this
+feature - flagged to the owner to decide whether/when to fix (likely a
+one-line column-type change to `BIGINT`), not actioned here.

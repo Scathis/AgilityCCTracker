@@ -1,0 +1,56 @@
+<details class="slot-card slot-{{ slot }}" id="slot-{{ slot }}">
+  <summary>
+    <div class="slot-summary-label">{{ slot.title() }}</div>
+    {% if allowed_items %}
+    <div class="slot-icons">
+      {% for item in allowed_items[:4] %}
+      <img src="{{ item.icon }}" alt="{{ item.name }}" title="{{ item.name }}" class="item-icon" loading="lazy" onerror="this.style.visibility='hidden'">
+      {% endfor %}
+      {% if allowed_items|length > 4 %}<span class="slot-more">+{{ allowed_items|length - 4 }}</span>{% endif %}
+    </div>
+    {% elif required %}
+    <div class="slot-placeholder">Required (any item)</div>
+    {% else %}
+    <div class="slot-placeholder muted">Any</div>
+    {% endif %}
+    {% if required %}<span class="slot-badge">Required</span>{% endif %}
+  </summary>
+
+  {% if can_edit %}
+  <div class="slot-editor">
+    <form method="post" action="/loadouts/{{ loadout_id }}/slots/{{ slot }}/required"
+          hx-post="/loadouts/{{ loadout_id }}/slots/{{ slot }}/required"
+          hx-target="#slot-{{ slot }}" hx-swap="outerHTML">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <label>
+        <input type="checkbox" name="required" value="true" {% if required %}checked{% endif %}
+               onchange="this.form.requestSubmit()">
+        Something must be worn here
+      </label>
+    </form>
+
+    {% if allowed_items %}
+    <ul class="allowed-item-list">
+      {% for item in allowed_items %}
+      <li>
+        <img src="{{ item.icon }}" alt="" class="item-icon-sm" loading="lazy" onerror="this.style.visibility='hidden'">
+        {{ item.name }}
+        <form method="post" action="/loadouts/{{ loadout_id }}/slots/{{ slot }}/items/{{ item.id }}/delete"
+              hx-post="/loadouts/{{ loadout_id }}/slots/{{ slot }}/items/{{ item.id }}/delete"
+              hx-target="#slot-{{ slot }}" hx-swap="outerHTML" style="display:inline">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <button type="submit" class="secondary outline slot-remove-btn" aria-label="Remove {{ item.name }}">&times;</button>
+        </form>
+      </li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+
+    <input type="search" placeholder="Search items to allow..." autocomplete="off"
+           hx-get="/loadouts/{{ loadout_id }}/slots/{{ slot }}/search"
+           hx-trigger="keyup changed delay:300ms"
+           hx-target="#search-{{ slot }}">
+    <div id="search-{{ slot }}"></div>
+  </div>
+  {% endif %}
+</details>

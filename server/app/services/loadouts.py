@@ -7,21 +7,36 @@ mapping described in app/schemas/status.py - never done inline at the route.
 from app.models.loadout import Loadout, LoadoutRequirement
 from app.schemas.status import LoadoutOut, RequirementOut
 
+# Fixed render order matching the equipment-tab grid layout, not a
+# per-requirement "sort" field - slots have one natural position each.
+SLOT_ORDER = [
+    "HEAD",
+    "CAPE",
+    "AMULET",
+    "AMMO",
+    "WEAPON",
+    "TORSO",
+    "SHIELD",
+    "LEGS",
+    "HANDS",
+    "BOOTS",
+    "RING",
+]
+
 
 def serialize_loadout(loadout: Loadout, requirements: list[LoadoutRequirement]) -> LoadoutOut:
+    by_slot = {req.slot: req for req in requirements}
+    ordered = [by_slot[slot] for slot in SLOT_ORDER if slot in by_slot]
     return LoadoutOut(
         id=loadout.id,
         name=loadout.name,
         context=loadout.context.value.upper(),
         requirements=[
             RequirementOut(
-                id=req.req_key,
-                label=req.label,
                 slot=req.slot,
-                check=req.check_type,
-                args=req.args or [],
-                when=req.when_json,
+                required=req.required,
+                allowed_item_ids=req.allowed_item_ids or [],
             )
-            for req in sorted(requirements, key=lambda r: r.sort)
+            for req in ordered
         ],
     )

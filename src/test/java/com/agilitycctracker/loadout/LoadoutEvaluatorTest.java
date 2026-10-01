@@ -13,148 +13,124 @@ import java.util.Set;
 import org.junit.Test;
 
 /**
- * Exercises LoadoutEvaluator against the default Running/DD loadouts from
- * BUILD_PLAN.md §7 (hardcoded here as test fixtures - the plugin itself only
- * ever gets Loadout data from the server's /status response, never bakes it
- * in), covering every scenario listed in §5.10.
+ * Exercises LoadoutEvaluator's three per-slot states (required-any-item,
+ * required-from-allow-list, optional-but-restricted-if-worn) and the
+ * RING/AMMO visibility restriction from §5.10. The plugin only ever gets
+ * real Loadout data from the server's /status response - these fixtures are
+ * test-only, not baked into the plugin itself.
  */
 public class LoadoutEvaluatorTest
 {
 	private static final Set<Slot> ALL_SLOTS = EnumSet.allOf(Slot.class);
+	private static final int SHORTBOW_ID = 841;
+	private static final int LONGBOW_ID = 839;
+	private static final int CROSSBOW_ID = 837;
 
 	private final LoadoutEvaluator evaluator = new LoadoutEvaluator();
 
-	private static Loadout runningLoadout()
+	private static Loadout loadoutOf(Requirement... requirements)
 	{
-		return new Loadout(1, "Running", LoadoutContext.RUNNING, Arrays.asList(
-			new Requirement("run-weapon", "No weapon in hand", Slot.WEAPON, Check.FILLED, Collections.emptyList(), null),
-			new Requirement("run-bow", "Weapon isn't a bow", Slot.WEAPON, Check.NAME_ENDS_WITH, Collections.singletonList("bow"), null),
-			new Requirement("run-helm", "Missing helm", Slot.HEAD, Check.FILLED, Collections.emptyList(), null),
-			new Requirement("run-legs", "Missing legs", Slot.LEGS, Check.FILLED, Collections.emptyList(), null),
-			new Requirement("run-boots", "Missing boots", Slot.BOOTS, Check.FILLED, Collections.emptyList(), null),
-			new Requirement("run-neck", "Missing necklace", Slot.AMULET, Check.FILLED, Collections.emptyList(), null),
-			new Requirement("run-xbow-shield", "Crossbow without shield", Slot.SHIELD, Check.FILLED, Collections.emptyList(),
-				new Condition(Slot.WEAPON, Check.NAME_ENDS_WITH, Collections.singletonList("crossbow")))
-		));
+		return new Loadout(1, "Test", LoadoutContext.RUNNING, Arrays.asList(requirements));
 	}
 
-	private static Loadout ddLoadout()
-	{
-		return new Loadout(2, "DD", LoadoutContext.DD, Collections.singletonList(
-			new Requirement("dd-bow", "Not holding a bow at DD", Slot.WEAPON, Check.NAME_ENDS_WITH, Collections.singletonList("bow"), null)
-		));
-	}
-
-	/** A full, valid outfit with the given weapon/shield swapped in, everything else present. */
-	private static Map<Slot, WornItem> fullOutfit(String weaponName, boolean hasShield)
+	private static Map<Slot, WornItem> worn(Slot slot, int itemId)
 	{
 		Map<Slot, WornItem> worn = new EnumMap<>(Slot.class);
-		worn.put(Slot.HEAD, new WornItem(1, "helm"));
-		worn.put(Slot.AMULET, new WornItem(2, "necklace"));
-		worn.put(Slot.WEAPON, new WornItem(3, weaponName));
-		worn.put(Slot.LEGS, new WornItem(4, "legs"));
-		worn.put(Slot.BOOTS, new WornItem(5, "boots"));
-		if (hasShield)
-		{
-			worn.put(Slot.SHIELD, new WornItem(6, "shield"));
-		}
+		worn.put(slot, new WornItem(itemId, "item"));
 		return worn;
 	}
 
 	@Test
-	public void shortbowNoShieldPasses()
+	public void requiredAnyItemFailsWhenSlotEmpty()
 	{
-		List<String> failed = evaluator.evaluate(runningLoadout(), fullOutfit("magic shortbow", false), ALL_SLOTS);
-		assertTrue("expected no failures, got " + failed, failed.isEmpty());
+		Loadout loadout = loadoutOf(new Requirement(Slot.HEAD, true, Collections.emptyList()));
+		List<String> failed = evaluator.evaluate(loadout, Collections.emptyMap(), ALL_SLOTS);
+		assertEquals(Collections.singletonList("HEAD"), failed);
 	}
 
 	@Test
-	public void runeCrossbowNoShieldFailsXbowShieldOnly()
+	public void requiredAnyItemPassesWithAnyItemWorn()
 	{
-		List<String> failed = evaluator.evaluate(runningLoadout(), fullOutfit("rune crossbow", false), ALL_SLOTS);
-		assertEquals(Collections.singletonList("run-xbow-shield"), failed);
+		Loadout loadout = loadoutOf(new Requirement(Slot.HEAD, true, Collections.emptyList()));
+		List<String> failed = evaluator.evaluate(loadout, worn(Slot.HEAD, 12345), ALL_SLOTS);
+		assertTrue(failed.isEmpty());
 	}
 
 	@Test
-	public void crossbowWithShieldPasses()
+	public void requiredWithAllowListPassesOnAllowedItem()
 	{
-		List<String> failed = evaluator.evaluate(runningLoadout(), fullOutfit("rune crossbow", true), ALL_SLOTS);
-		assertTrue("expected no failures, got " + failed, failed.isEmpty());
+		Loadout loadout = loadoutOf(
+			new Requirement(Slot.WEAPON, true, Arrays.asList(SHORTBOW_ID, LONGBOW_ID)));
+		assertTrue(evaluator.evaluate(loadout, worn(Slot.WEAPON, SHORTBOW_ID), ALL_SLOTS).isEmpty());
 	}
 
 	@Test
-	public void blowpipeFailsRunBowOnly()
+	public void requiredWithAllowListFailsOnDisallowedItem()
 	{
-		List<String> failed = evaluator.evaluate(runningLoadout(), fullOutfit("toxic blowpipe", false), ALL_SLOTS);
-		assertEquals(Collections.singletonList("run-bow"), failed);
+		Loadout loadout = loadoutOf(
+			new Requirement(Slot.WEAPON, true, Arrays.asList(SHORTBOW_ID, LONGBOW_ID)));
+		List<String> failed = evaluator.evaluate(loadout, worn(Slot.WEAPON, CROSSBOW_ID), ALL_SLOTS);
+		assertEquals(Collections.singletonList("WEAPON"), failed);
 	}
 
 	@Test
-	public void emptyHandFailsWeaponAndBow()
+	public void requiredWithAllowListFailsWhenEmpty()
 	{
-		Map<Slot, WornItem> worn = fullOutfit("magic shortbow", false);
-		worn.remove(Slot.WEAPON);
-		List<String> failed = evaluator.evaluate(runningLoadout(), worn, ALL_SLOTS);
-		assertEquals(Arrays.asList("run-weapon", "run-bow"), failed);
+		Loadout loadout = loadoutOf(
+			new Requirement(Slot.WEAPON, true, Collections.singletonList(SHORTBOW_ID)));
+		List<String> failed = evaluator.evaluate(loadout, Collections.emptyMap(), ALL_SLOTS);
+		assertEquals(Collections.singletonList("WEAPON"), failed);
 	}
 
 	@Test
-	public void missingHelmFails()
+	public void optionalWithAllowListPassesWhenEmpty()
 	{
-		Map<Slot, WornItem> worn = fullOutfit("magic shortbow", false);
-		worn.remove(Slot.HEAD);
-		assertEquals(Collections.singletonList("run-helm"), evaluator.evaluate(runningLoadout(), worn, ALL_SLOTS));
+		// required=false: not wearing anything there is fine.
+		Loadout loadout = loadoutOf(
+			new Requirement(Slot.CAPE, false, Collections.singletonList(999)));
+		assertTrue(evaluator.evaluate(loadout, Collections.emptyMap(), ALL_SLOTS).isEmpty());
 	}
 
 	@Test
-	public void missingLegsFails()
+	public void optionalWithAllowListStillFailsOnDisallowedItemIfWorn()
 	{
-		Map<Slot, WornItem> worn = fullOutfit("magic shortbow", false);
-		worn.remove(Slot.LEGS);
-		assertEquals(Collections.singletonList("run-legs"), evaluator.evaluate(runningLoadout(), worn, ALL_SLOTS));
+		// required=false, but if they DO wear something there, it must match.
+		Loadout loadout = loadoutOf(
+			new Requirement(Slot.CAPE, false, Collections.singletonList(999)));
+		List<String> failed = evaluator.evaluate(loadout, worn(Slot.CAPE, 1), ALL_SLOTS);
+		assertEquals(Collections.singletonList("CAPE"), failed);
 	}
 
 	@Test
-	public void missingBootsFails()
+	public void unrestrictedSlotNeverFails()
 	{
-		Map<Slot, WornItem> worn = fullOutfit("magic shortbow", false);
-		worn.remove(Slot.BOOTS);
-		assertEquals(Collections.singletonList("run-boots"), evaluator.evaluate(runningLoadout(), worn, ALL_SLOTS));
-	}
-
-	@Test
-	public void missingNecklaceFails()
-	{
-		Map<Slot, WornItem> worn = fullOutfit("magic shortbow", false);
-		worn.remove(Slot.AMULET);
-		assertEquals(Collections.singletonList("run-neck"), evaluator.evaluate(runningLoadout(), worn, ALL_SLOTS));
+		// No Requirement for a slot at all = never checked, regardless of worn().
+		Loadout loadout = loadoutOf(new Requirement(Slot.HEAD, true, Collections.emptyList()));
+		assertTrue(evaluator.evaluate(loadout, worn(Slot.LEGS, 1), ALL_SLOTS).contains("HEAD"));
+		assertTrue(evaluator.evaluate(loadout, worn(Slot.HEAD, 1), ALL_SLOTS).isEmpty());
 	}
 
 	@Test
 	public void ringAndAmmoRequirementsSkippedWhenNotVisible()
 	{
-		Loadout loadoutWithRingReq = new Loadout(3, "Test", LoadoutContext.RUNNING, Arrays.asList(
-			new Requirement("has-ring", "Missing ring", Slot.RING, Check.FILLED, Collections.emptyList(), null),
-			new Requirement("has-ammo", "Missing ammo", Slot.AMMO, Check.FILLED, Collections.emptyList(), null)
-		));
+		Loadout loadout = loadoutOf(
+			new Requirement(Slot.RING, true, Collections.emptyList()),
+			new Requirement(Slot.AMMO, true, Collections.emptyList()));
 		Set<Slot> visibleToObservers = EnumSet.complementOf(EnumSet.of(Slot.RING, Slot.AMMO));
 
 		// Nothing is worn at all, including no ring/ammo - if these requirements
 		// were evaluated they would fail, but restricted visibility must skip them.
-		List<String> failed = evaluator.evaluate(loadoutWithRingReq, Collections.emptyMap(), visibleToObservers);
+		List<String> failed = evaluator.evaluate(loadout, Collections.emptyMap(), visibleToObservers);
 		assertTrue("RING/AMMO requirements must be skipped, not failed, when not visible: " + failed, failed.isEmpty());
 	}
 
 	@Test
-	public void ddLoadoutFailsOnNonBowWeapon()
+	public void multipleFailuresReportedInOrder()
 	{
-		assertEquals(Collections.singletonList("dd-bow"),
-			evaluator.evaluate(ddLoadout(), fullOutfit("dragon claws", false), ALL_SLOTS));
-	}
-
-	@Test
-	public void ddLoadoutPassesOnBow()
-	{
-		assertTrue(evaluator.evaluate(ddLoadout(), fullOutfit("magic shortbow", false), ALL_SLOTS).isEmpty());
+		Loadout loadout = loadoutOf(
+			new Requirement(Slot.WEAPON, true, Collections.emptyList()),
+			new Requirement(Slot.HEAD, true, Collections.emptyList()));
+		List<String> failed = evaluator.evaluate(loadout, Collections.emptyMap(), ALL_SLOTS);
+		assertEquals(Arrays.asList("WEAPON", "HEAD"), failed);
 	}
 }

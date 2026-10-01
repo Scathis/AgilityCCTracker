@@ -1,7 +1,7 @@
 import datetime as dt
 import enum
 
-from sqlalchemy import JSON, Boolean, DateTime, Enum, ForeignKey, Integer, String, UniqueConstraint
+from sqlalchemy import JSON, Boolean, DateTime, Enum, ForeignKey, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base
@@ -29,20 +29,22 @@ class Loadout(Base):
 
 
 class LoadoutRequirement(Base):
+    """One slot's rule within a loadout - at most one row per (loadout_id,
+    slot), since the interactive "build a runner loadout" character-sheet
+    editor works per-slot, not per arbitrary named rule. Semantics (how
+    required/allowed_item_ids combine - required-any-item,
+    required-from-list, optional-but-restricted-if-worn, or no row at all
+    meaning unrestricted) are defined by the plugin's LoadoutEvaluator,
+    which is the actual source of truth for evaluation."""
+
     __tablename__ = "loadout_requirements"
-    __table_args__ = (
-        UniqueConstraint("loadout_id", "req_key", name="uq_loadout_requirements_key"),
-    )
+    __table_args__ = (UniqueConstraint("loadout_id", "slot", name="uq_loadout_requirements_slot"),)
 
     id: Mapped[int] = mapped_column(primary_key=True)
     loadout_id: Mapped[int] = mapped_column(ForeignKey("loadouts.id"), index=True)
-    req_key: Mapped[str] = mapped_column(String(64))
-    label: Mapped[str] = mapped_column(String(255))
     slot: Mapped[str] = mapped_column(String(32))
-    check_type: Mapped[str] = mapped_column(String(32))
-    args: Mapped[list | None] = mapped_column(JSON, nullable=True)
-    when_json: Mapped[dict | None] = mapped_column(JSON, nullable=True)
-    sort: Mapped[int] = mapped_column(Integer, default=0)
+    required: Mapped[bool] = mapped_column(Boolean, default=False)
+    allowed_item_ids: Mapped[list | None] = mapped_column(JSON, nullable=True)
 
 
 class LoadoutCheck(Base):

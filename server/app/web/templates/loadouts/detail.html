@@ -1,57 +1,79 @@
 {% extends "base.html" %}
 {% block title %}{{ loadout.name }}{% endblock %}
 {% block content %}
+<style>
+  .equipment-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(100px, 140px));
+    grid-template-areas:
+      ".    head   ."
+      "cape neck   ammo"
+      "weapon body shield"
+      ".    legs   ."
+      "hands boots ring";
+    gap: 0.5rem;
+    justify-content: center;
+    margin: 1.5rem 0;
+  }
+  .slot-HEAD   { grid-area: head; }
+  .slot-CAPE   { grid-area: cape; }
+  .slot-AMULET { grid-area: neck; }
+  .slot-AMMO   { grid-area: ammo; }
+  .slot-WEAPON { grid-area: weapon; }
+  .slot-TORSO  { grid-area: body; }
+  .slot-SHIELD { grid-area: shield; }
+  .slot-LEGS   { grid-area: legs; }
+  .slot-HANDS  { grid-area: hands; }
+  .slot-BOOTS  { grid-area: boots; }
+  .slot-RING   { grid-area: ring; }
+
+  .slot-card {
+    background: var(--pico-card-background-color);
+    border: 1px solid var(--pico-muted-border-color);
+    border-radius: var(--pico-border-radius);
+    padding: 0.4rem;
+    margin: 0;
+  }
+  .slot-card summary {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 0.2rem;
+    min-height: 3.2rem;
+    justify-content: center;
+  }
+  .slot-summary-label { font-size: 0.75rem; opacity: 0.75; }
+  .slot-icons { display: flex; gap: 2px; flex-wrap: wrap; justify-content: center; }
+  .slot-placeholder { font-size: 0.8rem; }
+  .slot-placeholder.muted { opacity: 0.5; }
+  .slot-badge {
+    font-size: 0.65rem;
+    background: var(--pico-primary);
+    color: var(--pico-primary-inverse);
+    border-radius: 999px;
+    padding: 0 0.4rem;
+  }
+  .item-icon { width: 28px; height: 28px; object-fit: contain; }
+  .item-icon-sm { width: 20px; height: 20px; object-fit: contain; vertical-align: middle; }
+  .slot-more { font-size: 0.7rem; align-self: center; }
+  .slot-editor { margin-top: 0.5rem; text-align: left; }
+  .allowed-item-list { list-style: none; padding: 0; margin: 0.3rem 0; }
+  .allowed-item-list li { display: flex; align-items: center; gap: 0.3rem; font-size: 0.8rem; margin-bottom: 0.2rem; }
+  .slot-remove-btn { padding: 0 0.4rem; line-height: 1; margin-left: auto; }
+  .item-search-results { list-style: none; padding: 0; margin: 0.3rem 0; max-height: 200px; overflow-y: auto; }
+  .item-search-result { display: flex; align-items: center; gap: 0.4rem; width: 100%; text-align: left; padding: 0.3rem 0.5rem; font-size: 0.8rem; }
+</style>
+
 <h2>{{ loadout.name }} ({{ loadout.context.value }})</h2>
 <p><a href="/loadouts">&larr; Back to loadouts</a></p>
-<table>
-  <thead><tr><th>Key</th><th>Label</th><th>Slot</th><th>Check</th><th>Args</th><th>Conditional?</th><th></th></tr></thead>
-  <tbody>
-    {% for r in requirements %}
-    <tr>
-      <td>{{ r.req_key }}</td><td>{{ r.label }}</td><td>{{ r.slot }}</td><td>{{ r.check_type }}</td>
-      <td>{{ r.args|join(", ") if r.args else "—" }}</td>
-      <td>{{ "yes" if r.when_json else "—" }}</td>
-      <td>
-        {% if user.role.value in ("staff", "admin") %}
-        <form method="post" action="/loadouts/{{ loadout.id }}/requirements/{{ r.id }}/delete" style="display:inline">
-          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-          <button type="submit" class="secondary">Delete</button>
-        </form>
-        {% endif %}
-      </td>
-    </tr>
-    {% endfor %}
-  </tbody>
-</table>
+<p><small>Click a slot to set whether it's required and which items are allowed there. A slot with nothing configured is unrestricted (anything goes).</small></p>
 
-{% if user.role.value in ("staff", "admin") %}
-<h3>Add requirement</h3>
-<p><small>Conditional ("when") requirements aren't editable here - create those via the CLI/seed data.</small></p>
-<form method="post" action="/loadouts/{{ loadout.id }}/requirements">
-  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-  <label for="req_key">Key<input type="text" id="req_key" name="req_key" required></label>
-  <label for="label">Label<input type="text" id="label" name="label" required></label>
-  <label for="slot">Slot
-    <select id="slot" name="slot" required>
-      {% for s in ["HEAD","CAPE","AMULET","WEAPON","TORSO","SHIELD","LEGS","HANDS","BOOTS","RING","AMMO"] %}
-      <option value="{{ s }}">{{ s }}</option>
-      {% endfor %}
-    </select>
-  </label>
-  <label for="check_type">Check
-    <select id="check_type" name="check_type" required>
-      {% for c in ["FILLED","EMPTY","NAME_ENDS_WITH","NAME_NOT_ENDS_WITH","ITEM_IN","ITEM_NOT_IN"] %}
-      <option value="{{ c }}">{{ c }}</option>
-      {% endfor %}
-    </select>
-  </label>
-  <label for="args">Args (comma-separated name suffixes or item ids)<input type="text" id="args" name="args"></label>
-  <label for="sort">Sort order<input type="number" id="sort" name="sort" value="0"></label>
-  <button type="submit">Add</button>
-</form>
-
-<h3>Item search</h3>
-<input type="search" name="q" placeholder="Search items by name..." hx-get="/items/search" hx-trigger="keyup changed delay:300ms" hx-target="#item-results">
-<div id="item-results"></div>
-{% endif %}
+<div class="equipment-grid">
+  {% for s in slots %}
+  {% with slot=s.slot, required=s.required, allowed_items=s.allowed_items, can_edit=s.can_edit, loadout_id=loadout.id %}
+  {% include "loadouts/_slot.html" with context %}
+  {% endwith %}
+  {% endfor %}
+</div>
 {% endblock %}

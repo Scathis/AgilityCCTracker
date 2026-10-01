@@ -8,12 +8,9 @@ class ActiveEventOut(BaseModel):
 
 
 class RequirementOut(BaseModel):
-    id: str
-    label: str
     slot: str
-    check: str
-    args: list[str]
-    when: dict | None = None
+    required: bool
+    allowed_item_ids: list[int]
 
 
 class LoadoutOut(BaseModel):
