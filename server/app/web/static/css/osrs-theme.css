@@ -62,19 +62,47 @@
   --pico-h4-color: #362c1b;
   --pico-h5-color: #4a3c25;
   --pico-h6-color: #4a3c25;
+
+  /* Pico's native-control/popup colors default to blue-grey/white and
+   * aren't covered by the vars above - these are what was still showing
+   * through as "the blues and solid white" on checkboxes, <select>
+   * dropdown popups, and toggle switches. */
+  --pico-dropdown-background-color: #ddc48f;
+  --pico-dropdown-border-color: #6b4a24;
+  --pico-dropdown-hover-background-color: #cdb278;
+  --pico-dropdown-color: var(--pico-color);
+  --pico-switch-background-color: #a98a56;
+  --pico-switch-color: #fdf6e3;
+  --pico-switch-checked-background-color: var(--pico-primary-background);
+  --pico-code-background-color: #ddc48f;
+  --pico-code-color: #5a4a2f;
+
+  /* Native checkbox/radio/range tint - without this they render in the
+   * browser's own default blue regardless of every variable above, since
+   * accent-color is a separate mechanism Pico doesn't set for you. */
+  accent-color: var(--pico-primary);
 }
 
 body {
   background: var(--pico-background-color);
 }
 
-/* RuneScape display font for headings and the nav bar only - body text,
- * tables and form inputs stay on Pico's own readable sans-serif, per the
- * plan ("a fully-runescape_uf table would hurt readability at this data
- * density"). */
+/* Native <select> dropdown popups are rendered by the browser/OS itself in
+ * some browsers and can't be fully recolored via CSS - the closed select
+ * box follows the theme correctly (--pico-form-element-background-color
+ * above), but the opened options list may still show your browser's
+ * native white/grey styling. This is a real platform limitation, not
+ * something left unstyled by accident. */
+
+/* RuneScape display font for headings, the nav bar, and the per-slot
+ * equipment labels (e.g. "Weapon") - body text, tables and form inputs
+ * stay on Pico's own readable sans-serif, per the plan ("a fully-
+ * runescape_uf table would hurt readability at this data density"). */
 h1, h2, h3, h4, h5, h6,
 body > nav strong,
-body > nav a {
+body > nav a,
+.slot-summary-label,
+.slot-badge {
   font-family: "RuneScape", var(--pico-font-family);
   letter-spacing: 0.02em;
 }

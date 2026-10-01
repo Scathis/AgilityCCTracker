@@ -1346,3 +1346,50 @@ that the new stylesheet (200), both font files (200 each), and the
 visual result** - no browser available in this environment, so the real
 "does it look right" check is the owner's own, same as every other UI
 change in this project that needed eyes on a real page.
+
+## Phase 8 follow-up: real feedback from actually looking at it
+
+Owner's first look: the per-slot equipment labels (e.g. "Weapon") weren't
+in the RuneScape font, and "the blues and solid white background don't
+look nice for the lower section."
+
+**Font gap:** `.slot-summary-label`/`.slot-badge` are plain `<div>`/`<span>`
+elements, not headings, so the original CSS (scoped to `h1-h6` + nav)
+never reached them. Added to the font-family selector list.
+
+**Blue/white gap - re-audited Pico's variable list properly this time**
+(fetched the actual light-theme color block in full rather than the
+sampled subset from the first pass) and found several real backgrounds
+still defaulting to Pico's stock colors that nothing in the first pass
+touched: `--pico-dropdown-background-color` (`#fff` - native `<select>`
+closed-box styling and Pico's own dropdown component), `--pico-switch-*`
+(blue-grey toggle switches), `--pico-code-background-color`. None of
+these are reachable by overriding `--pico-primary`/`--pico-card-*` alone
+- they're separate variable families. Also added `accent-color:
+var(--pico-primary)`, since native checkbox/radio tint is a completely
+separate CSS mechanism Pico doesn't touch for you at all - every
+checkbox on the site (loadout "required" toggles, settings toggles) was
+rendering in the browser's own default blue regardless of every other
+variable set. **Documented one real, unfixable-via-CSS limitation**: an
+opened native `<select>` dropdown's options list is rendered natively by
+some browsers and can't be fully recolored by any amount of CSS - noted
+in the stylesheet itself so this isn't re-investigated as a bug later.
+
+**Real infrastructure bug found while verifying this fix:** deployed
+correctly, confirmed the container had the right file content, but the
+site kept serving the *old* CSS through Cloudflare - its edge cache was
+serving a stale cached copy of the stylesheet at the same URL, even
+though the origin was already updated. Confirmed by comparing the
+container's own file content (updated) against what Cloudflare was
+actually returning (stale) at the identical URL. Fixed properly rather
+than one-off purging the cache: added `asset_version`
+(`app/web/templating.py`, a Jinja global, currently `2`) appended as
+`?v=N` to every vendored CSS/JS link in `base.html`. Bumping that number
+on any future static-asset change gives Cloudflare (and browsers) a
+genuinely new URL to fetch, sidestepping the need for a manual cache
+purge every time - this will otherwise silently bite every future CSS/JS
+tweak to this dashboard, not just this one.
+
+Verified: the versioned URL (`?v=2`) returns the updated CSS through
+Cloudflare immediately, confirmed against the container's actual file
+content. 80 server tests still passing.
