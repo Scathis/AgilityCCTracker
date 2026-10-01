@@ -56,6 +56,15 @@ Should cover, explicitly:
   on tile, whether they kept running, whether their DD loadout failed —
   never coordinates or raw gear), with a server-side `observer_enabled`
   kill switch the FC owner controls independent of any plugin update.
+- **Scope is physically bounded, not just logically bounded.**
+  `FcMemberScanner` doesn't just limit *what* it uploads about other
+  players (gap keys, not raw gear) — it refuses to scan anyone at all
+  unless the reporting player is themselves standing inside the
+  Wilderness Agility Course region (confirmed deliberately kept strict
+  2026-10-01, not loosened to "nearby" even though that would have made
+  in-game testing marginally more convenient). A player a world away, or
+  even just outside the course boundary, is invisible to this plugin —
+  there's no way to use it as a general-purpose "who's near me" scanner.
 
 ## 5. After submission
 
