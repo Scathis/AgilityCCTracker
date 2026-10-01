@@ -1,5 +1,10 @@
-"""Items background worker - BUILD_PLAN.md §6.6. Daily: fetch the OSRS Wiki
-Real-time Prices API's mapping + latest prices, upsert into `items`.
+"""Items background worker. Daily: fetch the OSRS Wiki's item mapping
+(id/name only) and upsert into `items`, which the loadout picker's item
+search runs against. Deliberately never fetches or stores prices (dropped
+by owner request 2026-10-01 - both unused dead weight and a Plugin Hub
+approval risk, see docs/BUILD_LOG.md): a gear/risk-value calculator reads
+as a tool for identifying high-value PK targets, which this project
+specifically does not want to be.
 """
 
 import asyncio
@@ -16,63 +21,41 @@ from app.models.item import Item
 logger = logging.getLogger(__name__)
 
 MAPPING_URL = "https://prices.runescape.wiki/api/v1/osrs/mapping"
-LATEST_URL = "https://prices.runescape.wiki/api/v1/osrs/latest"
 POLL_INTERVAL_S = 24 * 3600
 
 
-def merge_item_data(mapping: list[dict], latest: dict) -> list[dict]:
-    """Pure - combines the mapping (id/name/highalch) with latest (high
-    price) into upsert-ready dicts."""
-    prices = latest.get("data", {})
+def parse_item_mapping(mapping: list[dict]) -> list[dict]:
+    """Pure - just the id/name pairs, dropping everything else the mapping
+    API returns (including the highalch/price-adjacent fields)."""
     result = []
     for entry in mapping:
         item_id = entry.get("id")
         if item_id is None:
             continue
-        price_entry = prices.get(str(item_id)) or {}
-        result.append(
-            {
-                "id": item_id,
-                "name": entry.get("name", ""),
-                "ge_price": price_entry.get("high"),
-                "ha_value": entry.get("highalch"),
-            }
-        )
+        result.append({"id": item_id, "name": entry.get("name", "")})
     return result
 
 
-async def fetch_and_merge() -> list[dict]:
+async def fetch_items() -> list[dict]:
     async with httpx.AsyncClient(
         timeout=30.0, headers={"User-Agent": settings.user_agent}
     ) as client:
-        mapping_response = await client.get(MAPPING_URL)
-        mapping_response.raise_for_status()
-        latest_response = await client.get(LATEST_URL)
-        latest_response.raise_for_status()
-    return merge_item_data(mapping_response.json(), latest_response.json())
+        response = await client.get(MAPPING_URL)
+        response.raise_for_status()
+    return parse_item_mapping(response.json())
 
 
 async def run_once() -> None:
-    items = await fetch_and_merge()
+    items = await fetch_items()
     now = dt.datetime.utcnow()
     async with async_session_factory() as session:
         for entry in items:
             result = await session.execute(select(Item).where(Item.id == entry["id"]))
             existing = result.scalar_one_or_none()
             if existing is None:
-                session.add(
-                    Item(
-                        id=entry["id"],
-                        name=entry["name"],
-                        ge_price=entry["ge_price"],
-                        ha_value=entry["ha_value"],
-                        updated_at=now,
-                    )
-                )
+                session.add(Item(id=entry["id"], name=entry["name"], updated_at=now))
             else:
                 existing.name = entry["name"]
-                existing.ge_price = entry["ge_price"]
-                existing.ha_value = entry["ha_value"]
                 existing.updated_at = now
         await session.commit()
 

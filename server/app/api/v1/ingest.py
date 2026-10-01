@@ -149,8 +149,6 @@ async def _process_self(
         or latest.combat_level != self_state.combat_level
         or latest.skills != self_state.skills
         or latest.equipment != equipment
-        or latest.gear_value != self_state.gear_value
-        or latest.risk_value != self_state.risk_value
     )
     if changed:
         snapshot = PlayerSnapshot(
@@ -161,8 +159,6 @@ async def _process_self(
             combat_level=self_state.combat_level,
             skills=self_state.skills,
             equipment=equipment,
-            gear_value=self_state.gear_value,
-            risk_value=self_state.risk_value,
         )
         session.add(snapshot)
         await session.flush()

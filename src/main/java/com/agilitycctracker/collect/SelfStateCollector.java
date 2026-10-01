@@ -11,7 +11,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import javax.inject.Inject;
 import javax.inject.Singleton;
@@ -23,7 +22,6 @@ import net.runelite.api.Skill;
 import net.runelite.api.events.ItemContainerChanged;
 import net.runelite.api.gameval.InventoryID;
 import net.runelite.api.gameval.ItemID;
-import net.runelite.client.game.ItemManager;
 
 /**
  * Tracks the local player's own state (skills, gear, wilderness level, etc.)
@@ -43,9 +41,6 @@ public class SelfStateCollector
 	private Client client;
 
 	@Inject
-	private ItemManager itemManager;
-
-	@Inject
 	private WildyLevelReader wildyLevelReader;
 
 	@Inject
@@ -55,8 +50,6 @@ public class SelfStateCollector
 
 	private final AtomicReference<Map<String, Integer>> skills = new AtomicReference<>();
 	private final AtomicReference<List<EquipmentItem>> equipment = new AtomicReference<>();
-	private final AtomicLong gearValue = new AtomicLong();
-	private final AtomicLong riskValue = new AtomicLong();
 	private final AtomicInteger wildyTicketCount = new AtomicInteger();
 	private final AtomicInteger world = new AtomicInteger();
 	private final AtomicReference<Integer> wildyLevel = new AtomicReference<>();
@@ -87,7 +80,7 @@ public class SelfStateCollector
 		}
 		else if (event.getContainerId() == InventoryID.INV)
 		{
-			updateRiskAndTickets();
+			updateTicketCount();
 			refresh();
 		}
 	}
@@ -96,7 +89,6 @@ public class SelfStateCollector
 	{
 		ItemContainer worn = client.getItemContainer(InventoryID.WORN);
 		List<EquipmentItem> items = new ArrayList<>();
-		long value = 0;
 		if (worn != null)
 		{
 			Item[] contents = worn.getItems();
@@ -108,34 +100,25 @@ public class SelfStateCollector
 					continue;
 				}
 				items.add(new EquipmentItem(slot, item.getId(), item.getQuantity()));
-				value += (long) itemManager.getItemPrice(item.getId()) * item.getQuantity();
 			}
 		}
 		equipment.set(Collections.unmodifiableList(items));
-		gearValue.set(value);
 	}
 
-	private void updateRiskAndTickets()
+	private void updateTicketCount()
 	{
 		ItemContainer inv = client.getItemContainer(InventoryID.INV);
-		long invValue = 0;
 		int tickets = 0;
 		if (inv != null)
 		{
 			for (Item item : inv.getItems())
 			{
-				if (item == null || item.getId() <= 0)
-				{
-					continue;
-				}
-				invValue += (long) itemManager.getItemPrice(item.getId()) * item.getQuantity();
-				if (item.getId() == WILDY_TICKET_ITEM_ID)
+				if (item != null && item.getId() == WILDY_TICKET_ITEM_ID)
 				{
 					tickets += item.getQuantity();
 				}
 			}
 		}
-		riskValue.set(gearValue.get() + invValue);
 		wildyTicketCount.set(tickets);
 	}
 
@@ -188,8 +171,6 @@ public class SelfStateCollector
 		if (config.shareGear())
 		{
 			builder.equipment(equipment.get());
-			builder.gearValue(gearValue.get());
-			builder.riskValue(riskValue.get());
 		}
 		return builder.build();
 	}
@@ -218,8 +199,6 @@ public class SelfStateCollector
 	{
 		skills.set(null);
 		equipment.set(null);
-		gearValue.set(0);
-		riskValue.set(0);
 		wildyTicketCount.set(0);
 		world.set(0);
 		wildyLevel.set(null);

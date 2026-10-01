@@ -76,7 +76,7 @@ public interface AgilityCCTrackerConfig extends Config
 	@ConfigItem(
 		keyName = "shareGear",
 		name = "Share gear",
-		description = "Upload your own worn items and gear/risk value",
+		description = "Upload your own worn items",
 		section = sharingSection,
 		position = 1
 	)

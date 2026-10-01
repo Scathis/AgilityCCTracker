@@ -20,10 +20,6 @@ MIN_LAP_TIME_MS = 30_000
 # the ticket count settles, but nothing else is physically possible.
 MAX_TICKETS_PER_LAP = 1
 
-# OSRS's own classic 32-bit cash-stack ceiling - a real, generous upper
-# bound on a value/risk figure, not a guessed one.
-MAX_GP_VALUE = 2_147_483_647
-
 Rsn = Annotated[str, Field(max_length=RSN_MAX_LENGTH)]
 
 
@@ -38,8 +34,6 @@ class SelfStateIn(BaseModel):
     combat_level: int | None = None
     skills: dict[str, int] | None = None
     equipment: list[EquipmentItemIn] | None = None
-    gear_value: int | None = Field(default=None, ge=0, le=MAX_GP_VALUE)
-    risk_value: int | None = Field(default=None, ge=0, le=MAX_GP_VALUE)
     wildy_level: int | None = None
     on_course: bool | None = None
     skulled: bool | None = None

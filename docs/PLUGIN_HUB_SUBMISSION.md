@@ -35,7 +35,7 @@ this build).
    ```
    repository=https://github.com/Scathis/AgilityCCTracker.git
    commit=<full 40-char commit sha to submit>
-   warning=This plugin sends your RSN, stats, worn equipment, inventory value, wilderness agility laps and deaths, the names, ranks and worlds of members of the configured friends chat, whether nearby friends chat members meet the chat's required loadout and whether they are on the chat's DD tiles during a DD call, and your IP address to a server not controlled or verified by the RuneLite developers.
+   warning=This plugin sends your RSN, stats, worn equipment, wilderness agility laps and deaths, the names, ranks and worlds of members of the configured friends chat, whether nearby friends chat members meet the chat's required loadout and whether they are on the chat's DD tiles during a DD call, and your IP address to a server not controlled or verified by the RuneLite developers.
    ```
 
 ## 4. PR description
@@ -43,10 +43,10 @@ this build).
 Should cover, explicitly:
 
 - The **gaps-only loadout design** — other players' loadout compliance is
-  reported as which named requirements they failed (e.g.
-  `run-xbow-shield`), never their actual worn items. Reference the
-  `rogue-chests` plugin as an existing Hub precedent for "reads other
-  players, uploads only a derived signal, not raw data."
+  reported as which named slots they failed (e.g. `"WEAPON"`), never
+  their actual worn items. Reference the `rogue-chests` plugin as an
+  existing Hub precedent for "reads other players, uploads only a
+  derived signal, not raw data."
 - That exactly **one class** (`scan/FcMemberScanner`) ever reads other
   players' state — this is enforced by the §5.11 grep checks, not just
   convention.
@@ -65,6 +65,14 @@ Should cover, explicitly:
   in-game testing marginally more convenient). A player a world away, or
   even just outside the course boundary, is invisible to this plugin —
   there's no way to use it as a general-purpose "who's near me" scanner.
+- **No gear/risk value calculation, deliberately.** An earlier version
+  computed each player's own worn-gear GP value and total at-risk value
+  (self only, never other players) for a possible future dashboard
+  display that was never actually built. Removed entirely 2026-10-01,
+  before ever being used for anything - a tool that estimates how much
+  GP someone is carrying reads as PK-target reconnaissance regardless of
+  intent, and this project has no legitimate use for it worth that
+  optics risk.
 
 ## 5. After submission
 

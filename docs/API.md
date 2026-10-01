@@ -44,7 +44,7 @@ every 60s (and once on startup / config change) and caches it.
       "name": "Running",
       "context": "RUNNING",
       "requirements": [
-        {"id": "run-weapon", "label": "No weapon in hand", "slot": "WEAPON", "check": "FILLED", "args": [], "when": null}
+        {"slot": "WEAPON", "required": true, "allowed_item_ids": [841, 839]}
       ]
     }
   ],
@@ -68,7 +68,17 @@ case-insensitively.
 
 The plugin sends one of these every 2 seconds (fields omitted when nothing
 in that section has changed — if only `rsn` would remain, the plugin skips
-sending entirely):
+sending entirely). `course_sightings` is the one exception: it's sent on
+*every* cycle regardless of whether anything else changed, since it's a
+live heartbeat (self + any FC members currently observed in the course
+area) that keeps attendance sessions from auto-timing out — see
+`workers/attendance_timeout_worker.py`.
+
+Note what's deliberately **not** here: no GP value of any kind (gear
+value, risk value) is ever collected or sent, for self or anyone else —
+removed entirely as a Plugin Hub approval risk (a tool estimating how
+much GP someone is carrying reads as PK-target reconnaissance regardless
+of intent).
 
 ```json
 {
@@ -79,17 +89,16 @@ sending entirely):
     "combat_level": 98,
     "skills": {"attack": 13034431},
     "equipment": [{"slot": 3, "id": 861, "qty": 1}],
-    "gear_value": 123456,
-    "risk_value": 234567,
     "wildy_level": 52,
     "on_course": true,
     "skulled": false,
-    "loadout_failed": ["run-helm"]
+    "loadout_failed": ["HEAD"]
   },
   "laps": [{"lap_count": 1234, "completed_at": 1727190000000, "lap_time_ms": 61200, "tickets_gained": 1}],
   "deaths": [{"died_at": 1727190000000, "world": 330, "wildy_level": 52}],
   "roster": {"ts": 1727190000000, "members": [{"name": "A", "rank": 0, "world": 330}]},
-  "loadout_checks": [{"rsn": "B", "loadout_id": 1, "failed": ["run-bow"], "ts": 1727190000000}],
+  "loadout_checks": [{"rsn": "B", "loadout_id": 1, "failed": ["WEAPON"], "ts": 1727190000000}],
+  "course_sightings": ["Player Name", "B"],
   "dd": {
     "called_at": 1727190000000,
     "broken_at": null,

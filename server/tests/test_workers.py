@@ -2,7 +2,7 @@ import datetime as dt
 
 from app.workers.attendance_timeout_worker import TIMEOUT_S, should_close
 from app.workers.hiscores_worker import compute_combat_level, parse_hiscores_json
-from app.workers.items_worker import merge_item_data
+from app.workers.items_worker import parse_item_mapping
 
 
 def test_should_close_at_exactly_timeout_stays_open():
@@ -69,24 +69,22 @@ def test_compute_combat_level_missing_skills_default_to_level_1():
     assert compute_combat_level({}) == 1
 
 
-def test_merge_item_data_combines_mapping_and_price():
+def test_parse_item_mapping_extracts_id_and_name_only():
     mapping = [
         {"id": 4151, "name": "Abyssal whip", "highalch": 72000},
         {"id": 995, "name": "Coins", "highalch": 0},
     ]
-    latest = {"data": {"4151": {"high": 2500000, "low": 2450000}}}
+    parsed = parse_item_mapping(mapping)
 
-    merged = merge_item_data(mapping, latest)
-
-    whip = next(item for item in merged if item["id"] == 4151)
-    assert whip["name"] == "Abyssal whip"
-    assert whip["ge_price"] == 2500000
-    assert whip["ha_value"] == 72000
-
-    coins = next(item for item in merged if item["id"] == 995)
-    assert coins["ge_price"] is None
+    assert parsed == [
+        {"id": 4151, "name": "Abyssal whip"},
+        {"id": 995, "name": "Coins"},
+    ]
+    # No price/value fields survive the parse - deliberately dropped.
+    assert "highalch" not in parsed[0]
+    assert "ge_price" not in parsed[0]
 
 
-def test_merge_item_data_skips_entries_with_no_id():
-    merged = merge_item_data([{"name": "Broken entry"}], {"data": {}})
-    assert merged == []
+def test_parse_item_mapping_skips_entries_with_no_id():
+    parsed = parse_item_mapping([{"name": "Broken entry"}])
+    assert parsed == []

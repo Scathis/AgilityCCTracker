@@ -1,7 +1,7 @@
 import datetime as dt
 import enum
 
-from sqlalchemy import JSON, BigInteger, Boolean, DateTime, Enum, ForeignKey, Integer, String
+from sqlalchemy import JSON, Boolean, DateTime, Enum, ForeignKey, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base
@@ -38,5 +38,3 @@ class PlayerSnapshot(Base):
     combat_level: Mapped[int | None] = mapped_column(Integer, nullable=True)
     skills: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     equipment: Mapped[list | None] = mapped_column(JSON, nullable=True)
-    gear_value: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
-    risk_value: Mapped[int | None] = mapped_column(BigInteger, nullable=True)

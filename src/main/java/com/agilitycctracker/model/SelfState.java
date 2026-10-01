@@ -19,8 +19,6 @@ public class SelfState
 	Integer combatLevel;
 	Map<String, Integer> skills;
 	List<EquipmentItem> equipment;
-	Long gearValue;
-	Long riskValue;
 	Integer wildyLevel;
 	Boolean onCourse;
 	Boolean skulled;

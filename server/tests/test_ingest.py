@@ -420,10 +420,3 @@ async def test_more_than_one_ticket_per_lap_rejected_with_422(client, fc_group):
     }
     response = await client.post("/api/v1/ingest", json=payload, headers=_headers(token))
     assert response.status_code == 422
-
-
-async def test_negative_gear_value_rejected_with_422(client, fc_group):
-    _, token = fc_group
-    payload = {"rsn": _rsn(), "self": {"gear_value": -1}}
-    response = await client.post("/api/v1/ingest", json=payload, headers=_headers(token))
-    assert response.status_code == 422

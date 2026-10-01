@@ -69,9 +69,7 @@ async def test_staff_can_add_and_remove_an_allowed_item(
     csrf = login_as(staff)
     loadout = await _get_running_loadout(db_session, default_group)
 
-    item = Item(
-        id=841, name="Magic shortbow", ge_price=1000, ha_value=100, updated_at=dt.datetime.utcnow()
-    )
+    item = Item(id=841, name="Magic shortbow", updated_at=dt.datetime.utcnow())
     db_session.add(item)
     await db_session.commit()
 

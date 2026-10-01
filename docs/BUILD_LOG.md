@@ -1206,3 +1206,55 @@ whose current GE price (2.29 billion) exceeds the `ge_price` column's
 plain `INT` range (max ~2.147 billion). Pre-existing, unrelated to this
 feature - flagged to the owner to decide whether/when to fix (likely a
 one-line column-type change to `BIGINT`), not actioned here.
+
+## Removed all gear/risk value and item price tracking — done 2026-10-01
+
+Owner's response to the items-worker bug report above: "why would we need
+that for this plugin?" - a fair challenge. Checked before answering:
+**nothing in the app actually displays `items.ge_price`/`ha_value` or the
+plugin's own self-reported `gear_value`/`risk_value` anywhere** (verified
+by grep across every template/route, zero hits beyond the
+definitions themselves) - both were speculative scaffolding from the
+original build plan (§5.4/§6.6, a possible future "gear value" display
+that was never actually built), not live features. Owner's call: strip
+it all out entirely, both as dead-code cleanup and because a gear/risk
+value calculator is a real Plugin Hub approval risk regardless of
+whether it's ever displayed - it reads as PK-target reconnaissance
+tooling (identifying who's carrying the most GP) no matter the actual
+intent, which isn't a risk worth carrying for a feature nothing uses.
+
+**Plugin:** `SelfStateCollector` no longer injects RuneLite's
+`ItemManager` or computes any price sums - `updateWorn()`/
+`updateRiskAndTickets()` (renamed `updateTicketCount()`) now only build
+the equipment list and count wilderness agility tickets, the two things
+actually needed. `SelfState.gearValue`/`riskValue` fields removed.
+`shareGear`'s config description updated ("Upload your own worn items",
+dropping "and gear/risk value"). `./gradlew build`: 47/47 still green.
+
+**Server:** `PlayerSnapshot.gear_value`/`risk_value` and
+`Item.ge_price`/`ha_value` columns dropped (migration `04df333581b5`,
+pure column drops, no backfill concerns). `items_worker.py` rewritten to
+only fetch the OSRS Wiki's item **mapping** (id/name), dropping the
+`latest` prices endpoint call entirely - `merge_item_data` renamed
+`parse_item_mapping` to match what it actually does now. `SelfStateIn`
+schema and `_process_self()` no longer reference either value field.
+
+**Docs:** `PLUGIN_HUB_SUBMISSION.md`'s warning string no longer claims
+"inventory value" (no longer true), its stale `run-weapon`/`check`-style
+example updated to match the loadout redesign's actual current wire
+shape, and a new PR-description bullet explicitly calls out the removal
+as a deliberate Hub-approval consideration - worth the reviewers seeing
+this was actively considered, not just absent by accident. `API.md`'s
+ingest example likewise de-stale'd (dropped gear/risk value, fixed the
+`run-helm`/`run-bow` examples to the new slot-name convention, and
+documented `course_sightings` properly for the first time - it existed
+in code since the attendance-timeout feature but was never actually
+written up here).
+
+**Tests:** the one test that specifically validated `gear_value` bounds
+is gone along with the field itself (nothing meaningful left to assert).
+79 server tests passing (down from 80, as expected), 47 plugin tests
+still green. Backed up before deploying (pure column drops, but a real
+backup habit regardless of how low-risk a given migration looks).
+Verified post-deploy: columns gone, all 4662 existing items' names
+preserved untouched.
