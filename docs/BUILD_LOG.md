@@ -1297,3 +1297,52 @@ Verified live post-deploy: simulated the exact request HTMX now sends
 results come back, and confirmed `name="q"` is present on all 11
 rendered slots' inputs. 80 server tests passing (up one, the new
 regression test).
+
+## Phase 8 — OSRS-themed dashboard reskin — done 2026-10-01
+
+Implemented as scoped in `BUILD_PLAN.md`'s Phase 8: a theme-layer-only
+reskin (override Pico's own CSS custom properties, no template
+structure/route changes) rather than a framework rip-out.
+
+**Font decision:** the plan called for a RuneScape-style display font.
+Asked the owner: a properly-licensed open fantasy font (no ambiguity) vs.
+an unofficial community recreation of OSRS's actual interface font (used
+widely by fan tools, informal licensing). Owner chose the latter,
+initially reasoning the site "won't be publicly available" - corrected
+that this host *is* internet-reachable via Cloudflare Tunnel like every
+other service here (login only gates dashboard content, not static
+assets), but owner confirmed proceeding anyway given how obscure/
+unadvertised the hostname is and the font's established use throughout
+the OSRS tool community. **Sourced from RuneLite's own repo** (`runescape.ttf`/
+`runescape_bold.ttf`, bundled there for RuneLite's own OSRS-style text
+rendering) rather than an unverified random source - this plugin already
+depends on RuneLite itself, so it's a real, checkable provenance rather
+than a blind download. Fetched in the Dockerfile alongside every other
+vendored asset (htmx/pico/chart.js), not committed as binaries.
+
+**Theme:** parchment background (`#e8d5a8`)/dark-brown text, gold-brown
+(`#8b5e1f`) links and accents, lighter-parchment panels with a brown
+"carved" border and sharper corners (`--pico-border-radius: 3px`,
+OSRS interface chrome isn't rounded), the RuneScape font applied to
+headings and the nav bar only (body text/tables stay on Pico's own
+readable sans-serif - a dense loadout/DD-leaderboard table in a bitmap
+display font would hurt readability). Top nav restyled as a dark wood-
+brown bar with gold text, standing in for an OSRS interface tab bar.
+New file: `app/web/static/css/osrs-theme.css`, loaded in `base.html`
+right after `pico.min.css` so it only overrides, never fights, Pico's
+own structural CSS.
+
+**Verified real Pico variable names before writing overrides** (fetched
+Pico's actual non-minified source rather than guessing) - `--pico-primary`,
+`--pico-card-background-color`, `--pico-muted-color`,
+`--pico-form-element-border-color`, etc. Getting these wrong would mean
+the override silently does nothing, which is a very easy mistake to make
+blind.
+
+**Verification:** 80 server tests still passing (pure CSS/template
+change, no functional surface touched) and confirmed live post-deploy
+that the new stylesheet (200), both font files (200 each), and the
+`<link>` tag all serve/render correctly. **Could not verify the actual
+visual result** - no browser available in this environment, so the real
+"does it look right" check is the owner's own, same as every other UI
+change in this project that needed eyes on a real page.

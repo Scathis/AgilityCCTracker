@@ -1,0 +1,118 @@
+/* OSRS-themed reskin (BUILD_PLAN.md Phase 8). Loaded after pico.min.css -
+ * overrides Pico's own CSS custom properties rather than fighting its
+ * structural CSS, per the plan's "theme layer, not structure" approach.
+ * Fonts are RuneLite's own bundled OSRS-interface fonts (runescape.ttf /
+ * runescape_bold.ttf), fetched in the Dockerfile like every other vendored
+ * asset here - see server/Dockerfile.
+ */
+
+@font-face {
+  font-family: "RuneScape";
+  src: url("/static/vendor/fonts/runescape.ttf") format("truetype");
+  font-weight: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "RuneScape";
+  src: url("/static/vendor/fonts/runescape_bold.ttf") format("truetype");
+  font-weight: bold;
+  font-display: swap;
+}
+
+:root {
+  /* Parchment page background, dark-brown body text. */
+  --pico-background-color: #e8d5a8;
+  --pico-color: #2b2316;
+
+  /* Gold/bronze as the link + accent color, readable against parchment. */
+  --pico-primary: #8b5e1f;
+  --pico-primary-background: #8b5e1f;
+  --pico-primary-border: #6b4717;
+  --pico-primary-hover: #6b4717;
+  --pico-primary-hover-background: #6b4717;
+  --pico-primary-focus: rgba(139, 94, 31, 0.5);
+  --pico-primary-inverse: #fdf6e3;
+
+  /* Secondary (used for logout/delete-style buttons) - muted stone grey-brown. */
+  --pico-secondary: #6b5d4a;
+  --pico-secondary-background: #6b5d4a;
+  --pico-secondary-border: #52452f;
+  --pico-secondary-hover: #52452f;
+  --pico-secondary-hover-background: #52452f;
+  --pico-secondary-inverse: #fdf6e3;
+
+  /* Panels - lighter parchment with a wood/stone-toned border, sharper
+   * corners than Pico's default (OSRS interface chrome isn't rounded). */
+  --pico-card-background-color: #ddc48f;
+  --pico-card-border-color: #6b4a24;
+  --pico-card-box-shadow: 0 2px 6px rgba(43, 35, 22, 0.35);
+  --pico-border-radius: 3px;
+
+  --pico-muted-color: #5a4a2f;
+  --pico-muted-border-color: #a98a56;
+
+  --pico-form-element-background-color: #f2e4bf;
+  --pico-form-element-border-color: #6b4a24;
+  --pico-form-element-color: #2b2316;
+
+  --pico-h1-color: #2b2316;
+  --pico-h2-color: #2b2316;
+  --pico-h3-color: #362c1b;
+  --pico-h4-color: #362c1b;
+  --pico-h5-color: #4a3c25;
+  --pico-h6-color: #4a3c25;
+}
+
+body {
+  background: var(--pico-background-color);
+}
+
+/* RuneScape display font for headings and the nav bar only - body text,
+ * tables and form inputs stay on Pico's own readable sans-serif, per the
+ * plan ("a fully-runescape_uf table would hurt readability at this data
+ * density"). */
+h1, h2, h3, h4, h5, h6,
+body > nav strong,
+body > nav a {
+  font-family: "RuneScape", var(--pico-font-family);
+  letter-spacing: 0.02em;
+}
+
+/* Top nav restyled to resemble an OSRS interface tab bar: dark wood brown,
+ * gold text, a heavier bottom border standing in for the chrome bevel. */
+body > nav {
+  background: #3e3529;
+  border-bottom: 3px solid #1f1a12;
+  padding-block: 0.75rem;
+}
+body > nav a,
+body > nav strong {
+  color: #ffb833 !important;
+}
+body > nav a:hover {
+  color: #fff3d6 !important;
+}
+body > nav button.secondary {
+  --pico-secondary: #ffb833;
+  --pico-secondary-background: transparent;
+  --pico-secondary-border: #ffb833;
+  --pico-secondary-inverse: #3e3529;
+}
+body > nav button.secondary:hover {
+  --pico-secondary-background: #ffb833;
+}
+
+/* Cards/articles get a slightly heavier "carved" border to read as
+ * in-game interface panels rather than a generic flat web card. */
+article, fieldset, table {
+  border-color: var(--pico-card-border-color);
+}
+article {
+  border: 1px solid var(--pico-card-border-color);
+}
+
+mark {
+  background: #ffb833;
+  color: #2b2316;
+}
