@@ -1420,3 +1420,44 @@ the new background color is live through Cloudflare on the very first
 fetch at the new URL - no stale-cache round-trip this time, which is
 exactly what the versioning fix was for. 80 server tests still passing
 (pure CSS change).
+
+## Phase 8 v4: fix - color overrides were never actually applying (CSS specificity)
+
+Owner reported "nothing has changed" after the v3 dark-canvas deploy,
+then confirmed from a fresh incognito window - ruling out the caching
+explanation above (which was the correct fix for the *previous* "my
+change isn't showing up" report, but wasn't the cause this time).
+
+Root cause: Pico's own light-theme color block is scoped to the selector
+`:root:not([data-theme=dark])`, not plain `:root` (confirmed against
+Pico's real source). `:not()`'s argument counts toward specificity, so
+that selector is (0,0,2,0) - higher than this file's own plain
+`:root { ... }` at (0,0,1,0). `base.html` sets `<html data-theme="light">`
+explicitly, so Pico's higher-specificity selector matches that element
+and wins regardless of `osrs-theme.css` loading second in `<head>` - CSS
+specificity beats source order whenever both selectors match the same
+element. In other words: every `--pico-*` custom property override in
+this file had been inert since the very first Phase 8 deploy, not just
+the v3 darkening - they were correctly *served* (confirmed repeatedly via
+curl, both before and after the Cloudflare cache fix) but never actually
+*applied* in a real browser, which is exactly why curl-based verification
+kept giving false confidence on this one file. Only a rendered-page check
+(or working through specificity by hand, as done here after fetching
+Pico's actual source) can catch this class of bug - logged here so it
+isn't re-learned by trial and error next time this file is touched.
+
+Fix: added `!important` to every custom-property declaration inside
+`osrs-theme.css`'s `:root` block. Deliberately did not instead copy
+Pico's exact `:root:not([data-theme=dark])` selector to tie its
+specificity and win on source order - that would silently break again if
+a future Pico version changes its internal selector, whereas
+`!important` on these declarations is robust to that. Scoped to just the
+custom-property block; the plain-element overrides below it (`body >
+nav`, headings, `mark`, etc.) don't have a competing same-or-higher-
+specificity Pico rule to lose to, so they were left as-is.
+
+Bumped `asset_version` to `4`. 80 server tests still passing (pure CSS
+change). Verified via curl that the new `!important`-flagged values are
+served correctly at the new URL; still needs the owner's own visual
+confirmation in a real browser, since that's the one thing curl can
+never actually prove for a specificity bug like this.

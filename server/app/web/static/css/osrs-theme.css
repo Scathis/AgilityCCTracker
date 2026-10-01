@@ -27,72 +27,83 @@
   font-display: swap;
 }
 
+/* !important on every custom property below is deliberate, not sloppy:
+ * Pico's own light-theme color block is scoped to
+ * `:root:not([data-theme=dark])`, which has HIGHER selector specificity
+ * (0,0,2,0) than a plain `:root` (0,0,1,0) - since base.html sets
+ * data-theme="light" explicitly, that selector matches and Pico's own
+ * values won an otherwise-plain :root override regardless of stylesheet
+ * load order (confirmed 2026-10-01: the file served correctly the whole
+ * time, the colors just never actually applied in the browser). Matching
+ * Pico's exact selector text would also work, but would silently break
+ * again if a future Pico version changes its internal selector - forcing
+ * via !important is robust to that. */
 :root {
   /* Dark wood-brown canvas - deliberately darker than the nav bar below,
    * so the nav reads as a slightly-raised bar above a deeper interior. */
-  --pico-background-color: #241c12;
-  --pico-color: #d8c6a0;
+  --pico-background-color: #241c12 !important;
+  --pico-color: #d8c6a0 !important;
 
   /* Gold, like OSRS's own quest-log/chat text - bright enough to read
    * clearly against the dark canvas. */
-  --pico-primary: #e3b341;
-  --pico-primary-background: #e3b341;
-  --pico-primary-border: #8a6a1f;
-  --pico-primary-hover: #f5cc6b;
-  --pico-primary-hover-background: #f5cc6b;
-  --pico-primary-focus: rgba(227, 179, 65, 0.4);
-  --pico-primary-inverse: #241c12;
+  --pico-primary: #e3b341 !important;
+  --pico-primary-background: #e3b341 !important;
+  --pico-primary-border: #8a6a1f !important;
+  --pico-primary-hover: #f5cc6b !important;
+  --pico-primary-hover-background: #f5cc6b !important;
+  --pico-primary-focus: rgba(227, 179, 65, 0.4) !important;
+  --pico-primary-inverse: #241c12 !important;
 
   /* Secondary (logout/delete-style buttons) - muted tan-brown, no longer
    * reads as a disabled grey the way it would against a light page. */
-  --pico-secondary: #a8936b;
-  --pico-secondary-background: #4a3d28;
-  --pico-secondary-border: #6b5a3c;
-  --pico-secondary-hover: #d8c6a0;
-  --pico-secondary-hover-background: #5a4a30;
-  --pico-secondary-inverse: #e8d5a8;
+  --pico-secondary: #a8936b !important;
+  --pico-secondary-background: #4a3d28 !important;
+  --pico-secondary-border: #6b5a3c !important;
+  --pico-secondary-hover: #d8c6a0 !important;
+  --pico-secondary-hover-background: #5a4a30 !important;
+  --pico-secondary-inverse: #e8d5a8 !important;
 
   /* Panels - a lighter brown than the canvas (not parchment-light), so
    * cards read as "raised interface boxes" rather than paper on a desk. */
-  --pico-card-background-color: #3a2f1f;
-  --pico-card-border-color: #6b4a24;
-  --pico-card-box-shadow: 0 2px 10px rgba(0, 0, 0, 0.55);
-  --pico-border-radius: 3px;
+  --pico-card-background-color: #3a2f1f !important;
+  --pico-card-border-color: #6b4a24 !important;
+  --pico-card-box-shadow: 0 2px 10px rgba(0, 0, 0, 0.55) !important;
+  --pico-border-radius: 3px !important;
 
-  --pico-muted-color: #a8936b;
-  --pico-muted-border-color: #5a4a30;
+  --pico-muted-color: #a8936b !important;
+  --pico-muted-border-color: #5a4a30 !important;
 
   /* Inputs stay light parchment, deliberately - OSRS's own text boxes
    * (bank search, chat) are light even inside dark interface chrome, and
    * dark-on-dark typing is hard to read. */
-  --pico-form-element-background-color: #e8d5a8;
-  --pico-form-element-border-color: #6b4a24;
-  --pico-form-element-color: #2b2316;
+  --pico-form-element-background-color: #e8d5a8 !important;
+  --pico-form-element-border-color: #6b4a24 !important;
+  --pico-form-element-color: #2b2316 !important;
 
-  --pico-h1-color: #e3b341;
-  --pico-h2-color: #e3b341;
-  --pico-h3-color: #dba93a;
-  --pico-h4-color: #dba93a;
-  --pico-h5-color: #c99a35;
-  --pico-h6-color: #c99a35;
+  --pico-h1-color: #e3b341 !important;
+  --pico-h2-color: #e3b341 !important;
+  --pico-h3-color: #dba93a !important;
+  --pico-h4-color: #dba93a !important;
+  --pico-h5-color: #c99a35 !important;
+  --pico-h6-color: #c99a35 !important;
 
   /* Pico's native-control/popup colors are a separate variable family from
    * --pico-primary/--pico-card-* above and need their own values, or they
    * silently stay on Pico's stock light-theme white/blue-grey. */
-  --pico-dropdown-background-color: #3a2f1f;
-  --pico-dropdown-border-color: #6b4a24;
-  --pico-dropdown-hover-background-color: #4a3d28;
-  --pico-dropdown-color: var(--pico-color);
-  --pico-switch-background-color: #5a4a30;
-  --pico-switch-color: #e8d5a8;
-  --pico-switch-checked-background-color: var(--pico-primary-background);
-  --pico-code-background-color: #3a2f1f;
-  --pico-code-color: #d8c6a0;
+  --pico-dropdown-background-color: #3a2f1f !important;
+  --pico-dropdown-border-color: #6b4a24 !important;
+  --pico-dropdown-hover-background-color: #4a3d28 !important;
+  --pico-dropdown-color: var(--pico-color) !important;
+  --pico-switch-background-color: #5a4a30 !important;
+  --pico-switch-color: #e8d5a8 !important;
+  --pico-switch-checked-background-color: var(--pico-primary-background) !important;
+  --pico-code-background-color: #3a2f1f !important;
+  --pico-code-color: #d8c6a0 !important;
 
   /* Native checkbox/radio/range tint - a separate CSS mechanism Pico
    * doesn't set for you at all; without this every checkbox renders in
    * the browser's own default blue regardless of every variable above. */
-  accent-color: var(--pico-primary);
+  accent-color: var(--pico-primary) !important;
 }
 
 body {
