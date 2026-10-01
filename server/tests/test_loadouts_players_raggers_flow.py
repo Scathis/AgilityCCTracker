@@ -38,6 +38,25 @@ async def test_loadout_list_and_detail_render(
     assert "slot-HEAD" in detail_response.text
 
 
+async def test_search_input_is_wired_with_a_name_attribute(
+    client, make_user, login_as, default_group, db_session
+):
+    """Regression test: the search <input> originally had no name="q", so
+    HTMX never actually sent the typed text as a query param - every
+    search silently returned the "type to search" empty state regardless
+    of input, which is what the owner reported as "search doesn't work" in
+    real use. Catches this by asserting the rendered HTML, not just the
+    search endpoint's own behavior in isolation (which worked fine on its
+    own and didn't catch the wiring bug)."""
+    staff = await make_user(UserRole.STAFF)
+    login_as(staff)
+    loadout = await _get_running_loadout(db_session, default_group)
+
+    response = await client.get(f"/loadouts/{loadout.id}")
+    assert 'name="q"' in response.text
+    assert 'type="search"' in response.text
+
+
 async def test_staff_can_require_a_slot_with_no_allow_list(
     client, make_user, login_as, default_group, db_session
 ):

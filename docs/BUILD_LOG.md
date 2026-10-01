@@ -1258,3 +1258,42 @@ still green. Backed up before deploying (pure column drops, but a real
 backup habit regardless of how low-risk a given migration looks).
 Verified post-deploy: columns gone, all 4662 existing items' names
 preserved untouched.
+
+## Loadout editor UI fixes: search broken, too cramped — done 2026-10-01
+
+Owner report right after using the new editor for real: search "doesn't
+work," and the slot cards were "awful to use... not enough space to
+type in, hardly visible."
+
+**Real bug, not just a UX complaint:** the search `<input>` in
+`loadouts/_slot.html` had no `name="q"` attribute. HTMX serializes a
+triggering element's value under its `name` attribute - with none set,
+every keystroke sent the search request with no `q` param at all, so
+the server always hit the "type to search…" empty-state branch
+regardless of what was actually typed. The search endpoint itself was
+correct and already had a passing test exercising it directly with an
+explicit `q=...` - that's exactly why this slipped through: the test
+proved the backend logic worked, but nothing ever rendered the real
+page and checked the input was actually wired to call it. Fixed, and
+added a regression test that asserts `name="q"` is present in the
+rendered HTML specifically so this class of bug (correct endpoint,
+disconnected frontend) can't silently return.
+
+**Layout:** the expanded per-slot editor (required checkbox, allowed-
+item list, search box) was squeezed into the same ~120-140px grid cell
+as the slot's own compact icon summary - genuinely too narrow for a
+useful search box or readable item names. Changed the editor to pop out
+as a floating overlay (`position: absolute`, 300px wide, drop shadow)
+anchored below its slot instead of being constrained by the grid
+column's width, bumped font sizes back to normal reading size inside
+it (they'd been shrunk to fit the cramped layout), gave the search
+input `width: 100%` of its new, actually-usable container, and switched
+low-contrast `opacity`-based muted text to Pico's own `--pico-muted-color`
+for better visibility. The compact collapsed summary (icons + badge)
+is unchanged - only the expanded editing state was cramped.
+
+Verified live post-deploy: simulated the exact request HTMX now sends
+(a GET with `q` as a real query parameter) and confirmed real search
+results come back, and confirmed `name="q"` is present on all 11
+rendered slots' inputs. 80 server tests passing (up one, the new
+regression test).

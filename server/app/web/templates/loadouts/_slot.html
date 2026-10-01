@@ -46,7 +46,8 @@
     </ul>
     {% endif %}
 
-    <input type="search" placeholder="Search items to allow..." autocomplete="off"
+    <input type="search" name="q" placeholder="Search items to allow..." autocomplete="off"
+           class="slot-search-input"
            hx-get="/loadouts/{{ loadout_id }}/slots/{{ slot }}/search"
            hx-trigger="keyup changed delay:300ms"
            hx-target="#search-{{ slot }}">
