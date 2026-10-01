@@ -4,6 +4,13 @@
  * Fonts are RuneLite's own bundled OSRS-interface fonts (runescape.ttf /
  * runescape_bold.ttf), fetched in the Dockerfile like every other vendored
  * asset here - see server/Dockerfile.
+ *
+ * Dark brown/charcoal canvas with gold text (v3, owner feedback 2026-10-01:
+ * the original light-parchment-everywhere version read as too plain/pale -
+ * "darker RuneScape vibe" = closer to the actual in-game chat box/quest
+ * log look, gold text on dark wood brown. Form inputs stay light parchment
+ * deliberately - that's how OSRS's own text boxes look even inside dark
+ * interface chrome, and it keeps dense data entry readable.
  */
 
 @font-face {
@@ -21,65 +28,70 @@
 }
 
 :root {
-  /* Parchment page background, dark-brown body text. */
-  --pico-background-color: #e8d5a8;
-  --pico-color: #2b2316;
+  /* Dark wood-brown canvas - deliberately darker than the nav bar below,
+   * so the nav reads as a slightly-raised bar above a deeper interior. */
+  --pico-background-color: #241c12;
+  --pico-color: #d8c6a0;
 
-  /* Gold/bronze as the link + accent color, readable against parchment. */
-  --pico-primary: #8b5e1f;
-  --pico-primary-background: #8b5e1f;
-  --pico-primary-border: #6b4717;
-  --pico-primary-hover: #6b4717;
-  --pico-primary-hover-background: #6b4717;
-  --pico-primary-focus: rgba(139, 94, 31, 0.5);
-  --pico-primary-inverse: #fdf6e3;
+  /* Gold, like OSRS's own quest-log/chat text - bright enough to read
+   * clearly against the dark canvas. */
+  --pico-primary: #e3b341;
+  --pico-primary-background: #e3b341;
+  --pico-primary-border: #8a6a1f;
+  --pico-primary-hover: #f5cc6b;
+  --pico-primary-hover-background: #f5cc6b;
+  --pico-primary-focus: rgba(227, 179, 65, 0.4);
+  --pico-primary-inverse: #241c12;
 
-  /* Secondary (used for logout/delete-style buttons) - muted stone grey-brown. */
-  --pico-secondary: #6b5d4a;
-  --pico-secondary-background: #6b5d4a;
-  --pico-secondary-border: #52452f;
-  --pico-secondary-hover: #52452f;
-  --pico-secondary-hover-background: #52452f;
-  --pico-secondary-inverse: #fdf6e3;
+  /* Secondary (logout/delete-style buttons) - muted tan-brown, no longer
+   * reads as a disabled grey the way it would against a light page. */
+  --pico-secondary: #a8936b;
+  --pico-secondary-background: #4a3d28;
+  --pico-secondary-border: #6b5a3c;
+  --pico-secondary-hover: #d8c6a0;
+  --pico-secondary-hover-background: #5a4a30;
+  --pico-secondary-inverse: #e8d5a8;
 
-  /* Panels - lighter parchment with a wood/stone-toned border, sharper
-   * corners than Pico's default (OSRS interface chrome isn't rounded). */
-  --pico-card-background-color: #ddc48f;
+  /* Panels - a lighter brown than the canvas (not parchment-light), so
+   * cards read as "raised interface boxes" rather than paper on a desk. */
+  --pico-card-background-color: #3a2f1f;
   --pico-card-border-color: #6b4a24;
-  --pico-card-box-shadow: 0 2px 6px rgba(43, 35, 22, 0.35);
+  --pico-card-box-shadow: 0 2px 10px rgba(0, 0, 0, 0.55);
   --pico-border-radius: 3px;
 
-  --pico-muted-color: #5a4a2f;
-  --pico-muted-border-color: #a98a56;
+  --pico-muted-color: #a8936b;
+  --pico-muted-border-color: #5a4a30;
 
-  --pico-form-element-background-color: #f2e4bf;
+  /* Inputs stay light parchment, deliberately - OSRS's own text boxes
+   * (bank search, chat) are light even inside dark interface chrome, and
+   * dark-on-dark typing is hard to read. */
+  --pico-form-element-background-color: #e8d5a8;
   --pico-form-element-border-color: #6b4a24;
   --pico-form-element-color: #2b2316;
 
-  --pico-h1-color: #2b2316;
-  --pico-h2-color: #2b2316;
-  --pico-h3-color: #362c1b;
-  --pico-h4-color: #362c1b;
-  --pico-h5-color: #4a3c25;
-  --pico-h6-color: #4a3c25;
+  --pico-h1-color: #e3b341;
+  --pico-h2-color: #e3b341;
+  --pico-h3-color: #dba93a;
+  --pico-h4-color: #dba93a;
+  --pico-h5-color: #c99a35;
+  --pico-h6-color: #c99a35;
 
-  /* Pico's native-control/popup colors default to blue-grey/white and
-   * aren't covered by the vars above - these are what was still showing
-   * through as "the blues and solid white" on checkboxes, <select>
-   * dropdown popups, and toggle switches. */
-  --pico-dropdown-background-color: #ddc48f;
+  /* Pico's native-control/popup colors are a separate variable family from
+   * --pico-primary/--pico-card-* above and need their own values, or they
+   * silently stay on Pico's stock light-theme white/blue-grey. */
+  --pico-dropdown-background-color: #3a2f1f;
   --pico-dropdown-border-color: #6b4a24;
-  --pico-dropdown-hover-background-color: #cdb278;
+  --pico-dropdown-hover-background-color: #4a3d28;
   --pico-dropdown-color: var(--pico-color);
-  --pico-switch-background-color: #a98a56;
-  --pico-switch-color: #fdf6e3;
+  --pico-switch-background-color: #5a4a30;
+  --pico-switch-color: #e8d5a8;
   --pico-switch-checked-background-color: var(--pico-primary-background);
-  --pico-code-background-color: #ddc48f;
-  --pico-code-color: #5a4a2f;
+  --pico-code-background-color: #3a2f1f;
+  --pico-code-color: #d8c6a0;
 
-  /* Native checkbox/radio/range tint - without this they render in the
-   * browser's own default blue regardless of every variable above, since
-   * accent-color is a separate mechanism Pico doesn't set for you. */
+  /* Native checkbox/radio/range tint - a separate CSS mechanism Pico
+   * doesn't set for you at all; without this every checkbox renders in
+   * the browser's own default blue regardless of every variable above. */
   accent-color: var(--pico-primary);
 }
 
@@ -90,9 +102,9 @@ body {
 /* Native <select> dropdown popups are rendered by the browser/OS itself in
  * some browsers and can't be fully recolored via CSS - the closed select
  * box follows the theme correctly (--pico-form-element-background-color
- * above), but the opened options list may still show your browser's
- * native white/grey styling. This is a real platform limitation, not
- * something left unstyled by accident. */
+ * above), but the opened options list may still show your browser's own
+ * native styling. This is a real platform limitation, not something left
+ * unstyled by accident. */
 
 /* RuneScape display font for headings, the nav bar, and the per-slot
  * equipment labels (e.g. "Weapon") - body text, tables and form inputs
@@ -107,8 +119,9 @@ body > nav a,
   letter-spacing: 0.02em;
 }
 
-/* Top nav restyled to resemble an OSRS interface tab bar: dark wood brown,
- * gold text, a heavier bottom border standing in for the chrome bevel. */
+/* Top nav: a shade lighter than the page canvas so it still reads as a
+ * distinct bar, gold text, a heavier bottom border standing in for an
+ * interface bevel. */
 body > nav {
   background: #3e3529;
   border-bottom: 3px solid #1f1a12;
@@ -131,8 +144,8 @@ body > nav button.secondary:hover {
   --pico-secondary-background: #ffb833;
 }
 
-/* Cards/articles get a slightly heavier "carved" border to read as
- * in-game interface panels rather than a generic flat web card. */
+/* Cards/tables get a visible carved border to read as in-game interface
+ * panels rather than a generic flat web card. */
 article, fieldset, table {
   border-color: var(--pico-card-border-color);
 }

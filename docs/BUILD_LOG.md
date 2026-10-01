@@ -1393,3 +1393,30 @@ tweak to this dashboard, not just this one.
 Verified: the versioned URL (`?v=2`) returns the updated CSS through
 Cloudflare immediately, confirmed against the container's actual file
 content. 80 server tests still passing.
+
+## Phase 8 v3: darker canvas per owner feedback
+
+Owner: the light-parchment-everywhere background was too plain/pale -
+"something nicer but darker runescape in vibe." Reworked the palette to
+a dark wood-brown canvas (`#241c12`, deliberately darker than the nav
+bar's `#3e3529` so the nav still reads as a raised bar above it) with
+gold heading/link text (`#e3b341`-ish, closer to OSRS's own quest-log/
+chat-box look than the previous dark-text-on-parchment version), and
+panels (`article`/the loadout slot cards, via the same
+`--pico-card-background-color` variable) in a mid-brown a shade lighter
+than the canvas rather than light parchment, so they read as "raised
+interface boxes."
+
+**Deliberately kept form inputs light** (`--pico-form-element-background-color:
+#e8d5a8`) rather than going dark-on-dark - OSRS's own text boxes (bank
+search, chat) are light even inside otherwise-dark interface chrome, and
+it keeps actual data entry/search readable. Re-applied the same dropdown/
+switch/code variable treatment from the previous round to the new dark
+values (those are a separate variable family from `--pico-card-*` and
+need their own values every time the palette shifts, not just once).
+
+Bumped `asset_version` to `3` (see the caching note above) and confirmed
+the new background color is live through Cloudflare on the very first
+fetch at the new URL - no stale-cache round-trip this time, which is
+exactly what the versioning fix was for. 80 server tests still passing
+(pure CSS change).
