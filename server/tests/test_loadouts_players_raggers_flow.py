@@ -21,7 +21,7 @@ async def _get_running_loadout(db_session, group) -> Loadout:
 async def test_loadout_list_and_detail_render(
     client, make_user, login_as, default_group, db_session
 ):
-    user = await make_user(UserRole.VIEWER)
+    user = await make_user(UserRole.STAFF)
     login_as(user)
 
     list_response = await client.get("/loadouts")
@@ -143,7 +143,7 @@ async def test_adding_an_unknown_item_id_is_rejected(
 async def test_item_search_returns_html_fragment(
     client, make_user, login_as, default_group, db_session
 ):
-    user = await make_user(UserRole.VIEWER)
+    user = await make_user(UserRole.STAFF)
     login_as(user)
     loadout = await _get_running_loadout(db_session, default_group)
 
@@ -155,7 +155,7 @@ async def test_item_search_returns_html_fragment(
 
 
 async def test_players_list_and_profile_render(client, make_user, login_as, db_session):
-    user = await make_user(UserRole.VIEWER)
+    user = await make_user(UserRole.STAFF)
     login_as(user)
 
     player = Player(

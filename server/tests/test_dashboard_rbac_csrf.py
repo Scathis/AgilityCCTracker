@@ -16,7 +16,32 @@ async def _get_running_loadout(db_session, group):
 async def test_viewer_can_read_pages(client, make_user, login_as, default_group):
     user = await make_user(UserRole.VIEWER)
     login_as(user)
-    for path in ("/events", "/dd/leaderboard", "/loadouts", "/players", "/raggers"):
+    for path in ("/events", "/dd/leaderboard"):
+        response = await client.get(path)
+        assert response.status_code == 200, path
+
+
+async def test_viewer_cannot_read_loadouts_players_or_raggers(
+    client, make_user, login_as, default_group, db_session
+):
+    """Viewer's read access is deliberately scoped to Events + DD Leaderboard
+    only - Loadouts/Players/Raggers were viewer-readable until the owner
+    asked for them to be removed from that list."""
+    user = await make_user(UserRole.VIEWER)
+    login_as(user)
+    loadout = await _get_running_loadout(db_session, default_group)
+    for path in ("/loadouts", f"/loadouts/{loadout.id}", "/players", "/raggers"):
+        response = await client.get(path)
+        assert response.status_code == 403, path
+
+
+async def test_staff_can_still_read_loadouts_players_and_raggers(
+    client, make_user, login_as, default_group, db_session
+):
+    user = await make_user(UserRole.STAFF)
+    login_as(user)
+    loadout = await _get_running_loadout(db_session, default_group)
+    for path in ("/loadouts", f"/loadouts/{loadout.id}", "/players", "/raggers"):
         response = await client.get(path)
         assert response.status_code == 200, path
 

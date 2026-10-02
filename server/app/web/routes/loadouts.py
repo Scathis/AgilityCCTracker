@@ -15,7 +15,6 @@ from app.web.deps import (
     get_csrf_token,
     get_default_fc_group,
     require_role,
-    require_user,
     template_context,
     verify_csrf,
 )
@@ -77,7 +76,7 @@ async def _slot_context(session: AsyncSession, loadout_id: int, slot: str) -> di
 @router.get("/loadouts")
 async def list_loadouts(
     request: Request,
-    user: User = Depends(require_user),
+    user: User = Depends(require_role(UserRole.STAFF)),
     group: FcGroup = Depends(get_default_fc_group),
     session: AsyncSession = Depends(get_session),
 ):
@@ -91,7 +90,7 @@ async def list_loadouts(
 async def loadout_detail(
     loadout_id: int,
     request: Request,
-    user: User = Depends(require_user),
+    user: User = Depends(require_role(UserRole.STAFF)),
     session: AsyncSession = Depends(get_session),
 ):
     loadout = await _get_loadout(session, loadout_id)
@@ -228,7 +227,7 @@ async def search_slot_items(
     slot: str,
     request: Request,
     q: str = Query(default=""),
-    user: User = Depends(require_user),
+    user: User = Depends(require_role(UserRole.STAFF)),
     session: AsyncSession = Depends(get_session),
 ):
     slot = _check_slot(slot)

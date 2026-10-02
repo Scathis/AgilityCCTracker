@@ -8,8 +8,8 @@ from app.models.event import Attendance, Event
 from app.models.lap import Lap
 from app.models.loadout import LoadoutCheck
 from app.models.player import Player, PlayerSnapshot
-from app.models.user import User
-from app.web.deps import require_user, template_context
+from app.models.user import User, UserRole
+from app.web.deps import require_role, template_context
 from app.web.templating import templates
 
 router = APIRouter()
@@ -19,7 +19,7 @@ router = APIRouter()
 async def list_players(
     request: Request,
     q: str = Query(default=""),
-    user: User = Depends(require_user),
+    user: User = Depends(require_role(UserRole.STAFF)),
     session: AsyncSession = Depends(get_session),
 ):
     query = select(Player)
@@ -35,7 +35,7 @@ async def list_players(
 async def player_profile(
     player_id: int,
     request: Request,
-    user: User = Depends(require_user),
+    user: User = Depends(require_role(UserRole.STAFF)),
     session: AsyncSession = Depends(get_session),
 ):
     result = await session.execute(select(Player).where(Player.id == player_id))

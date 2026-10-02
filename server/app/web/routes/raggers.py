@@ -13,7 +13,6 @@ from app.models.user import User, UserRole
 from app.web.deps import (
     get_default_fc_group,
     require_role,
-    require_user,
     template_context,
     verify_csrf,
 )
@@ -25,7 +24,7 @@ router = APIRouter()
 @router.get("/raggers")
 async def list_raggers(
     request: Request,
-    user: User = Depends(require_user),
+    user: User = Depends(require_role(UserRole.STAFF)),
     group: FcGroup = Depends(get_default_fc_group),
     session: AsyncSession = Depends(get_session),
 ):
