@@ -1461,3 +1461,97 @@ change). Verified via curl that the new `!important`-flagged values are
 served correctly at the new URL; still needs the owner's own visual
 confirmation in a real browser, since that's the one thing curl can
 never actually prove for a specificity bug like this.
+
+## Phase 8 v5/v6: Logout button was invisible, then wrong font
+
+Owner visually confirmed the v4 fix held (dark theme rendering correctly),
+closing that open item - then immediately spotted two more small bugs on
+the nav's Logout button while looking at it.
+
+**v5 - invisible text.** `body > nav button.secondary` set its idle text
+color (`--pico-secondary-inverse`) to `#3e3529`, the *exact same hex* as
+`body > nav`'s own background a few lines above - with
+`--pico-secondary-background: transparent`, the button's text was
+rendering in a color identical to what was behind it, i.e. invisible.
+Fixed by changing idle `--pico-secondary-inverse` to gold (`#ffb833`),
+matching the button's own border color, readable against the
+transparent/dark nav.
+
+Found and fixed a second bug in the same block while there: the `:hover`
+rule set `--pico-secondary-background: #ffb833`, but Pico's hover/focus/
+active state actually reads a *different* variable,
+`--pico-secondary-hover-background` (confirmed against the vendored
+`pico.min.css` source) - so that rule was a dead no-op the whole time,
+silently falling back to Pico's stock blue-grey hover color instead of
+gold. Fixed to set the right variable name, plus a hover-scoped
+`--pico-secondary-inverse: #3e3529` (dark text, since hover's background
+is now actually gold) and extended the selector to `:focus`/`:active`
+to match how Pico itself groups those three states.
+
+`asset_version` bumped to `5`. 80 server tests still passing (pure CSS
+change, no logic touched). Deployed, committed (`a19d624`) and pushed.
+
+**v6 - wrong font.** The RuneScape-display-font selector list
+(`h1-h6, body > nav strong, body > nav a, .slot-summary-label,
+.slot-badge`) never included `body > nav button` - the Logout button is
+a `<button>`, not an `<a>` or `<strong>`, so it fell back to Pico's own
+sans-serif while every other nav element used the RuneScape font. Added
+`body > nav button` to that selector list.
+
+`asset_version` bumped to `6`. 80 server tests still passing. Deployed,
+committed (`b75ff12`) and pushed.
+
+## RBAC confirmation sweep + test coverage gap closed
+
+Owner asked whether the viewer/staff/admin roles can actually change
+things, i.e. wanted this confirmed, not just trusted from the code.
+Read every route's `Depends()` across all 8 route files (29 routes
+total): every mutating (POST) route requires `require_role(STAFF)` or
+`require_role(ADMIN)` plus `verify_csrf`, and `ROLE_RANK = {VIEWER: 0,
+STAFF: 1, ADMIN: 2}` means viewer fails all of them. No POST/PUT/DELETE
+route exists that only depends on `require_user`.
+
+That reasoning was correct, but while checking for existing test
+evidence (not just trusting the read), found `test_dashboard_rbac_csrf.py`
+only actually exercised `/events`, `/settings`, and `/admin/*` GETs via
+real requests - the loadout slot-editing routes, raggers routes, and
+admin user/group-management routes (create-user, reset-password,
+rotate-token) were never hit by a role-check test at all, only reasoned
+about from their `require_role()` call site. Added 4 new tests
+(`test_viewer_cannot_edit_loadout_slots`, `test_viewer_cannot_manage_raggers`,
+`test_staff_cannot_manage_users_or_groups`, `test_viewer_cannot_change_settings`)
+that make real HTTP requests against a running test server and assert
+the 403s, closing the gap with executed proof rather than a code read.
+
+84/84 tests passing (80 existing + 4 new). Test-only change, no deploy
+needed. Committed (`06d2f00`) and pushed.
+
+## Viewer read access narrowed to Events + DD Leaderboard only
+
+Owner-directed scope change, found while reviewing the RBAC sweep above:
+Loadouts, Players, and Raggers were viewer-readable (`require_user`,
+i.e. any logged-in role), inconsistent with everything else in those
+sections already being staff+ only. Owner asked to remove all three
+from what viewer can see, leaving only Events and DD Leaderboard.
+
+Bumped the GET routes for `/loadouts`, `/loadouts/{id}`, the loadout
+item-search fragment (`/loadouts/{id}/slots/{slot}/search`), `/players`,
+`/players/{id}`, and `/raggers` from `require_user` to
+`require_role(UserRole.STAFF)`. Removed the now-unused `require_user`
+import from `loadouts.py` and `raggers.py`. Nav bar (`base.html`) updated
+to wrap the Loadouts/Players/Raggers links in a `{% if user.role.value
+in ("staff", "admin") %}` block, so viewers no longer see links that
+would just 403 if clicked.
+
+Updated 3 existing tests (`test_loadout_list_and_detail_render`,
+`test_item_search_returns_html_fragment`, `test_players_list_and_profile_render`)
+that logged in as viewer purely to exercise rendering, not role
+enforcement - these would now fail for the wrong reason (403 instead of
+whatever they were actually testing), so switched them to staff. Added
+`test_viewer_cannot_read_loadouts_players_or_raggers` and
+`test_staff_can_still_read_loadouts_players_and_raggers` to
+`test_dashboard_rbac_csrf.py` for explicit 403/200 coverage on all four
+newly-restricted paths.
+
+Not a static-asset change, no `asset_version` bump needed. 86/86 tests
+passing (84 + 2 new). Deployed, committed (`9a4fcc3`) and pushed.
