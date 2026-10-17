@@ -41,6 +41,15 @@ jobs:
         with:
           python-version: '3.12'
       - run: pip install --no-cache-dir .[dev]
+      - run: alembic upgrade head
+        env:
+          DB_HOST: 127.0.0.1
+          DB_PORT: '3306'
+          DB_NAME: agilitycc_test
+          DB_USER: agilitycc
+          DB_PASSWORD: test
+          APP_SECRET: test-secret
+          APP_URL: http://localhost
       - run: ruff check .
       - run: pytest
         env:
