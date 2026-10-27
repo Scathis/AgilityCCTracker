@@ -1904,3 +1904,12 @@ coins fee); the editor refuses additions that don't fit and clamps quantity
 edits to the space left; the server rejects a kit whose inventory quantities
 sum to more than 27 (`MAX_INVENTORY_LINES`), replacing the old
 27-distinct-lines check. Test `test_every_item_takes_its_own_square`. 111 pass.
+
+## 2026-10-28 - Kit editor slot boxes: quality of life
+
+The slot box is a `<details>`; only its `<summary>` toggled, so clicks in
+the box's padding (under the arrow) did nothing. Now a click anywhere in the
+box outside the open search panel toggles it; the `toggle` event focuses and
+selects the slot's search input and closes any other open slot; a mousedown
+outside any slot box (or Esc) closes them, and outside the inventory search
+clears its results. Open boxes get a gold border.

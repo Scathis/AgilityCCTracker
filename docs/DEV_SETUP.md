@@ -143,6 +143,11 @@ on the dashboard. Pull and rebuild the plugin first.
       Cancel discards). The info box sits under the title.
 - [ ] Untradeable gear can be picked (e.g. Ava's accumulator, fire cape,
       graceful, dragon defender), each name listed once.
+- [ ] Gear slot boxes: clicking anywhere in a box (including empty space under
+      the arrow) opens it, the cursor is already in its search box so you
+      can type straight away, opening one closes any other, and clicking
+      anywhere else (or Esc) closes it. Clicking away from the "Items to
+      carry" search clears its results.
 - [ ] Each slot box only offers items worn in that slot (searching
       "platelegs" in Body finds nothing; in Legs it does). Inventory search
       offers everything.

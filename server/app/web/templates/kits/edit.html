@@ -35,6 +35,9 @@
     padding: 0.5rem;
     margin: 0;
   }
+  .slot-card { cursor: pointer; }
+  .slot-card .slot-editor { cursor: auto; }
+  .slot-card[open] { border-color: var(--pico-primary); }
   .slot-card summary {
     display: flex;
     flex-direction: column;
@@ -390,6 +393,38 @@
       renderInventory();
       markDirty();
     }
+  });
+
+  // Slot boxes: the whole box opens it (not just the label area), the
+  // search box gets the cursor straight away, only one is open at a time,
+  // and clicking anywhere else (or Esc) closes it.
+  const slotCards = document.querySelectorAll('.slot-card');
+  function closeSlots(except) {
+    slotCards.forEach(function (card) { if (card !== except) { card.open = false; } });
+  }
+  slotCards.forEach(function (card) {
+    card.addEventListener('toggle', function () {
+      if (!card.open) { return; }
+      closeSlots(card);
+      const input = card.querySelector('.slot-search-input');
+      if (input) { input.focus(); input.select(); }
+    });
+    card.addEventListener('click', function (e) {
+      // Clicks in the box but outside the summary (e.g. under the arrow) and
+      // outside the open search panel toggle it too.
+      if (e.target.closest('summary') || e.target.closest('.slot-editor')) { return; }
+      e.preventDefault();
+      card.open = !card.open;
+    });
+  });
+  document.addEventListener('mousedown', function (e) {
+    if (!e.target.closest('.slot-card')) { closeSlots(null); }
+    if (!e.target.closest('.inv-add') && !e.target.closest('#inventory-search')) {
+      document.getElementById('inventory-search').innerHTML = '';
+    }
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') { closeSlots(null); }
   });
 
   // Search boxes live inside the form: Enter must search, not submit the kit.
