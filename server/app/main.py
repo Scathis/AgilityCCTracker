@@ -59,7 +59,15 @@ class BodySizeLimitMiddleware(BaseHTTPMiddleware):
         return await call_next(request)
 
 
-app = FastAPI(title="Wildy Agility FC Tracker", lifespan=lifespan)
+# Interactive docs / OpenAPI schema are off: they publish the full route map
+# (incl. admin routes) to anyone on the internet.
+app = FastAPI(
+    title="Wildy Agility FC Tracker",
+    lifespan=lifespan,
+    docs_url=None,
+    redoc_url=None,
+    openapi_url=None,
+)
 app.add_middleware(BodySizeLimitMiddleware)
 
 
