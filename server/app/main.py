@@ -19,7 +19,6 @@ from app.web.routes.dd import router as dd_router
 from app.web.routes.events import router as events_router
 from app.web.routes.kits import router as kits_router
 from app.web.routes.players import router as players_router
-from app.web.routes.raggers import router as raggers_router
 from app.web.routes.settings import router as settings_router
 from app.workers.attendance_timeout_worker import attendance_timeout_worker_loop
 from app.workers.hiscores_worker import hiscores_worker_loop
@@ -84,7 +83,6 @@ app.include_router(events_router)
 app.include_router(dd_router)
 app.include_router(kits_router)
 app.include_router(players_router)
-app.include_router(raggers_router)
 app.include_router(settings_router)
 app.include_router(admin_router)
 

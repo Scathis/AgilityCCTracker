@@ -8,7 +8,21 @@ log. Update this file's "Where things stand" / "Open items" sections at the
 end of any session that changes them — treat it like a handoff note, not an
 append-only log (that's what BUILD_LOG.md is for).
 
-## Latest (2026-10-27, late — owner test notes, round 2)
+## Latest (2026-10-27, night — pre-submission clean-up)
+
+- **The server never learns what anyone is wearing - the player included.**
+  The plugin's own worn-item upload ("Share gear") is gone; only which
+  required slots are empty is ever sent. Server ignores an `equipment` field
+  from older builds; the unused `player_snapshots.equipment` column (20,576
+  rows, never shown anywhere) is dropped. README, plugin description, config
+  text and the Hub warning/PR draft reworded to "missing-gear checks".
+- **Ragger tracking removed** (owner: not tracked now, don't set a
+  precedent): model, routes, templates, nav, hiscores-worker branch, tests;
+  tables `raggers` / `ragger_sightings` dropped (both were empty).
+- Migration `f5c0d2e3b168` (after a backup). README rewritten; owner is
+  sourcing the icon. Still `icon.png` placeholder until then.
+
+## Earlier (2026-10-27, late — owner test notes, round 2)
 
 - Kit-check and mass chat lines back to red (orange was unreadable).
 - Footer host replaced by an "Agility CC Discord" link (discord.gg/agility);

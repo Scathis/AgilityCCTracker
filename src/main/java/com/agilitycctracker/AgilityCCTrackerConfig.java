@@ -24,7 +24,7 @@ public interface AgilityCCTrackerConfig extends Config
 
 	@ConfigSection(
 		name = "FC observer",
-		description = "Reporting loadout gaps / DD presence of other FC members in view",
+		description = "Reporting which required gear slots other FC members in view have empty, and their DD presence",
 		position = 2
 	)
 	String observerSection = "observer";
@@ -39,7 +39,7 @@ public interface AgilityCCTrackerConfig extends Config
 	@ConfigItem(
 		keyName = "role",
 		name = "My role",
-		description = "Runner or Anti. Only runners are gear-checked and tracked for laps and DD; antis are attendance time only.",
+		description = "Runner or Anti. Only runners get missing-gear checks and are tracked for laps and DD; antis are attendance time only.",
 		section = massSection,
 		position = 0
 	)
@@ -72,23 +72,11 @@ public interface AgilityCCTrackerConfig extends Config
 	}
 
 	@ConfigItem(
-		keyName = "shareGear",
-		name = "Share gear",
-		description = "Upload your own worn items",
-		section = sharingSection,
-		position = 1
-	)
-	default boolean shareGear()
-	{
-		return true;
-	}
-
-	@ConfigItem(
 		keyName = "shareRoster",
 		name = "Share roster",
 		description = "Upload the FC roster while an event is active",
 		section = sharingSection,
-		position = 2
+		position = 1
 	)
 	default boolean shareRoster()
 	{
@@ -98,7 +86,7 @@ public interface AgilityCCTrackerConfig extends Config
 	@ConfigItem(
 		keyName = "fcObserver",
 		name = "FC observer",
-		description = "Report loadout gaps and DD presence of FC members in view. Also needs the server's own observer switch enabled.",
+		description = "Report which required gear slots FC members in view have empty (never what they are wearing), and their DD presence. Also needs the server's own observer switch enabled.",
 		section = observerSection,
 		position = 0
 	)

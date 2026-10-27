@@ -13,7 +13,6 @@ from app.models.fc_group import FcGroup
 from app.models.lap import Lap
 from app.models.loadout import Loadout, LoadoutCheck, LoadoutCheckSource, LoadoutContext
 from app.models.player import Player
-from app.models.ragger import RaggerSighting
 from app.models.user import User, UserRole
 from app.services.gear_rules import SLOT_LABELS, SLOT_ORDER, running_anchor
 from app.services.participation import participants_by_rsn
@@ -332,10 +331,7 @@ async def _deaths_tab(session: AsyncSession, event: Event) -> dict:
         .join(Player, Death.player_id == Player.id)
         .where(Death.event_id == event.id)
     )
-    sighting_result = await session.execute(
-        select(RaggerSighting).where(RaggerSighting.event_id == event.id)
-    )
-    return {"deaths": death_result.all(), "sightings": sighting_result.scalars().all()}
+    return {"deaths": death_result.all()}
 
 
 async def _manual_gap_tab(session: AsyncSession, group: FcGroup, event: Event) -> dict:

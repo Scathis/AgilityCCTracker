@@ -1738,3 +1738,24 @@ large quantities with thousands separators.
   footer). History stays newest first.
 - Verified by rendering the real `TrackerPanel` offscreen (headless, fields
   set by reflection) in runner / anti / not-answered / no-mass / history states.
+
+## 2026-10-27 - Empty-slots only; raggers removed
+
+- Plugin: `SelfStateCollector` no longer reads worn items at all (only the
+  inventory, for the ticket count); `SelfState.equipment`, `EquipmentItem`
+  and the "Share gear" config item removed. Own gear is still evaluated
+  locally (`SelfLoadoutCheck` -> `loadoutFailed`, slot keys only) and by the
+  kit check (never uploaded).
+- Server: `SelfStateIn.equipment` removed (pydantic ignores the field from
+  older builds), snapshot change-detection no longer compares equipment,
+  `player_snapshots.equipment` dropped.
+- Raggers: `models/ragger.py`, `web/routes/raggers.py`, `templates/raggers/`,
+  nav link, deaths-tab sightings section, hiscores worker's ragger queue,
+  `test_raggers_full_flow` and the raggers RBAC test removed;
+  `test_players_raggers_flow.py` -> `test_players_flow.py`; new
+  `test_raggers_feature_is_gone`. Tables dropped in `f5c0d2e3b168` (MySQL
+  won't drop the FK-backing index on its own; dropping the table does).
+- Wording: "gear checks" -> "missing-gear checks" in the plugin description,
+  README, config descriptions and the Hub warning / PR draft; the PR draft's
+  "gaps-only" bullet now covers the player's own gear too, and no longer
+  mentions the removed DD gear check.

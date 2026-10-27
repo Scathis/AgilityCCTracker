@@ -9,7 +9,7 @@
     <li><a href="/events/{{ event.id }}?tab=attendance" {% if tab == "attendance" %}aria-current="page"{% endif %}>Attendance</a></li>
     <li><a href="/events/{{ event.id }}?tab=laps" {% if tab == "laps" %}aria-current="page"{% endif %}>Laps</a></li>
     <li><a href="/events/{{ event.id }}?tab=dd" {% if tab == "dd" %}aria-current="page"{% endif %}>DD</a></li>
-    <li><a href="/events/{{ event.id }}?tab=deaths" {% if tab == "deaths" %}aria-current="page"{% endif %}>Deaths &amp; raggers</a></li>
+    <li><a href="/events/{{ event.id }}?tab=deaths" {% if tab == "deaths" %}aria-current="page"{% endif %}>Deaths</a></li>
     {% if user.role.value in ("staff", "admin") %}
     <li><a href="/events/{{ event.id }}?tab=manual-gap" {% if tab == "manual-gap" %}aria-current="page"{% endif %}>Manual gap</a></li>
     {% endif %}
@@ -38,15 +38,6 @@
   <tbody>
     {% for death, player in deaths %}
     <tr><td>{{ player.rsn }}</td><td>{{ death.died_at }}</td><td>{{ death.world }}</td><td>{{ death.wildy_level }}</td></tr>
-    {% endfor %}
-  </tbody>
-</table>
-<h3>Ragger sightings</h3>
-<table>
-  <thead><tr><th>Seen at</th><th>World</th><th>Notes</th></tr></thead>
-  <tbody>
-    {% for s in sightings %}
-    <tr><td>{{ s.seen_at }}</td><td>{{ s.world or "—" }}</td><td>{{ s.gear_notes or "—" }}</td></tr>
     {% endfor %}
   </tbody>
 </table>

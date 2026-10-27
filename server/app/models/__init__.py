@@ -12,7 +12,6 @@ from app.models.kit import Kit, KitItem
 from app.models.lap import Lap
 from app.models.loadout import Loadout, LoadoutCheck
 from app.models.player import Player, PlayerSnapshot
-from app.models.ragger import Ragger, RaggerSighting
 from app.models.user import User
 
 __all__ = [
@@ -32,8 +31,6 @@ __all__ = [
     "LoadoutCheck",
     "DdCall",
     "DdPresence",
-    "Ragger",
-    "RaggerSighting",
     "User",
     "Item",
 ]

@@ -23,17 +23,13 @@ MAX_TICKETS_PER_LAP = 1
 Rsn = Annotated[str, Field(max_length=RSN_MAX_LENGTH)]
 
 
-class EquipmentItemIn(BaseModel):
-    slot: int
-    id: int
-    qty: int
-
-
 class SelfStateIn(BaseModel):
     world: int | None = None
     combat_level: int | None = None
     skills: dict[str, int] | None = None
-    equipment: list[EquipmentItemIn] | None = None
+    # No worn items: the server only ever learns which required slots are
+    # empty (loadout_failed). Older plugin builds still send "equipment";
+    # pydantic drops unknown fields, so it's ignored.
     wildy_level: int | None = None
     on_course: bool | None = None
     skulled: bool | None = None

@@ -37,4 +37,3 @@ class PlayerSnapshot(Base):
     world: Mapped[int | None] = mapped_column(Integer, nullable=True)
     combat_level: Mapped[int | None] = mapped_column(Integer, nullable=True)
     skills: Mapped[dict | None] = mapped_column(JSON, nullable=True)
-    equipment: Mapped[list | None] = mapped_column(JSON, nullable=True)

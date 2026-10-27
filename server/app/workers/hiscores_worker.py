@@ -2,8 +2,8 @@
 
 Every minute: queue non-plugin players who attended a recent event (last 30
 days - the spec says "recent events" without an exact window; 30 days is a
-disclosed judgment call, not a re-derivable constant) and raggers, whichever
-haven't been refreshed in the last 24h. Fetch from the OSRS hiscores,
+disclosed judgment call, not a re-derivable constant) who haven't been
+refreshed in the last 24h. Fetch from the OSRS hiscores,
 <=1 request/2s, 404 handled gracefully.
 
 Parsing + the combat-level formula are pure functions, deliberately separate
@@ -23,7 +23,6 @@ from app.config import settings
 from app.db import async_session_factory
 from app.models.event import Attendance, Event
 from app.models.player import Player, PlayerSnapshot, SnapshotSource
-from app.models.ragger import Ragger
 
 logger = logging.getLogger(__name__)
 
@@ -104,8 +103,8 @@ async def fetch_hiscores(client: httpx.AsyncClient, rsn: str) -> dict | None:
         return None
 
 
-async def _queue() -> list[tuple[str, str]]:
-    """Returns (kind, rsn) pairs - kind is "player" or "ragger"."""
+async def _queue() -> list[str]:
+    """RSNs to refresh."""
     stale_cutoff = dt.datetime.utcnow() - STALE_AFTER
     recent_cutoff = dt.datetime.utcnow() - RECENT_EVENT_WINDOW
     async with async_session_factory() as session:
@@ -120,48 +119,29 @@ async def _queue() -> list[tuple[str, str]]:
             )
             .distinct()
         )
-        ragger_result = await session.execute(
-            select(Ragger).where(
-                (Ragger.hiscores_updated_at.is_(None)) | (Ragger.hiscores_updated_at < stale_cutoff)
-            )
-        )
-        players = [("player", p.rsn) for p in player_result.scalars().all()]
-        raggers = [("ragger", r.rsn) for r in ragger_result.scalars().all()]
-    return players + raggers
+        return [p.rsn for p in player_result.scalars().all()]
 
 
-async def _store_result(kind: str, rsn: str, data: dict | None) -> None:
+async def _store_result(rsn: str, data: dict | None) -> None:
     now = dt.datetime.utcnow()
     async with async_session_factory() as session:
-        if kind == "player":
-            result = await session.execute(select(Player).where(Player.rsn == rsn))
-            player = result.scalar_one_or_none()
-            if player is None:
-                return
-            player.hiscores_updated_at = now
-            if data is not None:
-                skills = parse_hiscores_json(data)
-                snapshot = PlayerSnapshot(
-                    player_id=player.id,
-                    captured_at=now,
-                    source=SnapshotSource.HISCORES,
-                    combat_level=compute_combat_level(skills),
-                    skills=skills,
-                    equipment=None,
-                )
-                session.add(snapshot)
-                await session.flush()
-                player.latest_snapshot_id = snapshot.id
-        else:
-            result = await session.execute(select(Ragger).where(Ragger.rsn == rsn))
-            ragger = result.scalar_one_or_none()
-            if ragger is None:
-                return
-            ragger.hiscores_updated_at = now
-            if data is not None:
-                skills = parse_hiscores_json(data)
-                ragger.combat_level = compute_combat_level(skills)
-                ragger.skills = skills
+        result = await session.execute(select(Player).where(Player.rsn == rsn))
+        player = result.scalar_one_or_none()
+        if player is None:
+            return
+        player.hiscores_updated_at = now
+        if data is not None:
+            skills = parse_hiscores_json(data)
+            snapshot = PlayerSnapshot(
+                player_id=player.id,
+                captured_at=now,
+                source=SnapshotSource.HISCORES,
+                combat_level=compute_combat_level(skills),
+                skills=skills,
+            )
+            session.add(snapshot)
+            await session.flush()
+            player.latest_snapshot_id = snapshot.id
         await session.commit()
 
 
@@ -170,9 +150,9 @@ async def run_once() -> None:
     if not queue:
         return
     async with httpx.AsyncClient(timeout=10.0) as client:
-        for kind, rsn in queue:
+        for rsn in queue:
             data = await fetch_hiscores(client, rsn)
-            await _store_result(kind, rsn, data)
+            await _store_result(rsn, data)
             await asyncio.sleep(REQUEST_INTERVAL_S)
 
 

@@ -160,12 +160,6 @@ async def _process_self(
     self_state: SelfStateIn,
     now: dt.datetime,
 ) -> None:
-    equipment = (
-        [item.model_dump() for item in self_state.equipment]
-        if self_state.equipment is not None
-        else None
-    )
-
     latest = None
     if player.latest_snapshot_id is not None:
         result = await session.execute(
@@ -177,7 +171,6 @@ async def _process_self(
         latest.world != self_state.world
         or latest.combat_level != self_state.combat_level
         or latest.skills != self_state.skills
-        or latest.equipment != equipment
     )
     if changed:
         snapshot = PlayerSnapshot(
@@ -187,7 +180,6 @@ async def _process_self(
             world=self_state.world,
             combat_level=self_state.combat_level,
             skills=self_state.skills,
-            equipment=equipment,
         )
         session.add(snapshot)
         await session.flush()

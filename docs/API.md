@@ -125,7 +125,6 @@ of intent).
     "world": 330,
     "combat_level": 98,
     "skills": {"attack": 13034431},
-    "equipment": [{"slot": 3, "id": 861, "qty": 1}],
     "wildy_level": 52,
     "on_course": true,
     "skulled": false,

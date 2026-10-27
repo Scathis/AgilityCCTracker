@@ -19,27 +19,27 @@ async def test_viewer_can_read_pages(client, make_user, login_as, default_group)
         assert response.status_code == 200, path
 
 
-async def test_viewer_cannot_read_kits_players_or_raggers(
+async def test_viewer_cannot_read_kits_or_players(
     client, make_user, login_as, default_group, db_session
 ):
     """Viewer's read access is deliberately scoped to Events + DD Leaderboard
-    only - Kits (then Loadouts)/Players/Raggers were viewer-readable until the owner
+    only - Kits (then Loadouts)/Players were viewer-readable until the owner
     asked for them to be removed from that list."""
     user = await make_user(UserRole.VIEWER)
     login_as(user)
     kit = await _make_kit(db_session, default_group)
-    for path in ("/kits", "/kits/new", f"/kits/{kit.id}/edit", "/players", "/raggers"):
+    for path in ("/kits", "/kits/new", f"/kits/{kit.id}/edit", "/players"):
         response = await client.get(path)
         assert response.status_code == 403, path
 
 
-async def test_staff_can_still_read_kits_players_and_raggers(
+async def test_staff_can_still_read_kits_and_players(
     client, make_user, login_as, default_group, db_session
 ):
     user = await make_user(UserRole.STAFF)
     login_as(user)
     kit = await _make_kit(db_session, default_group)
-    for path in ("/kits", "/kits/new", f"/kits/{kit.id}/edit", "/players", "/raggers"):
+    for path in ("/kits", "/kits/new", f"/kits/{kit.id}/edit", "/players"):
         response = await client.get(path)
         assert response.status_code == 200, path
 
@@ -114,32 +114,13 @@ async def test_viewer_cannot_edit_kits(
         assert response.status_code == 403, path
 
 
-async def test_viewer_cannot_manage_raggers(client, make_user, login_as, default_group):
-    """Covers the raggers routes, which only require_role(STAFF) at the route
-    level - never previously exercised by a role-check test."""
-    user = await make_user(UserRole.VIEWER)
-    csrf = login_as(user)
-
-    add = await client.post(
-        "/raggers",
-        data={"rsn": "ShouldFail", "threat_notes": "", "csrf_token": csrf},
-    )
-    assert add.status_code == 403
-
-    status = await client.post(
-        "/raggers/1/status",
-        data={"status": "confirmed", "csrf_token": csrf},
-    )
-    assert status.status_code == 403
-
-    sighting = await client.post(
-        "/raggers/1/sightings",
-        data={"event_id": "", "world": "", "gear_notes": "", "csrf_token": csrf},
-    )
-    assert sighting.status_code == 403
-
-    refresh = await client.post("/raggers/1/refresh", data={"csrf_token": csrf})
-    assert refresh.status_code == 403
+async def test_raggers_feature_is_gone(client, make_user, login_as, default_group):
+    """Ragger tracking was removed 2026-10-27 (owner: not something the FC
+    tracks); its pages must not come back by accident."""
+    user = await make_user(UserRole.ADMIN)
+    login_as(user)
+    assert (await client.get("/raggers")).status_code == 404
+    assert "Raggers" not in (await client.get("/events")).text
 
 
 async def test_staff_cannot_manage_users_or_groups(

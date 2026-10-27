@@ -1,10 +1,8 @@
 package com.agilitycctracker.collect;
 
 import com.agilitycctracker.AgilityCCTrackerConfig;
-import com.agilitycctracker.model.EquipmentItem;
 import com.agilitycctracker.model.SelfState;
 import com.agilitycctracker.state.DataState;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -24,7 +22,7 @@ import net.runelite.api.gameval.InventoryID;
 import net.runelite.api.gameval.ItemID;
 
 /**
- * Tracks the local player's own state (skills, gear, wilderness level, etc.)
+ * Tracks the local player's own state (skills, wilderness level, etc.)
  * and exposes it as a change-tracked {@link SelfState} via a {@link DataState}.
  * Only class besides {@code LapTracker}/{@code DeathTracker} allowed to read
  * local-player-only data; never reads other players (see
@@ -49,7 +47,6 @@ public class SelfStateCollector
 	private final DataState<SelfState> dataState = new DataState<>();
 
 	private final AtomicReference<Map<String, Integer>> skills = new AtomicReference<>();
-	private final AtomicReference<List<EquipmentItem>> equipment = new AtomicReference<>();
 	private final AtomicInteger wildyTicketCount = new AtomicInteger();
 	private final AtomicInteger world = new AtomicInteger();
 	private final AtomicReference<Integer> wildyLevel = new AtomicReference<>();
@@ -73,36 +70,13 @@ public class SelfStateCollector
 
 	public void onItemContainerChanged(ItemContainerChanged event)
 	{
-		if (event.getContainerId() == InventoryID.WORN)
-		{
-			updateWorn();
-			refresh();
-		}
-		else if (event.getContainerId() == InventoryID.INV)
+		// Worn items are deliberately never collected or uploaded: the server
+		// only ever learns which required slots are empty (loadoutFailed).
+		if (event.getContainerId() == InventoryID.INV)
 		{
 			updateTicketCount();
 			refresh();
 		}
-	}
-
-	private void updateWorn()
-	{
-		ItemContainer worn = client.getItemContainer(InventoryID.WORN);
-		List<EquipmentItem> items = new ArrayList<>();
-		if (worn != null)
-		{
-			Item[] contents = worn.getItems();
-			for (int slot = 0; slot < contents.length; slot++)
-			{
-				Item item = contents[slot];
-				if (item == null || item.getId() <= 0)
-				{
-					continue;
-				}
-				items.add(new EquipmentItem(slot, item.getId(), item.getQuantity()));
-			}
-		}
-		equipment.set(Collections.unmodifiableList(items));
 	}
 
 	private void updateTicketCount()
@@ -168,10 +142,6 @@ public class SelfStateCollector
 		{
 			builder.skills(skills.get());
 		}
-		if (config.shareGear())
-		{
-			builder.equipment(equipment.get());
-		}
 		return builder.build();
 	}
 
@@ -198,7 +168,6 @@ public class SelfStateCollector
 	public void reset()
 	{
 		skills.set(null);
-		equipment.set(null);
 		wildyTicketCount.set(0);
 		world.set(0);
 		wildyLevel.set(null);

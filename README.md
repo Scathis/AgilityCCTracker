@@ -1,7 +1,7 @@
 # Wildy Agility FC Tracker
 
 A RuneLite plugin for the **Agility CC** friends chat's Wilderness Agility
-Course masses. It handles attendance, laps, gear checks, kits and DD calls
+Course masses. It handles attendance, laps, missing-gear checks, kits and DD calls
 for the people running the mass, and gives the organisers a live dashboard.
 
 Questions, feedback or bugs: the **[Agility CC Discord](https://discord.gg/agility)**.
@@ -27,9 +27,10 @@ counted as attending with your saved role, and told so in chat.
 
 ### Runner or Anti
 
-- **Runner** - your laps, time at the course, gear and DD calls are tracked.
+- **Runner** - your laps, time at the course and DD calls are tracked, and
+  you're checked for missing gear.
 - **Anti** - only your attendance time (and deaths) are recorded. No laps, no
-  gear checks, no DD tracking, and nobody's plugin reports on you.
+  missing-gear checks, no DD tracking, and nobody's plugin reports on you.
 
 Swapping mid-mass (the **Switch to...** button in the panel) starts a separate
 record, so time spent as an anti and as a runner are never mixed together.
@@ -42,7 +43,7 @@ record, so time spent as an anti and as a runner are never mixed together.
   join) if you're not.
 - **Mass** - whether one is running and for how long, and your answer.
 - **This mass** - your laps and tickets, whether you're in the course area,
-  any gear gaps, and DD timing while a DD is called.
+  any empty required gear slots, and DD timing while a DD is called.
 - **Kit** - pick one of the organisers' recommended kits. Until you reach the
   course, it checks your gear and inventory against it, tells you what's
   missing, and outlines the missing items in your bank. Every kit includes the
@@ -50,9 +51,10 @@ record, so time spent as an anti and as a runner are never mixed together.
 - **Previous sessions** - each mass you've attended: date, role, laps and time
   on the course. Kept on your computer only, per account.
 
-### Gear checks
+### Missing-gear checks
 
-Runners are expected to wear something in the slots the organisers choose
+The plugin never reports what anyone is wearing - only whether a required
+slot is **empty** (or the weapon isn't a bow/crossbow). Runners are expected to wear something in the slots the organisers choose
 (by default helm, amulet, body, legs and boots) and to use a bow or crossbow -
 a crossbow also needs something in the shield slot; a bow is two-handed, so
 an empty shield is fine. If you're missing something, you get a red chat
@@ -61,7 +63,7 @@ line.
 Ranked members of the chat (the minimum rank is set by the organisers) also
 see a short label over runners in view who are missing gear, so they can help
 them sort it out. Members without the plugin - on mobile, for example - still
-get gear-checked as runners by other people's plugins.
+get checked for missing gear by other people's plugins.
 
 ### Settings
 
@@ -71,11 +73,10 @@ Open RuneLite's configuration for **Wildy Agility FC Tracker**:
 |---|---|
 | My role | Runner or Anti - remembered for the next mass. |
 | Share stats | Send your own skill levels and combat level. |
-| Share gear | Send your own worn equipment. |
 | Share roster | Send the friends chat member list while a mass runs (how the dashboard knows who's in the chat). |
-| FC observer | Report gear gaps and DD presence of chat members you can see at the course. |
+| FC observer | Report which required slots chat members you can see at the course have empty, and their DD presence. |
 | Show sidebar panel | Show or hide the panel. |
-| Gear chat warnings | The red chat line when your own gear has gaps. |
+| Gear chat warnings | The red chat line when one of your own required slots is empty. |
 | Show gear flags | The over-head labels on runners missing gear (ranked members only). |
 
 ### What's shared, and when
@@ -87,18 +88,20 @@ Once you pick Runner or Anti - or walk into the course during a mass - and
 only for that mass, it sends to the Agility CC server
 (`agilitycc.grestinator.com`, not run or checked by the RuneLite developers):
 
-- your RSN, world, combat level and skill levels, worn equipment,
-  wilderness level and skull status;
+- your RSN, world, combat level and skill levels, wilderness level and
+  skull status, and which of your required gear slots are empty (never what
+  you're wearing);
 - your Wilderness Agility laps (with tickets gained) and deaths;
 - the names, ranks and worlds of the friends chat's members;
 - for chat members seen at the course: their name, which required gear slots
   they have empty (never what they're actually wearing), and how long they
   were on the DD tiles during a DD call.
 
-For antis, laps, gear checks and DD calls are ignored, and nobody's plugin
+For antis, laps, missing-gear checks and DD calls are ignored, and nobody's plugin
 reports on antis or on people who said **Not today**. The server ignores everything from a
 player who hasn't opted in to the current mass. Nothing about other players'
-locations or items ever leaves your client, and your inventory is never sent.
+locations or items ever leaves your client - and neither do your own worn
+items or inventory.
 
 ---
 
@@ -113,7 +116,7 @@ From it you can:
 - set the runner gear rules, the rank that sees gear flags, and the DD call
   settings (**Settings**);
 - build the recommended **Kits** players choose from;
-- add a manual gear gap for someone without the plugin.
+- record a missing-gear note for someone without the plugin.
 
 The observer can be switched off server-side at any time without a plugin
 update.

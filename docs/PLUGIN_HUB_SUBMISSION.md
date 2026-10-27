@@ -23,7 +23,7 @@ this build).
       artwork (must stay `icon.png` at the repo root, 48x72 per the Hub template)
 - [ ] `LICENSE` present (BSD-2-Clause)
 - [x] **`README.md` rewritten 2026-10-27** - players' guide (prompt, roles,
-      panel, kits, gear checks, settings, what's shared and when), organisers'
+      panel, kits, missing-gear checks, settings, what's shared and when), organisers'
       dashboard summary, repo layout. Keep it in step with later changes.
 - [ ] `./gradlew build` passes clean on Java 11
 - [ ] The §5.11 Hub-readiness grep checks still pass (no `getPlayers()`
@@ -37,7 +37,7 @@ this build).
    ```
    repository=https://github.com/Scathis/AgilityCCTracker.git
    commit=<full 40-char commit sha to submit>
-   warning=This plugin sends your RSN and IP address to a server not controlled or verified by the RuneLite developers, to check whether the Agility CC friends chat has a mass running. Only once you opt in to a mass (by picking Runner or Anti, or by entering the Wilderness Agility Course during it), and only for that mass, it also sends: your world, combat and skill levels, worn equipment, wilderness level and skull status, Wilderness Agility laps and deaths; the names, ranks and worlds of the friends chat's members; and, for chat members seen at the course, their names, which required gear slots they have empty, and their time on the chat's DD tiles during a DD call.
+   warning=This plugin sends your RSN and IP address to a server not controlled or verified by the RuneLite developers, to check whether the Agility CC friends chat has a mass running. Only once you opt in to a mass (by picking Runner or Anti, or by entering the Wilderness Agility Course during it), and only for that mass, it also sends: your world, combat and skill levels, wilderness level and skull status, which of your required gear slots are empty, Wilderness Agility laps and deaths; the names, ranks and worlds of the friends chat's members; and, for chat members seen at the course, their names, which required gear slots they have empty, and their time on the chat's DD tiles during a DD call. No one's worn items or inventory are ever sent - only which required slots are empty.
    ```
 
 ## 4. PR description
@@ -51,7 +51,7 @@ Should cover, explicitly:
   Agility Course while in that friends chat during the mass, which counts as
   attending (they're told so in chat). The server also ignores
   everything from a player who hasn't opted in. Antis (a player-chosen role)
-  are attendance-time only: no laps, no DD, no gear checks, and observers
+  are attendance-time only: no laps, no DD, no missing-gear checks, and observers
   never report on antis or on players who answered No.
 - **Gear flags are rank-gated.** What a player wears is public in-game, but
   the plugin only shows a ready-made list / over-head labels of other players'
@@ -68,9 +68,12 @@ Should cover, explicitly:
   tool has exactly one backend); the token is not a secret and is not relied
   on for security - the opt-in rule above is.
 
-- The **gaps-only loadout design** — other players' loadout compliance is
-  reported as which named slots they failed (e.g. `"WEAPON"`), never
-  their actual worn items. Reference the `rogue-chests` plugin as an
+- The **empty-slots-only design** — the server never learns what anyone is
+  wearing, the player included. Gear is only ever reported as which required
+  slots are empty or wrong (e.g. `"BOOTS"`, `"WEAPON"` for "no bow"), for
+  other players *and* for the player's own check. (An earlier build also
+  uploaded the player's own worn items; removed 2026-10-27 and the stored
+  data deleted, so this line holds without exceptions.) Reference the `rogue-chests` plugin as an
   existing Hub precedent for "reads other players, uploads only a
   derived signal, not raw data."
 - That exactly **one class** (`scan/FcMemberScanner`) ever reads other
@@ -79,8 +82,7 @@ Should cover, explicitly:
 - The **payload-shape test** that proves the "no other player's raw
   data leaves the client" boundary in code, not just in review.
 - The **DD observer**: booleans and durations only (arrival lateness, time
-  on tile, whether they kept running, whether their DD loadout failed —
-  never coordinates or raw gear), with a server-side `observer_enabled`
+  on tile, whether they kept running — never coordinates or gear), with a server-side `observer_enabled`
   kill switch the FC owner controls independent of any plugin update.
 - **Scope is physically bounded, not just logically bounded.**
   `FcMemberScanner` doesn't just limit *what* it uploads about other

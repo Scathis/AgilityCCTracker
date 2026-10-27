@@ -18,7 +18,6 @@ public class SelfState
 	Integer world;
 	Integer combatLevel;
 	Map<String, Integer> skills;
-	List<EquipmentItem> equipment;
 	Integer wildyLevel;
 	Boolean onCourse;
 	Boolean skulled;
