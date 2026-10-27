@@ -20,6 +20,15 @@ class RequiresLogin(Exception):
     exception handler turns this into a redirect to /login."""
 
 
+class RequiresPasswordChange(Exception):
+    """Raised by require_user for an account still on an admin-issued
+    temporary password; main.py redirects it to /account."""
+
+
+# The only pages an account on a temporary password can reach.
+PASSWORD_CHANGE_PATHS = {"/account", "/account/password", "/logout"}
+
+
 def _session_payload(request: Request) -> dict | None:
     cookie_value = request.cookies.get(SESSION_COOKIE_NAME)
     if not cookie_value:
@@ -43,9 +52,11 @@ async def get_current_user(
     return user
 
 
-async def require_user(user: User | None = Depends(get_current_user)) -> User:
+async def require_user(request: Request, user: User | None = Depends(get_current_user)) -> User:
     if user is None:
         raise RequiresLogin()
+    if user.must_change_password and request.url.path not in PASSWORD_CHANGE_PATHS:
+        raise RequiresPasswordChange()
     return user
 
 

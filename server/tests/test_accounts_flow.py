@@ -5,6 +5,7 @@ import secrets
 from sqlalchemy import select
 
 from app.models.user import User, UserRole, UserStatus
+from app.web.security import read_flash
 
 PASSWORD = "correct horse battery"
 
@@ -180,3 +181,58 @@ async def test_change_own_password(client, make_user, login_as, db_session):
         "/login", data={"username": user.username, "password": PASSWORD}, follow_redirects=False
     )
     assert login.status_code == 303
+
+
+async def test_temporary_password_forces_a_new_one(
+    client, make_user, login_as, db_session, default_group
+):
+    target = await make_user(UserRole.STAFF)
+    csrf = login_as(await make_user(UserRole.ADMIN))
+    reset = await client.post(
+        f"/admin/users/{target.id}/reset-password",
+        data={"csrf_token": csrf},
+        follow_redirects=False,
+    )
+    message = read_flash(reset.cookies["flash"])
+    temporary = message.split("(shown once): ")[1].split(" - ")[0]
+
+    client.cookies.clear()
+    login = await client.post(
+        "/login",
+        data={"username": target.username, "password": temporary},
+        follow_redirects=False,
+    )
+    assert login.status_code == 303
+    assert login.headers["location"] == "/account"
+
+    # Every other page sends them back to choose a password.
+    session_csrf = login_as(target)
+    for path in ("/events", "/kits"):
+        response = await client.get(path, follow_redirects=False)
+        assert response.headers["location"] == "/account", path
+    assert "temporary password" in (await client.get("/account")).text
+
+    same = await client.post(
+        "/account/password",
+        data={
+            "current": temporary,
+            "password": temporary,
+            "confirm": temporary,
+            "csrf_token": session_csrf,
+        },
+    )
+    assert same.status_code == 400
+
+    changed = await client.post(
+        "/account/password",
+        data={
+            "current": temporary,
+            "password": PASSWORD,
+            "confirm": PASSWORD,
+            "csrf_token": session_csrf,
+        },
+        follow_redirects=False,
+    )
+    assert changed.status_code == 303
+    assert (await _get(db_session, target.username)).must_change_password is False
+    assert (await client.get("/events", follow_redirects=False)).status_code == 200

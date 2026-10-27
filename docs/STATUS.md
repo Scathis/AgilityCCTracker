@@ -19,6 +19,9 @@ append-only log (that's what BUILD_LOG.md is for).
   removed, re-roled or password-reset from the dashboard); admins can't
   demote/remove themselves. Sign-ups limited to 3/hour/IP (in memory) and
   25 pending. Migration `c3f8a6b9e402`.
+- An admin password reset sets `users.must_change_password` (migration
+  `d4a9b7c0f513`): the temporary password only reaches /account until a new
+  one (different from it) is chosen.
 
 ## Earlier (2026-10-27, night — pre-submission clean-up)
 

@@ -35,3 +35,8 @@ class User(Base):
     # password reset from the dashboard (protects against accidents and
     # against another admin taking it over).
     protected: Mapped[bool] = mapped_column(Boolean, default=False, server_default="0")
+    # Set when an admin resets the password: the temporary one only gets
+    # them as far as the Account page, where they must choose their own.
+    must_change_password: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default="0"
+    )

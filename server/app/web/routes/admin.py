@@ -162,11 +162,12 @@ async def reset_password(
         return _flash_and_redirect("/admin/users", error)
     password = secrets.token_urlsafe(12)
     target.password_hash = hash_password(password)
+    target.must_change_password = True
     await session.commit()
     return _flash_and_redirect(
         "/admin/users",
         f"Temporary password for '{target.username}' (shown once): {password} - "
-        "ask them to change it on their Account page.",
+        "it only lets them in to choose a new password of their own.",
     )
 
 

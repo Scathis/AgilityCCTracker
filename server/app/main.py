@@ -12,7 +12,7 @@ from app.api.v1.participation import router as participation_router
 from app.api.v1.status import router as status_router
 from app.config import settings
 from app.models.user import User
-from app.web.deps import RequiresLogin, get_current_user
+from app.web.deps import RequiresLogin, RequiresPasswordChange, get_current_user
 from app.web.routes.admin import router as admin_router
 from app.web.routes.auth import router as auth_router
 from app.web.routes.dd import router as dd_router
@@ -69,6 +69,13 @@ app.add_middleware(BodySizeLimitMiddleware)
 @app.exception_handler(RequiresLogin)
 async def handle_requires_login(request: Request, exc: RequiresLogin) -> RedirectResponse:
     return RedirectResponse(url="/login", status_code=303)
+
+
+@app.exception_handler(RequiresPasswordChange)
+async def handle_requires_password_change(
+    request: Request, exc: RequiresPasswordChange
+) -> RedirectResponse:
+    return RedirectResponse(url="/account", status_code=303)
 
 
 app.include_router(status_router, prefix="/api/v1")

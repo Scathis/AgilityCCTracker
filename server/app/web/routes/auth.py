@@ -68,7 +68,8 @@ async def login_submit(
     await session.commit()
 
     payload = new_session_payload(user.id)
-    response = RedirectResponse(url="/events", status_code=303)
+    landing = "/account" if user.must_change_password else "/events"
+    response = RedirectResponse(url=landing, status_code=303)
     response.set_cookie(
         SESSION_COOKIE_NAME,
         sign_session(payload),
@@ -179,7 +180,10 @@ async def change_password(
     error = password_error(password, confirm, user.username)
     if error:
         return _account_page(request, user, error)
+    if verify_password(password, user.password_hash):
+        return _account_page(request, user, "Choose a password different from your current one.")
     db_user = await session.get(User, user.id)
     db_user.password_hash = hash_password(password)
+    db_user.must_change_password = False
     await session.commit()
     return RedirectResponse(url="/account?saved=1", status_code=303)

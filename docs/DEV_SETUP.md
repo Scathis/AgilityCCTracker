@@ -228,8 +228,10 @@ wired up end-to-end:
       in with it says it's waiting for approval. On Admin → Users, approve it
       as Viewer/Staff/Admin (then it can log in) or reject it. Change an
       account's role; remove an account (it's logged out straight away);
-      reset a password (temporary one shown once) and change it again on
-      Account. The grestinator row says it can't be changed or removed and
+      reset a password (temporary one shown once) - logging in with it lands
+      on Account, every other page sends you back there, and it won't accept
+      the temporary password again as the new one; once changed, the
+      dashboard works normally. The grestinator row says it can't be changed or removed and
       has no buttons; your own row can't be demoted or removed.
 - [ ] Admin: rotate the token (shown once, old token stops working).
 - [ ] Roles: viewer sees only Events + DD Leaderboard; staff sees everything

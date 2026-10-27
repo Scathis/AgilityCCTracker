@@ -1854,3 +1854,13 @@ mass is running); "Fastest lap" for the current mass stays in This session.
   `create-admin` stays for bootstrapping.
 - Tests: `tests/test_accounts_flow.py` (10), RBAC test covers the new admin
   POSTs, flash test now uses reset-password. 107 pass.
+
+## 2026-10-28 - Temporary passwords must be replaced
+
+`users.must_change_password` (migration `d4a9b7c0f513`), set by the admin
+reset. `require_user` raises `RequiresPasswordChange` for such accounts on
+anything but `/account`, `/account/password` and `/logout` (main.py
+redirects to /account); login lands on /account; the account page labels the
+field "Temporary password" and explains why. Changing the password clears the
+flag and refuses the same password again. Test:
+`test_temporary_password_forces_a_new_one`. 108 pass.
