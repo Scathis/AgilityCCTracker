@@ -92,7 +92,8 @@ wired up end-to-end:
       the checks above.
 - [ ] Answer Yes as **Anti** → attendance time shows (Role column says Anti),
       but no laps, no DD presence, no loadout warnings, and the dashboard
-      Loadout column says "n/a (anti)".
+      Loadout column says "n/a (anti)". Dying in the course as an anti still
+      shows up on the dashboard's deaths.
 - [ ] Change **My role** in the plugin config mid-mass (e.g. Anti → Runner →
       Anti) → the dashboard Attendance tab shows a separate row per role, each
       with its own time present and laps (never combined); runner-only

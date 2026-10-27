@@ -29,7 +29,9 @@ Built and deployed (migration `a7c3e91d5b24` applied; pre-deploy backup taken):
   anyone not ATTENDING in the active mass is dropped server-side too.
 - **Roles.** Anti = attendance time only (no laps/DD/loadout); observers skip
   antis and No-answerers; FC members with no plugin answer count as runners.
-  Deaths are still recorded for antis (judgement call - easy to drop).
+  Deaths are recorded for antis too (owner confirmed 2026-10-27). The
+  course fee in every kit stays a fixed 150,000 coins, not a minimum (owner
+  confirmed 2026-10-27).
 - **Baked-in server.** URL + token compiled into `api/ServerConfig.java`, no
   in-game setting. The token was **rotated 2026-10-27** for this and is now
   committed in source (effectively public - protection is the opt-in rule).
