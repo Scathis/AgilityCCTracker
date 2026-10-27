@@ -146,6 +146,12 @@ on the dashboard. Pull and rebuild the plugin first.
 - [ ] Each slot box only offers items worn in that slot (searching
       "platelegs" in Body finds nothing; in Legs it does). Inventory search
       offers everything.
+- [ ] Kit editor layout: gear grid on the left, a game-style 4x7 inventory
+      on the right. The coins (150K, padlock) take the first square; each
+      item added under "Items to carry" fills the next square with its
+      stack number (yellow, white "K" from 100K), and changing a quantity or
+      removing a line updates it straight away. "N / 28 slots" below it.
+      On a phone the two stack.
 - [ ] Every kit has a locked "Coins 150,000 - course entry fee" line.
 - [ ] First kit becomes the default; **Mark as default** moves it; **Edit**
       reopens with everything filled; deleting the default hands it on.

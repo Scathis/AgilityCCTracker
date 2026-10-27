@@ -1884,3 +1884,14 @@ flag and refuses the same password again. Test:
   `equip_slot` isn't the slot it was put in.
 - Tests: `parse_item_names`, `parse_equip_slots`, search dedupe/slot filter,
   wrong-slot save refused. 110 pass.
+
+## 2026-10-28 - Kit editor: gear left, live inventory right
+
+`kits/edit.html`: gear grid and a new inventory preview sit side by side
+(`.kit-layout`, stacks under 760px). The preview is a 4x7 game-style grid
+rebuilt by `renderInventory()` from the "Items to carry" table on load and on
+every add/remove/quantity change: entry fee first (150K, padlock), then one
+square per line in list order with an OSRS-style stack label (yellow < 100K,
+white K, green M), "N / 28 slots" caption. One square per line, matching the
+server's 27-lines-plus-fee limit (stackability isn't known). The table stays
+for editing quantities. Verified with a headless-Chrome screenshot.

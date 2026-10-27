@@ -110,6 +110,52 @@
   }
   .editor-save button, .editor-save a[role=button] { margin: 0; width: auto; }
   .unsaved { opacity: 0.85; font-size: 0.9rem; }
+
+  /* Gear on the left, a game-style inventory on the right. */
+  .kit-layout {
+    display: grid;
+    grid-template-columns: auto auto;
+    justify-content: start;
+    align-items: start;
+    gap: 1rem 4rem;
+  }
+  .kit-layout .equipment-grid { justify-content: start; margin-top: 1rem; }
+  .inv-panel {
+    margin-top: 1rem;
+    padding: 0.6rem;
+    background: #3e3529;
+    border: 2px solid #1f1a12;
+    border-radius: var(--pico-border-radius);
+    box-shadow: inset 0 0 0 1px #5a4a30;
+    width: max-content;
+  }
+  .inv-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 44px);
+    grid-auto-rows: 40px;
+    gap: 4px 6px;
+  }
+  .inv-cell {
+    position: relative;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 3px;
+    background: rgba(0, 0, 0, 0.12);
+  }
+  .inv-cell.filled { background: rgba(0, 0, 0, 0.22); cursor: default; }
+  .inv-cell img { width: 36px; height: 32px; object-fit: contain; }
+  .inv-cell .inv-qty {
+    position: absolute; top: 0; left: 2px;
+    font-family: "RuneScape", var(--pico-font-family);
+    font-size: 0.8rem; line-height: 1;
+    color: #ffff00; text-shadow: 1px 1px 0 #000;
+  }
+  .inv-cell .inv-qty.k { color: #ffffff; }
+  .inv-cell .inv-qty.m { color: #00ff80; }
+  .inv-cell .inv-lock { position: absolute; bottom: 0; right: 1px; font-size: 0.6rem; }
+  .inv-caption { margin-top: 0.4rem; font-size: 0.8rem; color: var(--pico-muted-color); text-align: center; }
+  @media (max-width: 760px) {
+    .kit-layout { grid-template-columns: 1fr; }
+  }
 </style>
 
 <p><a href="/kits">&larr; Back to kits</a></p>
@@ -125,9 +171,10 @@
     {% if kit and kit.is_default %}<span>⭐ Default kit</span>{% endif %}
   </div>
 
+  <div class="kit-layout">
   <section class="editor-section">
     <h3>Gear</h3>
-    <p><small>Click a slot to pick the recommended item. Empty slots aren't checked. Any variant of an item counts in-game (e.g. charged or uncharged).</small></p>
+    <p><small>Click a slot to pick the recommended item. Empty slots aren't checked.<br>Any variant of an item counts in-game (e.g. charged or uncharged).</small></p>
     <div class="equipment-grid">
       {% for s in slots %}
       <details class="slot-card slot-{{ s.slot }}" id="slot-{{ s.slot }}">
@@ -161,6 +208,16 @@
 
   <section class="editor-section">
     <h3>Inventory</h3>
+    <p><small>Fills in as you add items below.</small></p>
+    <div class="inv-panel">
+      <div class="inv-grid" id="inv-grid" aria-label="Inventory preview"></div>
+    </div>
+    <div class="inv-caption" id="inv-caption"></div>
+  </section>
+  </div>
+
+  <section class="editor-section">
+    <h3>Items to carry</h3>
     <p><small>Quantities count items, not doses: "Stamina potion &times; 2" is met by any two stamina potions of any dose. Every kit always carries the 150,000 coin course entry fee in one slot, leaving {{ max_lines }} for everything else.</small></p>
     <table class="inventory-table">
       <thead><tr><th>Item</th><th>Quantity</th><th></th></tr></thead>
@@ -211,6 +268,56 @@
   let dirty = false;
 
   function markDirty() { dirty = true; note.hidden = false; }
+
+  // Game-style stack label: yellow below 100K, white "K", green "M".
+  function stackLabel(n) {
+    if (n >= 10000000) { return { text: Math.floor(n / 1000000) + 'M', cls: 'm' }; }
+    if (n >= 100000) { return { text: Math.floor(n / 1000) + 'K', cls: 'k' }; }
+    return { text: String(n), cls: '' };
+  }
+
+  function cell(icon, name, qty, locked) {
+    const div = document.createElement('div');
+    div.className = 'inv-cell filled';
+    div.title = name + (qty > 1 ? ' x ' + qty.toLocaleString() : '') + (locked ? ' (course entry fee)' : '');
+    const img = document.createElement('img');
+    img.src = icon; img.alt = name; img.loading = 'lazy';
+    img.onerror = function () { this.style.visibility = 'hidden'; };
+    div.appendChild(img);
+    if (qty > 1) {
+      const label = stackLabel(qty);
+      const q = document.createElement('span');
+      q.className = 'inv-qty ' + label.cls; q.textContent = label.text;
+      div.appendChild(q);
+    }
+    if (locked) {
+      const l = document.createElement('span');
+      l.className = 'inv-lock'; l.textContent = '🔒';
+      div.appendChild(l);
+    }
+    return div;
+  }
+
+  // One square per line: the entry fee first, then each item in list order.
+  function renderInventory() {
+    const grid = document.getElementById('inv-grid');
+    grid.innerHTML = '';
+    grid.appendChild(cell('{{ fee.item.icon }}', '{{ fee.item.name }}', {{ fee.qty }}, true));
+    const lines = rows.querySelectorAll('tr');
+    lines.forEach(function (tr) {
+      const img = tr.querySelector('img');
+      const name = tr.querySelector('.item-cell').textContent.trim();
+      const qty = parseInt(tr.querySelector('input[name="inv_qty"]').value, 10) || 1;
+      grid.appendChild(cell(img ? img.src : '', name, qty, false));
+    });
+    for (let i = lines.length + 1; i < 28; i++) {
+      const blank = document.createElement('div');
+      blank.className = 'inv-cell';
+      grid.appendChild(blank);
+    }
+    document.getElementById('inv-caption').textContent =
+      (lines.length + 1) + ' / 28 slots';
+  }
   function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
 
   function setSlot(slot, id, name, icon) {
@@ -244,6 +351,7 @@
     }
     empty.hidden = true;
     qtyInput.value = 1;
+    renderInventory();
     markDirty();
   }
 
@@ -263,6 +371,7 @@
     if (remove) {
       remove.closest('tr').remove();
       empty.hidden = rows.children.length > 0;
+      renderInventory();
       markDirty();
     }
   });
@@ -273,7 +382,11 @@
     input.setAttribute('form', 'no-such-form');
   });
 
-  form.addEventListener('input', function (e) { if (!e.target.classList.contains('kit-search') && e.target.id !== 'inv-add-qty') { markDirty(); } });
+  form.addEventListener('input', function (e) {
+    if (e.target.name === 'inv_qty') { renderInventory(); }
+    if (!e.target.classList.contains('kit-search') && e.target.id !== 'inv-add-qty') { markDirty(); }
+  });
+  renderInventory();
   form.addEventListener('submit', function () { dirty = false; });
   window.addEventListener('beforeunload', function (e) { if (dirty) { e.preventDefault(); e.returnValue = ''; } });
 })();
