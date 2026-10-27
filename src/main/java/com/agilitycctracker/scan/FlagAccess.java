@@ -34,7 +34,7 @@ public final class FlagAccess
 			&& normalise(viewerFcOwner).equals(normalise(serverFcOwner));
 	}
 
-	/** "WEAPON, FEET" -> "no weapon, boots"; capped so a naked player doesn't produce a wall of text. */
+	/** "WEAPON, BOOTS" -> "No bow, boots"; capped so a naked player doesn't produce a wall of text. */
 	public static String describe(List<String> failedKeys)
 	{
 		List<String> parts = new ArrayList<>();
@@ -57,14 +57,20 @@ public final class FlagAccess
 		{
 			case "HEAD":
 				return "helm";
-			case "FEET":
+			case "BOOTS":
 				return "boots";
 			case "HANDS":
 				return "gloves";
-			case "BODY":
+			case "TORSO":
 				return "body";
 			case "LEGS":
 				return "legs";
+			case "AMULET":
+				return "amulet";
+			case "WEAPON":
+				return "bow";
+			case "SHIELD":
+				return "shield";
 			default:
 				return key.toLowerCase(Locale.ROOT).replace('_', ' ').replace('-', ' ');
 		}
@@ -72,6 +78,6 @@ public final class FlagAccess
 
 	private static String normalise(String name)
 	{
-		return name.replace(' ', ' ').trim().toLowerCase(Locale.ROOT);
+		return name.replace('\u00A0', ' ').trim().toLowerCase(Locale.ROOT);
 	}
 }

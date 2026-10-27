@@ -3,7 +3,7 @@ import datetime as dt
 from sqlalchemy import select
 
 from app.models.event import Attendance, Event
-from app.models.loadout import Loadout, LoadoutCheck
+from app.models.loadout import LoadoutCheck
 from app.models.player import Player
 from app.models.user import UserRole
 
@@ -111,17 +111,11 @@ async def test_manual_gap_form_submission(
     )
     await db_session.commit()
 
-    loadout_result = await db_session.execute(
-        select(Loadout).where(Loadout.fc_group_id == default_group.id)
-    )
-    loadout = loadout_result.scalars().first()
-
     response = await client.post(
         f"/events/{event.id}/manual-gap",
         data={
             "player_id": player.id,
-            "loadout_id": loadout.id,
-            "failed": "run-helm, run-boots",
+            "failed": ["BOOTS", "HEAD"],
             "notes": "seen without helm",
             "csrf_token": csrf,
         },
@@ -133,7 +127,8 @@ async def test_manual_gap_form_submission(
         select(LoadoutCheck).where(LoadoutCheck.player_id == player.id)
     )
     checks = check_result.scalars().all()
-    assert any(c.failed_requirement_keys == ["run-helm", "run-boots"] for c in checks)
+    # Stored in equipment-tab order, whatever order the boxes were ticked in.
+    assert any(c.failed_requirement_keys == ["HEAD", "BOOTS"] for c in checks)
 
 
 async def test_attendance_status_shows_present_vs_away(

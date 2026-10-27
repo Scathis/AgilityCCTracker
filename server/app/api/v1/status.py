@@ -8,18 +8,20 @@ from app.db import get_session
 from app.deps import get_current_fc_group
 from app.models.event import Attendance, Event
 from app.models.fc_group import FcGroup
-from app.models.loadout import Loadout, LoadoutRequirement
+from app.models.kit import INVENTORY, Kit, KitItem
 from app.models.player import Player
 from app.schemas.status import (
     ActiveEventOut,
     DdConfigOut,
     DdTileOut,
-    LoadoutOut,
+    GearRulesOut,
+    KitEquipmentOut,
+    KitInventoryOut,
+    KitOut,
     ParticipantOut,
-    RequirementOut,
     StatusOut,
 )
-from app.services.loadouts import serialize_loadout
+from app.services.gear_rules import required_slots
 from app.services.participation import participants_by_rsn
 
 router = APIRouter()
@@ -38,32 +40,43 @@ async def get_status(
     )
     active_event = event_result.scalars().first()
 
-    loadouts_result = await session.execute(
-        select(Loadout).where(Loadout.fc_group_id == fc_group.id, Loadout.enabled.is_(True))
-    )
-    loadouts = loadouts_result.scalars().all()
-
-    loadout_outs: list[LoadoutOut] = []
-    for loadout in loadouts:
-        req_result = await session.execute(
-            select(LoadoutRequirement).where(LoadoutRequirement.loadout_id == loadout.id)
+    kit_rows = (
+        (
+            await session.execute(
+                select(Kit).where(Kit.fc_group_id == fc_group.id).order_by(Kit.name)
+            )
         )
-        requirements = req_result.scalars().all()
-        loadout_out = serialize_loadout(loadout, requirements)
-        if loadout.context.value == "dd" and not fc_group.dd_crossbow_counts_as_bow:
-            # BUILD_PLAN.md §7: server-added, not stored - a real requirement
-            # row would need updating every time this per-group toggle flips.
-            loadout_out.requirements.append(
-                RequirementOut(
-                    id="dd-no-xbow",
-                    label="Crossbow at DD",
-                    slot="WEAPON",
-                    check="NAME_NOT_ENDS_WITH",
-                    args=["crossbow"],
-                    when=None,
+        .scalars()
+        .all()
+    )
+    kit_outs: list[KitOut] = []
+    for kit in kit_rows:
+        items = (
+            (
+                await session.execute(
+                    select(KitItem).where(KitItem.kit_id == kit.id).order_by(KitItem.id)
                 )
             )
-        loadout_outs.append(loadout_out)
+            .scalars()
+            .all()
+        )
+        kit_outs.append(
+            KitOut(
+                id=kit.id,
+                name=kit.name,
+                is_default=kit.is_default,
+                equipment=[
+                    KitEquipmentOut(slot=i.slot, item_id=i.item_id)
+                    for i in items
+                    if i.slot != INVENTORY
+                ],
+                inventory=[
+                    KitInventoryOut(item_id=i.item_id, qty=i.qty)
+                    for i in items
+                    if i.slot == INVENTORY
+                ],
+            )
+        )
 
     # Who's attending as what is only handed to viewers entitled to see gear
     # flags (their FC rank, as last reported by roster snapshots from *other*
@@ -102,7 +115,11 @@ async def get_status(
             else None
         ),
         participants=participants,
-        loadouts=loadout_outs,
+        gear_rules=GearRulesOut(
+            required_slots=required_slots(fc_group),
+            ranged_weapon=fc_group.require_ranged_weapon,
+        ),
+        kits=kit_outs,
         dd=DdConfigOut(
             tiles=tiles,
             call_regex=fc_group.dd_call_regex or r"^\s*dd\s*!*$",
@@ -111,7 +128,6 @@ async def get_status(
             arrive_grace_s=fc_group.dd_arrive_grace_s,
             leave_grace_s=fc_group.dd_leave_grace_s,
             max_minutes=fc_group.dd_max_minutes,
-            crossbow_counts_as_bow_at_dd=fc_group.dd_crossbow_counts_as_bow,
         ),
     )
 

@@ -60,6 +60,10 @@ Should cover, explicitly:
   target list. The scan itself only runs inside the tracked friends chat, and
   the over-head overlay is passed only the flagged players by
   `FcMemberScanner`; it reads nothing from them.
+- **Kit check is local.** The pre-course "are you ready?" check reads the
+  player's *own* worn items and inventory to compare with a recommended kit
+  and outline missing items in their bank; none of it is uploaded (the
+  inventory is never sent at all).
 - **Fixed server address.** The server URL and token are compiled in (this FC
   tool has exactly one backend); the token is not a secret and is not relied
   on for security - the opt-in rule above is.

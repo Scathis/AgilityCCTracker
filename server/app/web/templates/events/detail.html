@@ -59,14 +59,12 @@
       {% for p in attendees_for_gap %}<option value="{{ p.id }}">{{ p.rsn }}</option>{% endfor %}
     </select>
   </label>
-  <label for="loadout_id">Loadout
-    <select id="loadout_id" name="loadout_id" required>
-      {% for l in loadouts %}<option value="{{ l.id }}">{{ l.name }}</option>{% endfor %}
-    </select>
-  </label>
-  <label for="failed">Failed requirement keys (comma-separated)
-    <input type="text" id="failed" name="failed" placeholder="HEAD, BOOTS">
-  </label>
+  <fieldset>
+    <legend>What's missing or wrong</legend>
+    {% for slot, label in gap_slots %}
+    <label><input type="checkbox" name="failed" value="{{ slot }}"> {{ label }}{% if slot == "WEAPON" %} (no bow/crossbow){% elif slot == "SHIELD" %} (crossbow without shield){% endif %}</label>
+    {% endfor %}
+  </fieldset>
   <label for="notes">Notes<textarea id="notes" name="notes"></textarea></label>
   <button type="submit">Log gap</button>
 </form>

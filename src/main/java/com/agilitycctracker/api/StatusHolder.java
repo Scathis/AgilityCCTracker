@@ -7,7 +7,7 @@ import javax.inject.Singleton;
 /**
  * Latest known /status response, refreshed by Uploader's 60s poll and read
  * by every component that needs to know the active event / FC owner / server
- * feature switches (RosterTracker now; LoadoutEvaluator/DdCallDetector in
+ * feature switches (RosterTracker now; GearRuleEvaluator/DdCallDetector in
  * Phase 3).
  */
 @Singleton

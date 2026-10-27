@@ -6,8 +6,8 @@
 <ul class="item-search-results">
   {% for item in results %}
   <li>
-    <form method="post" action="/loadouts/{{ loadout_id }}/slots/{{ slot }}/items"
-          hx-post="/loadouts/{{ loadout_id }}/slots/{{ slot }}/items"
+    <form method="post" action="/kits/{{ kit_id }}/slots/{{ slot }}/item"
+          hx-post="/kits/{{ kit_id }}/slots/{{ slot }}/item"
           hx-target="#slot-{{ slot }}" hx-swap="outerHTML">
       <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
       <input type="hidden" name="item_id" value="{{ item.id }}">

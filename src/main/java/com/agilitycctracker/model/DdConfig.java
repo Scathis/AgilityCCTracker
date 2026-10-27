@@ -13,5 +13,4 @@ public class DdConfig
 	int arriveGraceS;
 	int leaveGraceS;
 	int maxMinutes;
-	boolean crossbowCountsAsBowAtDd;
 }

@@ -40,7 +40,7 @@ public class FlagAccessTest
 	@Test
 	public void configuredChatMatchIgnoresCaseAndNonBreakingSpaces()
 	{
-		assertTrue(FlagAccess.isConfiguredFc("Agility Cc", "agility cc"));
+		assertTrue(FlagAccess.isConfiguredFc("Agility\u00A0Cc", "agility cc"));
 		assertFalse(FlagAccess.isConfiguredFc("Someone Else", "Agility Cc"));
 		assertFalse(FlagAccess.isConfiguredFc(null, "Agility Cc"));
 		assertFalse(FlagAccess.isConfiguredFc("Agility Cc", null));
@@ -50,9 +50,10 @@ public class FlagAccessTest
 	public void describeUsesFriendlySlotNamesAndCapsTheList()
 	{
 		assertEquals("No helm", FlagAccess.describe(Collections.singletonList("HEAD")));
-		assertEquals("No helm, boots", FlagAccess.describe(Arrays.asList("HEAD", "FEET")));
-		assertEquals("No helm, boots, gloves +2",
-			FlagAccess.describe(Arrays.asList("HEAD", "FEET", "HANDS", "WEAPON", "SHIELD")));
+		assertEquals("No helm, boots", FlagAccess.describe(Arrays.asList("HEAD", "BOOTS")));
+		assertEquals("No helm, boots, amulet +2",
+			FlagAccess.describe(Arrays.asList("HEAD", "BOOTS", "AMULET", "WEAPON", "SHIELD")));
+		assertEquals("No bow, body", FlagAccess.describe(Arrays.asList("WEAPON", "TORSO")));
 		assertEquals("", FlagAccess.describe(Collections.emptyList()));
 	}
 }

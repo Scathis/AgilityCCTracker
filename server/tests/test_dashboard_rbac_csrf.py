@@ -1,16 +1,14 @@
-from sqlalchemy import select
 
-from app.models.loadout import Loadout, LoadoutContext
+from app.models.kit import Kit
 from app.models.user import UserRole
 
 
-async def _get_running_loadout(db_session, group):
-    result = await db_session.execute(
-        select(Loadout).where(
-            Loadout.fc_group_id == group.id, Loadout.context == LoadoutContext.RUNNING
-        )
-    )
-    return result.scalars().one()
+async def _make_kit(db_session, group) -> Kit:
+    kit = Kit(fc_group_id=group.id, name="RBAC kit", is_default=False)
+    db_session.add(kit)
+    await db_session.commit()
+    await db_session.refresh(kit)
+    return kit
 
 
 async def test_viewer_can_read_pages(client, make_user, login_as, default_group):
@@ -21,27 +19,27 @@ async def test_viewer_can_read_pages(client, make_user, login_as, default_group)
         assert response.status_code == 200, path
 
 
-async def test_viewer_cannot_read_loadouts_players_or_raggers(
+async def test_viewer_cannot_read_kits_players_or_raggers(
     client, make_user, login_as, default_group, db_session
 ):
     """Viewer's read access is deliberately scoped to Events + DD Leaderboard
-    only - Loadouts/Players/Raggers were viewer-readable until the owner
+    only - Kits (then Loadouts)/Players/Raggers were viewer-readable until the owner
     asked for them to be removed from that list."""
     user = await make_user(UserRole.VIEWER)
     login_as(user)
-    loadout = await _get_running_loadout(db_session, default_group)
-    for path in ("/loadouts", f"/loadouts/{loadout.id}", "/players", "/raggers"):
+    kit = await _make_kit(db_session, default_group)
+    for path in ("/kits", f"/kits/{kit.id}", "/players", "/raggers"):
         response = await client.get(path)
         assert response.status_code == 403, path
 
 
-async def test_staff_can_still_read_loadouts_players_and_raggers(
+async def test_staff_can_still_read_kits_players_and_raggers(
     client, make_user, login_as, default_group, db_session
 ):
     user = await make_user(UserRole.STAFF)
     login_as(user)
-    loadout = await _get_running_loadout(db_session, default_group)
-    for path in ("/loadouts", f"/loadouts/{loadout.id}", "/players", "/raggers"):
+    kit = await _make_kit(db_session, default_group)
+    for path in ("/kits", f"/kits/{kit.id}", "/players", "/raggers"):
         response = await client.get(path)
         assert response.status_code == 200, path
 
@@ -100,33 +98,23 @@ async def test_post_with_wrong_csrf_token_is_rejected(client, make_user, login_a
     assert response.status_code == 403
 
 
-async def test_viewer_cannot_edit_loadout_slots(
+async def test_viewer_cannot_edit_kits_or_gear_rules(
     client, make_user, login_as, default_group, db_session
 ):
-    """Covers the loadout slot-editing routes, which only require_role(STAFF)
-    at the route level - never previously exercised by a role-check test, as
-    opposed to just being read from the source."""
     user = await make_user(UserRole.VIEWER)
     csrf = login_as(user)
-    loadout = await _get_running_loadout(db_session, default_group)
-
-    required = await client.post(
-        f"/loadouts/{loadout.id}/slots/HEAD/required",
-        data={"required": "true", "csrf_token": csrf},
-    )
-    assert required.status_code == 403
-
-    add_item = await client.post(
-        f"/loadouts/{loadout.id}/slots/HEAD/items",
-        data={"item_id": "1", "csrf_token": csrf},
-    )
-    assert add_item.status_code == 403
-
-    remove_item = await client.post(
-        f"/loadouts/{loadout.id}/slots/HEAD/items/1/delete",
-        data={"csrf_token": csrf},
-    )
-    assert remove_item.status_code == 403
+    kit = await _make_kit(db_session, default_group)
+    for path, data in (
+        ("/kits", {"name": "x"}),
+        ("/kits/rules", {"required": "HEAD"}),
+        (f"/kits/{kit.id}/slots/HEAD/item", {"item_id": "1"}),
+        (f"/kits/{kit.id}/slots/HEAD/clear", {}),
+        (f"/kits/{kit.id}/inventory", {"item_id": "1", "qty": "1"}),
+        (f"/kits/{kit.id}/default", {}),
+        (f"/kits/{kit.id}/delete", {}),
+    ):
+        response = await client.post(path, data={**data, "csrf_token": csrf})
+        assert response.status_code == 403, path
 
 
 async def test_viewer_cannot_manage_raggers(client, make_user, login_as, default_group):

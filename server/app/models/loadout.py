@@ -1,7 +1,7 @@
 import datetime as dt
 import enum
 
-from sqlalchemy import JSON, Boolean, DateTime, Enum, ForeignKey, String, UniqueConstraint
+from sqlalchemy import JSON, Boolean, DateTime, Enum, ForeignKey, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base
@@ -19,6 +19,11 @@ class LoadoutCheckSource(enum.StrEnum):
 
 
 class Loadout(Base):
+    """Since 2026-10-27 only an internal anchor row ("Running") that
+    loadout_checks hang off - the rules themselves are the group's gear rules
+    (FcGroup.required_slots / require_ranged_weapon), and recommended setups
+    are Kits. Kept so existing gear-check history keeps its foreign key."""
+
     __tablename__ = "loadouts"
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -26,25 +31,6 @@ class Loadout(Base):
     name: Mapped[str] = mapped_column(String(255))
     context: Mapped[LoadoutContext] = mapped_column(Enum(LoadoutContext, native_enum=True))
     enabled: Mapped[bool] = mapped_column(Boolean, default=True)
-
-
-class LoadoutRequirement(Base):
-    """One slot's rule within a loadout - at most one row per (loadout_id,
-    slot), since the interactive "build a runner loadout" character-sheet
-    editor works per-slot, not per arbitrary named rule. Semantics (how
-    required/allowed_item_ids combine - required-any-item,
-    required-from-list, optional-but-restricted-if-worn, or no row at all
-    meaning unrestricted) are defined by the plugin's LoadoutEvaluator,
-    which is the actual source of truth for evaluation."""
-
-    __tablename__ = "loadout_requirements"
-    __table_args__ = (UniqueConstraint("loadout_id", "slot", name="uq_loadout_requirements_slot"),)
-
-    id: Mapped[int] = mapped_column(primary_key=True)
-    loadout_id: Mapped[int] = mapped_column(ForeignKey("loadouts.id"), index=True)
-    slot: Mapped[str] = mapped_column(String(32))
-    required: Mapped[bool] = mapped_column(Boolean, default=False)
-    allowed_item_ids: Mapped[list | None] = mapped_column(JSON, nullable=True)
 
 
 class LoadoutCheck(Base):

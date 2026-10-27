@@ -16,7 +16,9 @@ import com.agilitycctracker.model.DdConfig;
 import com.agilitycctracker.model.StatusResponse;
 import com.agilitycctracker.scan.FcMemberScanner;
 import com.agilitycctracker.scan.FlagAccess;
+import com.agilitycctracker.kit.KitCheck;
 import com.agilitycctracker.ui.GearFlagOverlay;
+import com.agilitycctracker.ui.KitBankOverlay;
 import com.agilitycctracker.ui.TrackerPanel;
 import com.google.inject.Provides;
 import java.awt.image.BufferedImage;
@@ -137,6 +139,12 @@ public class AgilityCCTrackerPlugin extends Plugin
 	private GearFlagOverlay gearFlagOverlay;
 
 	@Inject
+	private KitCheck kitCheck;
+
+	@Inject
+	private KitBankOverlay kitBankOverlay;
+
+	@Inject
 	private OverlayManager overlayManager;
 
 	@Inject
@@ -169,6 +177,7 @@ public class AgilityCCTrackerPlugin extends Plugin
 
 		trackerPanel.init();
 		overlayManager.add(gearFlagOverlay);
+		overlayManager.add(kitBankOverlay);
 		if (config.showPanel())
 		{
 			addPanel();
@@ -186,6 +195,7 @@ public class AgilityCCTrackerPlugin extends Plugin
 	{
 		log.info("Wildy Agility FC Tracker stopped");
 		overlayManager.remove(gearFlagOverlay);
+		overlayManager.remove(kitBankOverlay);
 		removePanel();
 	}
 
@@ -261,6 +271,7 @@ public class AgilityCCTrackerPlugin extends Plugin
 		selfLoadoutCheck.reset();
 		fcMemberScanner.reset();
 		ddTracker.reset();
+		kitCheck.reset();
 	}
 
 	private void resetState()
@@ -272,6 +283,7 @@ public class AgilityCCTrackerPlugin extends Plugin
 		selfLoadoutCheck.reset();
 		fcMemberScanner.reset();
 		ddTracker.reset();
+		kitCheck.reset();
 		statusHolder.set(null);
 	}
 
@@ -333,8 +345,12 @@ public class AgilityCCTrackerPlugin extends Plugin
 			boolean inTrackedFc = fc != null && status != null
 				&& FlagAccess.isConfiguredFc(Text.toJagexName(fc.getOwner()), Text.toJagexName(status.getFcOwner()));
 			massParticipation.onLocation(status, inCourse, inTrackedFc);
+			kitCheck.reset();
 			return;
 		}
+
+		// Local-only "are you ready?" check against the chosen kit, until they reach the course.
+		kitCheck.onTick(local != null && local.getWorldLocation().getRegionID() == WILDERNESS_AGILITY_COURSE_REGION);
 
 		fcMemberScanner.onTick();
 		if (massParticipation.isRunner())

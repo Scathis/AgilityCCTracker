@@ -5,9 +5,8 @@ import com.agilitycctracker.MassRole;
 import com.agilitycctracker.api.StatusHolder;
 import com.agilitycctracker.dd.DdTracker;
 import com.agilitycctracker.loadout.ItemNameResolver;
-import com.agilitycctracker.loadout.Loadout;
-import com.agilitycctracker.loadout.LoadoutContext;
-import com.agilitycctracker.loadout.LoadoutEvaluator;
+import com.agilitycctracker.loadout.GearRuleEvaluator;
+import com.agilitycctracker.loadout.GearRules;
 import com.agilitycctracker.loadout.Slot;
 import com.agilitycctracker.loadout.WornItem;
 import com.agilitycctracker.model.DdTile;
@@ -80,7 +79,7 @@ public class FcMemberScanner
 	private ItemNameResolver nameResolver;
 
 	@Inject
-	private LoadoutEvaluator evaluator;
+	private GearRuleEvaluator evaluator;
 
 	@Inject
 	private DdTracker ddTracker;
@@ -139,8 +138,7 @@ public class FcMemberScanner
 		viewerMaySeeFlags = maySeeFlags;
 		List<FlaggedPlayer> flaggedNow = new ArrayList<>();
 
-		Loadout runningLoadout = Loadout.find(status.getLoadouts(), LoadoutContext.RUNNING);
-		Loadout ddLoadout = Loadout.find(status.getLoadouts(), LoadoutContext.DD);
+		GearRules rules = status.getGearRules();
 		List<DdTile> tiles = status.getDd() != null ? status.getDd().getTiles() : Collections.emptyList();
 		long now = System.currentTimeMillis();
 
@@ -185,10 +183,10 @@ public class FcMemberScanner
 			}
 			Map<Slot, WornItem> worn = readVisibleGear(p);
 
-			if (runningLoadout != null)
+			if (rules != null)
 			{
-				List<String> failed = evaluator.evaluate(runningLoadout, worn, VISIBLE_SLOTS);
-				queueIfChanged(rsn, runningLoadout.getId(), failed);
+				List<String> failed = evaluator.evaluate(rules, worn, VISIBLE_SLOTS);
+				queueIfChanged(rsn, failed);
 				if (maySeeFlags && config.showGearFlags() && inCourseArea && !failed.isEmpty())
 				{
 					flaggedNow.add(new FlaggedPlayer(p, FlagAccess.describe(failed)));
@@ -203,10 +201,8 @@ public class FcMemberScanner
 			boolean isRanked = member != null && member.getRank() != null && member.getRank().getValue() >= 0;
 			if (!isRanked)
 			{
-				List<String> ddFailed = (onDdTile && ddLoadout != null)
-					? evaluator.evaluate(ddLoadout, worn, VISIBLE_SLOTS)
-					: Collections.emptyList();
-				ddTracker.onObservation(rsn, onDdTile, inCourseArea, ddFailed, now);
+				// DD gear (bow) check dropped 2026-10-27 - presence/timing only.
+				ddTracker.onObservation(rsn, onDdTile, inCourseArea, Collections.emptyList(), now);
 			}
 
 			// worn/location/rsn all go out of scope here - never stored past this iteration.
@@ -261,7 +257,7 @@ public class FcMemberScanner
 		return false;
 	}
 
-	private void queueIfChanged(String rsn, long loadoutId, List<String> failed)
+	private void queueIfChanged(String rsn, List<String> failed)
 	{
 		synchronized (lastLoadoutResult)
 		{
@@ -274,7 +270,7 @@ public class FcMemberScanner
 		}
 		synchronized (queue)
 		{
-			queue.addLast(new LoadoutCheckDto(rsn, loadoutId, failed, System.currentTimeMillis()));
+			queue.addLast(new LoadoutCheckDto(rsn, failed, System.currentTimeMillis()));
 			while (queue.size() > MAX_QUEUE)
 			{
 				queue.pollFirst();

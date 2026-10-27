@@ -1,15 +1,19 @@
 package com.agilitycctracker.ui;
 
+import com.agilitycctracker.AgilityCCTrackerConfig;
 import com.agilitycctracker.api.ApiClient;
 import com.agilitycctracker.api.StatusHolder;
 import com.agilitycctracker.collect.LapTracker;
 import com.agilitycctracker.collect.SelfStateCollector;
 import com.agilitycctracker.dd.DdTracker;
+import com.agilitycctracker.kit.KitCheck;
 import com.agilitycctracker.loadout.SelfLoadoutCheck;
 import com.agilitycctracker.mass.MassParticipation;
 import com.agilitycctracker.model.ActiveEvent;
+import com.agilitycctracker.model.Kit;
 import com.agilitycctracker.model.StatusResponse;
 import com.agilitycctracker.scan.FcMemberScanner;
+import com.agilitycctracker.scan.FlagAccess;
 import java.awt.BorderLayout;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
@@ -20,7 +24,9 @@ import java.util.Map;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import javax.swing.BoxLayout;
+import javax.swing.DefaultComboBoxModel;
 import javax.swing.JButton;
+import javax.swing.JComboBox;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.SwingUtilities;
@@ -28,6 +34,7 @@ import net.runelite.api.Client;
 import net.runelite.api.Player;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.callback.ClientThread;
+import net.runelite.client.config.ConfigManager;
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.PluginPanel;
 
@@ -71,6 +78,15 @@ public class TrackerPanel extends PluginPanel
 	@Inject
 	private MassParticipation massParticipation;
 
+	@Inject
+	private KitCheck kitCheck;
+
+	@Inject
+	private ConfigManager configManager;
+
+	@Inject
+	private AgilityCCTrackerConfig config;
+
 	private final JLabel connectionLabel = new JLabel();
 	private final JLabel fcLabel = new JLabel();
 	private final JLabel massLabel = new JLabel();
@@ -80,6 +96,11 @@ public class TrackerPanel extends PluginPanel
 	private final JLabel loadoutLabel = new JLabel();
 	private final JLabel ddLabel = new JLabel();
 	private final JPanel observersList = new JPanel();
+	private final DefaultComboBoxModel<Kit> kitModel = new DefaultComboBoxModel<>();
+	private final JComboBox<Kit> kitBox = new JComboBox<>(kitModel);
+	private final JLabel kitCheckLabel = new JLabel();
+	private List<Long> shownKitIds = java.util.Collections.emptyList();
+	private boolean updatingKits;
 
 	public void init()
 	{
@@ -113,6 +134,31 @@ public class TrackerPanel extends PluginPanel
 		content.add(lapsLabel);
 		content.add(loadoutLabel);
 		content.add(ddLabel);
+
+		JLabel kitHeading = new JLabel("My kit:");
+		kitHeading.setForeground(ColorScheme.TEXT_COLOR);
+		content.add(kitHeading);
+		kitBox.setRenderer(new javax.swing.DefaultListCellRenderer()
+		{
+			@Override
+			public java.awt.Component getListCellRendererComponent(javax.swing.JList<?> list, Object value, int index, boolean selected, boolean focus)
+			{
+				Kit kit = (Kit) value;
+				String text = kit == null ? "(no kits yet)" : kit.getName() + (kit.isDefault() ? " (default)" : "");
+				return super.getListCellRendererComponent(list, text, index, selected, focus);
+			}
+		});
+		kitBox.addActionListener(e ->
+		{
+			Kit chosen = (Kit) kitBox.getSelectedItem();
+			if (!updatingKits && chosen != null)
+			{
+				configManager.setConfiguration("agilitycctracker", "selectedKitId", chosen.getId());
+			}
+		});
+		content.add(kitBox);
+		kitCheckLabel.setForeground(ColorScheme.TEXT_COLOR);
+		content.add(kitCheckLabel);
 
 		JButton copyTileButton = new JButton("Copy my tile");
 		copyTileButton.addActionListener(e -> copyMyTile());
@@ -166,7 +212,9 @@ public class TrackerPanel extends PluginPanel
 			+ " (" + lapTracker.getSessionTicketsGained() + " tickets)");
 
 		List<String> failed = selfLoadoutCheck.getLastFailed();
-		loadoutLabel.setText(failed.isEmpty() ? "Loadout: compliant" : "Loadout: " + failed.size() + " gap(s)");
+		loadoutLabel.setText(failed.isEmpty() ? "Gear: OK" : "Gear: " + FlagAccess.describe(failed));
+
+		refreshKits(status);
 
 		ddLabel.setText(ddStatus(localRsn));
 
@@ -182,6 +230,47 @@ public class TrackerPanel extends PluginPanel
 		}
 		observersList.revalidate();
 		observersList.repaint();
+	}
+
+	/** Keeps the kit dropdown in step with /status, without firing a selection change while doing so. */
+	private void refreshKits(StatusResponse status)
+	{
+		List<Kit> kits = status != null && status.getKits() != null ? status.getKits() : java.util.Collections.emptyList();
+		List<Long> ids = new java.util.ArrayList<>();
+		for (Kit kit : kits)
+		{
+			ids.add(kit.getId());
+		}
+		if (!ids.equals(shownKitIds))
+		{
+			updatingKits = true;
+			try
+			{
+				kitModel.removeAllElements();
+				for (Kit kit : kits)
+				{
+					kitModel.addElement(kit);
+				}
+				Kit selected = KitCheck.selectKit(kits, config.selectedKitId());
+				kitBox.setSelectedItem(selected);
+				shownKitIds = ids;
+			}
+			finally
+			{
+				updatingKits = false;
+			}
+		}
+		kitBox.setEnabled(!kits.isEmpty());
+
+		if (!kitCheck.isActive())
+		{
+			kitCheckLabel.setText(kits.isEmpty() ? "" : "<html>Kit check runs once you're attending as a runner, until you reach the course.</html>");
+			return;
+		}
+		List<String> missing = kitCheck.getMissingLines();
+		kitCheckLabel.setText(missing.isEmpty()
+			? "<html>Kit check: all set</html>"
+			: "<html>Kit check - missing:<br>" + String.join("<br>", missing) + "</html>");
 	}
 
 	private String connectionStatus()

@@ -6,7 +6,7 @@
     ({{ entry.call.reports }} report(s))
   </header>
   <table>
-    <thead><tr><th>RSN</th><th>Arrived after</th><th>Time on tile</th><th>Left early?</th><th>Kept running?</th><th>Laps during DD</th><th>Loadout gaps</th></tr></thead>
+    <thead><tr><th>RSN</th><th>Arrived after</th><th>Time on tile</th><th>Left early?</th><th>Kept running?</th><th>Laps during DD</th></tr></thead>
     <tbody>
       {% for p in entry.presence %}
       <tr>
@@ -16,7 +16,6 @@
         <td>{{ "⚠️" if p.left_before_break else "—" }}</td>
         <td>{{ "⚠️" if p.seen_running else "—" }}</td>
         <td>{{ p.laps_during_dd }}</td>
-        <td>{{ p.dd_loadout_failed|join(", ") if p.dd_loadout_failed else "✅" }}</td>
       </tr>
       {% endfor %}
     </tbody>

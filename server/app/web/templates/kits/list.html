@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block title %}Kits{% endblock %}
+{% block content %}
+<h2>Kits</h2>
+
+<article>
+  <header><strong>Runner gear rules</strong> &mdash; what gets a runner flagged (chat warning, over-head label, dashboard)</header>
+  <form method="post" action="/kits/rules">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <fieldset>
+      <legend>Flag runners with these slots empty</legend>
+      {% for slot, label, checked in rule_slots %}
+      <label style="display:inline-block; margin-right:1rem">
+        <input type="checkbox" name="required" value="{{ slot }}" {% if checked %}checked{% endif %}> {{ label }}
+      </label>
+      {% endfor %}
+    </fieldset>
+    <label>
+      <input type="checkbox" name="ranged_weapon" {% if ranged_weapon %}checked{% endif %}>
+      Weapon must be a bow or crossbow &mdash; a crossbow also needs a shield (a bow is two-handed, so an empty shield is fine)
+    </label>
+    <button type="submit">Save rules</button>
+  </form>
+</article>
+
+<article>
+  <header><strong>Recommended kits</strong> &mdash; runners pick one in the plugin's sidebar; it checks their gear and inventory before they reach the course (on their own machine, nothing is sent back) and outlines missing items in their bank</header>
+  {% if kits %}
+  <table>
+    <thead><tr><th>Kit</th><th>Default</th><th></th></tr></thead>
+    <tbody>
+      {% for k in kits %}
+      <tr>
+        <td><a href="/kits/{{ k.id }}">{{ k.name }}</a></td>
+        <td>
+          {% if k.is_default %}⭐ Default
+          {% else %}
+          <form method="post" action="/kits/{{ k.id }}/default" style="display:inline">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <button type="submit" class="secondary outline" style="padding:0.2rem 0.6rem">Make default</button>
+          </form>
+          {% endif %}
+        </td>
+        <td>
+          <form method="post" action="/kits/{{ k.id }}/delete" style="display:inline"
+                onsubmit="return confirm('Delete kit {{ k.name }}?')">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <button type="submit" class="secondary outline" style="padding:0.2rem 0.6rem">Delete</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p>No kits yet.</p>
+  {% endif %}
+  <form method="post" action="/kits" style="display:flex; gap:0.5rem; align-items:end">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <label style="flex:1">New kit name<input type="text" name="name" maxlength="64" required placeholder="e.g. Budget runner"></label>
+    <button type="submit">Create kit</button>
+  </form>
+</article>
+{% endblock %}

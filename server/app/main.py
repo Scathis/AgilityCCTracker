@@ -17,7 +17,7 @@ from app.web.routes.admin import router as admin_router
 from app.web.routes.auth import router as auth_router
 from app.web.routes.dd import router as dd_router
 from app.web.routes.events import router as events_router
-from app.web.routes.loadouts import router as loadouts_router
+from app.web.routes.kits import router as kits_router
 from app.web.routes.players import router as players_router
 from app.web.routes.raggers import router as raggers_router
 from app.web.routes.settings import router as settings_router
@@ -74,7 +74,7 @@ app.include_router(participation_router, prefix="/api/v1")
 app.include_router(auth_router)
 app.include_router(events_router)
 app.include_router(dd_router)
-app.include_router(loadouts_router)
+app.include_router(kits_router)
 app.include_router(players_router)
 app.include_router(raggers_router)
 app.include_router(settings_router)

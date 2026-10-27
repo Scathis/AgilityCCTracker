@@ -30,7 +30,6 @@ async def update_settings(
     arrive_grace_s: int = Form(...),
     leave_grace_s: int = Form(...),
     max_minutes: int = Form(...),
-    crossbow_counts_as_bow: bool = Form(False),
     observer_enabled: bool = Form(False),
     flag_viewer_min_rank: int = Form(0),
     session: AsyncSession = Depends(get_session),
@@ -45,7 +44,6 @@ async def update_settings(
     group.dd_arrive_grace_s = arrive_grace_s
     group.dd_leave_grace_s = leave_grace_s
     group.dd_max_minutes = max_minutes
-    group.dd_crossbow_counts_as_bow = crossbow_counts_as_bow
     group.observer_enabled = observer_enabled
     group.flag_viewer_min_rank = max(-1, min(flag_viewer_min_rank, 127))
     await session.commit()

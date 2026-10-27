@@ -17,7 +17,7 @@ from app.models.death import Death
 from app.models.event import Attendance, Event, EventParticipant
 from app.models.fc_group import FcGroup
 from app.models.lap import Lap
-from app.models.loadout import Loadout, LoadoutCheck, LoadoutCheckSource, LoadoutContext
+from app.models.loadout import LoadoutCheck, LoadoutCheckSource
 from app.models.player import Player, PlayerSnapshot, SnapshotSource
 from app.schemas.ingest import (
     DdSectionIn,
@@ -27,6 +27,7 @@ from app.schemas.ingest import (
     SelfStateIn,
 )
 from app.services.dd import PresenceMerge, find_matching_call, merge_broken_at, merge_presence
+from app.services.gear_rules import running_anchor
 from app.services.participation import (
     excluded_from_gear_and_dd,
     is_anti,
@@ -193,31 +194,17 @@ async def _process_self(
         player.latest_snapshot_id = snapshot.id
 
     if active_event is not None and self_state.loadout_failed is not None:
-        running_loadout = await _find_loadout(session, active_event, LoadoutContext.RUNNING)
-        if running_loadout is not None:
-            await _store_loadout_check_if_changed(
-                session,
-                player.id,
-                active_event.id,
-                running_loadout.id,
-                self_state.loadout_failed,
-                now,
-                LoadoutCheckSource.SELF,
-                reported_by_player_id=player.id,
-            )
-
-
-async def _find_loadout(
-    session: AsyncSession, event: Event, context: LoadoutContext
-) -> Loadout | None:
-    result = await session.execute(
-        select(Loadout).where(
-            Loadout.fc_group_id == event.fc_group_id,
-            Loadout.context == context,
-            Loadout.enabled.is_(True),
+        anchor = await running_anchor(session, active_event.fc_group_id)
+        await _store_loadout_check_if_changed(
+            session,
+            player.id,
+            active_event.id,
+            anchor.id,
+            self_state.loadout_failed,
+            now,
+            LoadoutCheckSource.SELF,
+            reported_by_player_id=player.id,
         )
-    )
-    return result.scalars().first()
 
 
 async def _store_loadout_check_if_changed(
@@ -386,6 +373,7 @@ async def _process_loadout_checks(
     checks: list[LoadoutCheckIn],
     participants: dict[str, EventParticipant],
 ) -> None:
+    anchor = await running_anchor(session, event.fc_group_id)
     for check in checks:
         # Antis (and plugin users who declined) are never gear-checked.
         if excluded_from_gear_and_dd(participants.get(check.rsn)):
@@ -403,17 +391,11 @@ async def _process_loadout_checks(
         if attendance_result.scalars().first() is None:
             continue
 
-        loadout_result = await session.execute(
-            select(Loadout).where(Loadout.id == check.loadout_id)
-        )
-        if loadout_result.scalar_one_or_none() is None:
-            continue
-
         await _store_loadout_check_if_changed(
             session,
             player.id,
             event.id,
-            check.loadout_id,
+            anchor.id,
             check.failed,
             from_epoch_ms(check.ts),
             LoadoutCheckSource.FC_SCAN,

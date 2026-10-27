@@ -66,7 +66,9 @@ class RosterSnapshotIn(BaseModel):
 
 class LoadoutCheckIn(BaseModel):
     rsn: Rsn
-    loadout_id: int
+    # Ignored since 2026-10-27 (checks are always stored against the group's
+    # Running anchor); still accepted so older plugin builds don't 422.
+    loadout_id: int | None = None
     failed: list[str]
     ts: int
 
@@ -78,7 +80,8 @@ class DdPresenceIn(BaseModel):
     left_before_break: bool
     seen_running: bool
     observed_ms: int
-    dd_failed: list[str]
+    # The DD gear check was dropped 2026-10-27; accepted and ignored.
+    dd_failed: list[str] = Field(default_factory=list)
 
 
 class DdSectionIn(BaseModel):

@@ -20,10 +20,6 @@
     <label>Arrive grace (seconds)<input type="number" name="arrive_grace_s" value="{{ group.dd_arrive_grace_s }}" required></label>
     <label>Leave grace (seconds)<input type="number" name="leave_grace_s" value="{{ group.dd_leave_grace_s }}" required></label>
     <label>Max minutes per call<input type="number" name="max_minutes" value="{{ group.dd_max_minutes }}" required></label>
-    <label>
-      <input type="checkbox" name="crossbow_counts_as_bow" {% if group.dd_crossbow_counts_as_bow %}checked{% endif %}>
-      Crossbow counts as a bow at DD
-    </label>
   </fieldset>
 
   <fieldset>

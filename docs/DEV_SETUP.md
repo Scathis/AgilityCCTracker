@@ -59,10 +59,13 @@ wired up end-to-end:
       shows up in that mass's attendance.
 - [ ] Run a lap on the Wilderness Agility course → a lap row appears on the
       dashboard, with tickets and a snapshot.
-- [ ] Unequip your boots → you get a chat warning, and the dashboard shows
-      the loadout gap.
+- [ ] Unequip your boots → you get a chat warning ("FC gear check: No boots"),
+      and the dashboard shows the gap. Same for helm, amulet, body and legs
+      (the defaults ticked on the dashboard Kits page).
 - [ ] Get a second account/friend into view wearing a crossbow with no
-      shield → the dashboard shows "Crossbow without shield" for them.
+      shield → the dashboard shows SHIELD for them (over-head label "No
+      shield"); with a bow and no shield they're fine; with a non-bow weapon
+      (or nothing) they show "No bow".
       Check the server logs / request body only ever contains requirement
       *keys* (e.g. `run-xbow-shield`), never raw item ids for another
       player.
@@ -102,6 +105,27 @@ wired up end-to-end:
       report either of them for gear/DD; a friend without the plugin is still
       gear-checked as a runner.
 - [ ] No API URL / token is visible or editable anywhere in the plugin config.
+
+### Kits and the pre-course check (new 2026-10-27)
+
+- [ ] Dashboard → Kits: change which slots must not be empty, untick/tick the
+      bow/crossbow rule, save → takes effect in-game within ~10s.
+- [ ] Create two kits (gear in some slots + inventory with quantities); the
+      first becomes the default; "Make default" moves it; deleting the default
+      hands it to another kit.
+- [ ] In-game sidebar: the "My kit" dropdown lists the kits with the default
+      pre-selected; your choice is remembered after a client restart.
+- [ ] Attend a mass as a **Runner** while away from the course → one orange
+      chat line ("Pre-mass check (<kit>): N thing(s) missing…" or "all set"),
+      and the sidebar lists exactly what's missing ("Wear: …", "Bring: … x2").
+- [ ] Open your bank → the missing items are outlined; take them out / equip
+      them and the outlines and sidebar lines disappear.
+- [ ] Any dose of a kit potion counts (e.g. Stamina potion (2) for a (4) in the
+      kit); quantity counts potions, not doses.
+- [ ] As an **Anti**, or once you're in the course → no kit check, no outlines.
+- [ ] Nothing about your inventory reaches the server (dashboard player page
+      shows worn gear only, as before).
+- [ ] DD tab on the dashboard no longer has a "Loadout gaps" column.
 
 ### Gear flags and who can see them (new 2026-10-27)
 

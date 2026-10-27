@@ -1,0 +1,38 @@
+{% if lines %}
+<ul class="inventory-list">
+  {% for line in lines %}
+  <li>
+    <img src="{{ line.item.icon }}" alt="" class="item-icon-sm" loading="lazy" onerror="this.style.visibility='hidden'">
+    <span style="flex:1">{{ line.item.name }}</span>
+    <form method="post" action="/kits/{{ kit_id }}/inventory/{{ line.id }}/qty"
+          hx-post="/kits/{{ kit_id }}/inventory/{{ line.id }}/qty"
+          hx-target="#kit-inventory" hx-swap="innerHTML" style="display:inline; margin:0">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <input type="number" name="qty" value="{{ line.qty }}" min="1" aria-label="Quantity" onchange="this.form.requestSubmit()">
+    </form>
+    <form method="post" action="/kits/{{ kit_id }}/inventory/{{ line.id }}/delete"
+          hx-post="/kits/{{ kit_id }}/inventory/{{ line.id }}/delete"
+          hx-target="#kit-inventory" hx-swap="innerHTML" style="display:inline; margin:0">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <button type="submit" class="secondary outline slot-remove-btn" aria-label="Remove {{ line.item.name }}">&times;</button>
+    </form>
+  </li>
+  {% endfor %}
+</ul>
+{% else %}
+<p><small>Nothing to carry yet.</small></p>
+{% endif %}
+
+{% if full %}
+<p><small>28 lines is the limit (a full inventory).</small></p>
+{% else %}
+<div class="inv-add">
+  <input type="number" id="inv-qty" name="qty" value="1" min="1" aria-label="Quantity to add">
+  <input type="search" name="q" placeholder="Search items to carry..." autocomplete="off"
+         class="slot-search-input" style="margin:0"
+         hx-get="/kits/{{ kit_id }}/inventory/search"
+         hx-trigger="keyup changed delay:300ms"
+         hx-target="#inventory-search">
+</div>
+<div id="inventory-search"></div>
+{% endif %}

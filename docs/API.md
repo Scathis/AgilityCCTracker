@@ -29,7 +29,7 @@ No auth. `{"ok": true}`. Used for container healthchecks and uptime checks.
 ## `GET /api/v1/status`
 
 Returns the current config for the token's FC group — the plugin polls this
-every 60s (and once on startup / config change) and caches it.
+every 10s (and once on startup / login) and caches it.
 
 ```json
 {
@@ -37,15 +37,17 @@ every 60s (and once on startup / config change) and caches it.
   "fc_name": "Wildy Agility",
   "server_time": 1727190000000,
   "observer_enabled": true,
+  "flag_viewer_min_rank": 0,
   "active_event": {"id": 12, "name": "Tuesday mass", "started_at": 1727190000000},
-  "loadouts": [
+  "participants": [{"rsn": "A", "status": "ATTENDING", "role": "RUNNER"}],
+  "gear_rules": {"required_slots": ["HEAD", "AMULET", "TORSO", "LEGS", "BOOTS"], "ranged_weapon": true},
+  "kits": [
     {
       "id": 1,
-      "name": "Running",
-      "context": "RUNNING",
-      "requirements": [
-        {"slot": "WEAPON", "required": true, "allowed_item_ids": [841, 839]}
-      ]
+      "name": "Standard runner",
+      "is_default": true,
+      "equipment": [{"slot": "WEAPON", "item_id": 861}],
+      "inventory": [{"item_id": 12625, "qty": 2}]
     }
   ],
   "dd": {
@@ -55,14 +57,23 @@ every 60s (and once on startup / config change) and caches it.
     "min_rank": 3,
     "arrive_grace_s": 15,
     "leave_grace_s": 5,
-    "max_minutes": 10,
-    "crossbow_counts_as_bow_at_dd": true
+    "max_minutes": 10
   }
 }
 ```
 
 `active_event` is `null` when no event is running. Regexes are matched
 case-insensitively.
+
+`gear_rules` (set on the dashboard Kits page) is what a runner is flagged
+against: every `required_slots` slot must have something worn, and with
+`ranged_weapon` the weapon must be a bow or crossbow, a crossbow also needing
+a shield. The plugin evaluates it; failed slot names (e.g. `"BOOTS"`,
+`"WEAPON"`, `"SHIELD"`) are what come back in `loadout_failed` /
+`loadout_checks`. `kits` are recommended setups for the plugin's local
+pre-course check and bank highlighting - nothing about a player's own
+inventory is ever sent back. The DD gear (bow) check was dropped on
+2026-10-27; `dd_failed` is accepted and ignored.
 
 ## `POST /api/v1/event/respond`
 
@@ -123,7 +134,7 @@ of intent).
   "laps": [{"lap_count": 1234, "completed_at": 1727190000000, "lap_time_ms": 61200, "tickets_gained": 1}],
   "deaths": [{"died_at": 1727190000000, "world": 330, "wildy_level": 52}],
   "roster": {"ts": 1727190000000, "members": [{"name": "A", "rank": 0, "world": 330}]},
-  "loadout_checks": [{"rsn": "B", "loadout_id": 1, "failed": ["WEAPON"], "ts": 1727190000000}],
+  "loadout_checks": [{"rsn": "B", "failed": ["WEAPON"], "ts": 1727190000000}],
   "course_sightings": ["Player Name", "B"],
   "dd": {
     "called_at": 1727190000000,

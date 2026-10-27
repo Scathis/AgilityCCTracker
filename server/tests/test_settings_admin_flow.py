@@ -16,7 +16,6 @@ async def test_settings_update_persists(client, make_user, login_as, default_gro
             "arrive_grace_s": "15",
             "leave_grace_s": "5",
             "max_minutes": "10",
-            "crossbow_counts_as_bow": "on",
             "observer_enabled": "on",
             "csrf_token": csrf,
         },
@@ -31,7 +30,6 @@ async def test_settings_update_persists(client, make_user, login_as, default_gro
     assert default_group.dd_tiles == original_tiles
     assert default_group.dd_min_rank == 3
     assert default_group.observer_enabled is True
-    assert default_group.dd_crossbow_counts_as_bow is True
 
 
 async def test_settings_checkbox_unchecked_persists_false(
@@ -55,7 +53,6 @@ async def test_settings_checkbox_unchecked_persists_false(
     )
     await db_session.refresh(default_group)
     assert default_group.observer_enabled is False
-    assert default_group.dd_crossbow_counts_as_bow is False
 
 
 async def test_admin_create_user_sets_a_flash_cookie_with_the_password(client, make_user, login_as):

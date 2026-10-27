@@ -15,6 +15,7 @@ from app.models.loadout import Loadout, LoadoutCheck, LoadoutCheckSource, Loadou
 from app.models.player import Player
 from app.models.ragger import RaggerSighting
 from app.models.user import User, UserRole
+from app.services.gear_rules import SLOT_LABELS, SLOT_ORDER, running_anchor
 from app.services.participation import participants_by_rsn
 from app.web.deps import (
     get_default_fc_group,
@@ -334,10 +335,9 @@ async def _manual_gap_tab(session: AsyncSession, group: FcGroup, event: Event) -
         .where(Attendance.event_id == event.id)
         .distinct()
     )
-    loadout_result = await session.execute(select(Loadout).where(Loadout.fc_group_id == group.id))
     return {
         "attendees_for_gap": attendee_result.scalars().all(),
-        "loadouts": loadout_result.scalars().all(),
+        "gap_slots": [(slot, SLOT_LABELS[slot]) for slot in SLOT_ORDER],
     }
 
 
@@ -345,19 +345,27 @@ async def _manual_gap_tab(session: AsyncSession, group: FcGroup, event: Event) -
 async def add_manual_gap(
     event_id: int,
     player_id: int = Form(...),
-    loadout_id: int = Form(...),
-    failed: str = Form(""),
+    failed: list[str] = Form(default=[]),
     notes: str = Form(""),
     session: AsyncSession = Depends(get_session),
+    group: FcGroup = Depends(get_default_fc_group),
     user: User = Depends(require_role(UserRole.STAFF)),
     _csrf: User = Depends(verify_csrf),
 ):
-    failed_keys = [k.strip() for k in failed.split(",") if k.strip()]
+    event = (
+        await session.execute(
+            select(Event).where(Event.id == event_id, Event.fc_group_id == group.id)
+        )
+    ).scalar_one_or_none()
+    if event is None:
+        raise HTTPException(status_code=404, detail="Event not found")
+    failed_keys = [k for k in SLOT_ORDER if k in failed]
+    anchor = await running_anchor(session, group.id)
     session.add(
         LoadoutCheck(
             player_id=player_id,
             event_id=event_id,
-            loadout_id=loadout_id,
+            loadout_id=anchor.id,
             checked_at=dt.datetime.utcnow(),
             failed_requirement_keys=failed_keys,
             source=LoadoutCheckSource.STAFF_MANUAL,

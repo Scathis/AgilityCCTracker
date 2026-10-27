@@ -1,6 +1,6 @@
 package com.agilitycctracker.model;
 
-import com.agilitycctracker.loadout.Loadout;
+import com.agilitycctracker.loadout.GearRules;
 import java.util.List;
 import lombok.Value;
 
@@ -19,6 +19,9 @@ public class StatusResponse
 	ActiveEvent activeEvent;
 	/** Plugin users who answered the active mass's prompt; null from an older server. Anyone not listed is a non-plugin FC member, treated as a runner. */
 	List<Participant> participants;
-	List<Loadout> loadouts;
+	/** Runner gear rules (required slots, bow/crossbow rule). */
+	GearRules gearRules;
+	/** Recommended kits for the local pre-course check; null from an older server. */
+	List<Kit> kits;
 	DdConfig dd;
 }

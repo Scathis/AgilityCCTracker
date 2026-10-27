@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}{{ loadout.name }}{% endblock %}
+{% block title %}{{ kit.name }}{% endblock %}
 {% block content %}
 <style>
   .equipment-grid {
@@ -86,16 +86,35 @@
   .item-search-results { list-style: none; padding: 0; margin: 0.3rem 0 0; max-height: 220px; overflow-y: auto; }
   .item-search-result { display: flex; align-items: center; gap: 0.5rem; width: 100%; text-align: left; padding: 0.4rem 0.6rem; font-size: 0.9rem; }
 </style>
+<style>
+  .inventory-list { list-style: none; padding: 0; }
+  .inventory-list li { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.4rem; }
+  .inventory-list input[type=number] { width: 6rem; margin: 0; padding: 0.2rem 0.4rem; }
+  .inv-add { display: flex; gap: 0.5rem; align-items: center; }
+  .inv-add input[type=number] { width: 6rem; margin: 0; }
+</style>
 
-<h2>{{ loadout.name }} ({{ loadout.context.value }})</h2>
-<p><a href="/loadouts">&larr; Back to loadouts</a></p>
-<p><small>Click a slot to set whether it's required and which items are allowed there. A slot with nothing configured is unrestricted (anything goes).</small></p>
+<h2>{{ kit.name }}{% if kit.is_default %} <small>⭐ default</small>{% endif %}</h2>
+<p><a href="/kits">&larr; Back to kits</a></p>
+<form method="post" action="/kits/{{ kit.id }}/rename" style="display:flex; gap:0.5rem; align-items:end; max-width:30rem">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <label style="flex:1">Name<input type="text" name="name" value="{{ kit.name }}" maxlength="64" required></label>
+  <button type="submit" class="secondary">Rename</button>
+</form>
 
+<h3>Gear</h3>
+<p><small>Click a slot to pick the recommended item. Empty slots aren't checked. Any variant of an item counts in-game (e.g. charged/uncharged).</small></p>
 <div class="equipment-grid">
   {% for s in slots %}
-  {% with slot=s.slot, required=s.required, allowed_items=s.allowed_items, can_edit=s.can_edit, loadout_id=loadout.id %}
-  {% include "loadouts/_slot.html" with context %}
+  {% with slot=s.slot, label=s.label, item=s.item, kit_id=s.kit_id %}
+  {% include "kits/_slot.html" with context %}
   {% endwith %}
   {% endfor %}
+</div>
+
+<h3>Inventory</h3>
+<p><small>Quantities count items, not doses: "Stamina potion &times; 2" is satisfied by any two stamina potions of any dose.</small></p>
+<div id="kit-inventory">
+  {% include "kits/_inventory.html" with context %}
 </div>
 {% endblock %}

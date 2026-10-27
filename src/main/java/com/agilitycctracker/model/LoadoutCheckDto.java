@@ -7,7 +7,6 @@ import lombok.Value;
 public class LoadoutCheckDto
 {
 	String rsn;
-	long loadoutId;
 	List<String> failed;
 	long ts;
 }

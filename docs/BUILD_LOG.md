@@ -1613,3 +1613,33 @@ answered No, closed the popup or never answered. The plugin now sends an
 "attending" answer with their configured role (`MassParticipation.onLocation`,
 throttled to one retry per 30s on failure) and posts a chat line saying so.
 Hub warning text and PR notes updated to match.
+
+### 2026-10-27 - Kits replace the loadout editor; empty-slot + bow/crossbow rules
+
+Found while scoping kits: the old per-slot loadout editor was still the only
+thing driving gear flags, and the live Running loadout had exactly one rule left
+(HEAD must be a Helm of neitiznot) - every other rule had been cleared in the
+2026-10-01 redesign and never rebuilt; DD loadout empty. Owner decision: remove
+the editor entirely, drop the DD bow check, and flag runners on:
+
+- empty helm, amulet, body, legs, boots (defaults; editable checkboxes on the
+  new Kits page, stored in `fc_groups.required_slots`);
+- weapon must be a bow or crossbow (`fc_groups.require_ranged_weapon`); a
+  crossbow also needs a shield, a bow (two-handed) doesn't.
+
+Plugin: `loadout/GearRuleEvaluator` (pure, tested) replaces LoadoutEvaluator;
+DD presence no longer evaluates gear. Server: migration `d2f7a8b9c014` adds
+`kits` / `kit_items` + the two rule columns, drops `loadout_requirements` and
+`fc_groups.dd_crossbow_counts_as_bow`. `loadouts` table kept only as the
+"Running" anchor that `loadout_checks` history hangs off (`services/gear_rules.
+running_anchor`). Manual-gap form is now slot checkboxes. DD tab lost its
+"Loadout gaps" column.
+
+Kits: dashboard `/kits` (staff) - gear rules form, named kits with a default,
+per-slot recommended item + 28-line inventory with quantities (item search
+reused). `/status` sends `gear_rules` and `kits`. Plugin: sidebar "My kit"
+dropdown (hidden config `selectedKitId`), `kit/KitCheck` - local-only pre-course
+check while attending as a runner and outside the course (variants via
+ItemVariationMapping, so any potion dose counts), one chat line + sidebar list,
+and `ui/KitBankOverlay` outlining missing items in the bank. 100 server tests,
+plugin tests incl. GearRuleEvaluatorTest / KitCheckTest.

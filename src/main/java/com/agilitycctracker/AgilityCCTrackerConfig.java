@@ -49,6 +49,17 @@ public interface AgilityCCTrackerConfig extends Config
 	}
 
 	@ConfigItem(
+		keyName = "selectedKitId",
+		name = "",
+		description = "Kit chosen in the sidebar panel's dropdown",
+		hidden = true
+	)
+	default long selectedKitId()
+	{
+		return 0;
+	}
+
+	@ConfigItem(
 		keyName = "shareStats",
 		name = "Share stats",
 		description = "Upload your own skills and combat level",
@@ -110,8 +121,8 @@ public interface AgilityCCTrackerConfig extends Config
 
 	@ConfigItem(
 		keyName = "loadoutWarnings",
-		name = "Loadout chat warnings",
-		description = "Show a chat warning when your own loadout has gaps",
+		name = "Gear chat warnings",
+		description = "Show a chat warning when your own gear has gaps (empty required slot, no bow/crossbow, crossbow without a shield)",
 		section = displaySection,
 		position = 1
 	)

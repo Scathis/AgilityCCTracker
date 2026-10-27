@@ -4,12 +4,12 @@ import com.agilitycctracker.AgilityCCTrackerConfig;
 import com.agilitycctracker.api.StatusHolder;
 import com.agilitycctracker.collect.SelfStateCollector;
 import com.agilitycctracker.model.StatusResponse;
+import com.agilitycctracker.scan.FlagAccess;
 import java.util.EnumMap;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.stream.Collectors;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import net.runelite.api.ChatMessageType;
@@ -19,7 +19,7 @@ import net.runelite.api.ItemContainer;
 import net.runelite.api.gameval.InventoryID;
 
 /**
- * Evaluates the RUNNING loadout (from /status) against the local player's own
+ * Evaluates the FC's runner gear rules (from /status) against the local player's own
  * gear, on all 11 slots - unlike other players, self has full visibility of
  * their own equipment (BUILD_PLAN.md §5.7).
  */
@@ -35,7 +35,7 @@ public class SelfLoadoutCheck
 	private ItemNameResolver nameResolver;
 
 	@Inject
-	private LoadoutEvaluator evaluator;
+	private GearRuleEvaluator evaluator;
 
 	@Inject
 	private StatusHolder statusHolder;
@@ -52,14 +52,14 @@ public class SelfLoadoutCheck
 	public void refresh()
 	{
 		StatusResponse status = statusHolder.get();
-		Loadout running = status != null ? Loadout.find(status.getLoadouts(), LoadoutContext.RUNNING) : null;
-		if (running == null)
+		GearRules rules = status != null ? status.getGearRules() : null;
+		if (rules == null)
 		{
 			return;
 		}
 
 		Map<Slot, WornItem> worn = readOwnGear();
-		List<String> failed = evaluator.evaluate(running, worn, ALL_SLOTS);
+		List<String> failed = evaluator.evaluate(rules, worn, ALL_SLOTS);
 		if (failed.equals(lastFailed))
 		{
 			return;
@@ -96,8 +96,7 @@ public class SelfLoadoutCheck
 
 	private void warnInChat(List<String> failedSlots)
 	{
-		String joined = failedSlots.stream().map(String::toLowerCase).collect(Collectors.joining(", "));
-		client.addChatMessage(ChatMessageType.GAMEMESSAGE, "", "<col=ff0000>FC loadout: " + joined + "</col>", null);
+		client.addChatMessage(ChatMessageType.GAMEMESSAGE, "", "<col=ff0000>FC gear check: " + FlagAccess.describe(failedSlots) + "</col>", null);
 	}
 
 	/** For TrackerPanel display - never empty-vs-null ambiguous. */

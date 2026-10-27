@@ -1,9 +1,7 @@
-"""Default loadouts for a new FC group - just the two empty shells (Running,
-DD). No default requirements are seeded: BUILD_PLAN.md §7's original
-defaults were expressed as name-pattern/conditional rules that don't map
-onto the per-slot allow-list model (see docs/BUILD_LOG.md's loadout-
-redesign entry) - staff build the real rules themselves via the dashboard's
-interactive slot-grid editor ("build a runner loadout").
+"""Anchor loadout rows for a new FC group. Since 2026-10-27 these carry no
+rules at all - gear checks are stored against the "Running" row, the rules
+live on FcGroup (required_slots / require_ranged_weapon) and recommended
+setups are Kits. The "DD" row is a leftover kept only for the return shape.
 """
 
 from sqlalchemy.ext.asyncio import AsyncSession
