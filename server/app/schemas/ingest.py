@@ -89,7 +89,6 @@ class DdSectionIn(BaseModel):
 
 class IngestBatchIn(BaseModel):
     rsn: Rsn
-    account_hash: str | None = None
     self_state: SelfStateIn | None = Field(default=None, alias="self")
     laps: list[LapEventIn] = Field(default_factory=list, max_length=200)
     deaths: list[DeathEventIn] = Field(default_factory=list, max_length=50)

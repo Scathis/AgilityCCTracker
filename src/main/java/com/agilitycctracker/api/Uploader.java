@@ -15,9 +15,6 @@ import com.agilitycctracker.model.RosterSnapshot;
 import com.agilitycctracker.model.SelfState;
 import com.agilitycctracker.model.StatusResponse;
 import com.agilitycctracker.scan.FcMemberScanner;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -34,8 +31,8 @@ import net.runelite.api.Player;
  * Both entry points ({@link #upload()}, {@link #pollStatus()}) are called
  * from the plugin's {@code @Schedule} methods, which already run off the
  * client thread — nothing here calls {@code client.*} except cheap reads of
- * already-current fields ({@code getLocalPlayer()}, {@code getAccountHash()}),
- * matching how RuneLite documents those two as safe from any thread.
+ * already-current fields ({@code getLocalPlayer()}), matching how RuneLite
+ * documents it as safe from any thread.
  */
 @Slf4j
 @Singleton
@@ -144,8 +141,7 @@ public class Uploader
 		}
 
 		IngestBatch.IngestBatchBuilder builder = IngestBatch.builder()
-			.rsn(rsn)
-			.accountHash(sha256Hex(String.valueOf(client.getAccountHash())));
+			.rsn(rsn);
 		if (self != null)
 		{
 			builder.self(self);
@@ -217,26 +213,6 @@ public class Uploader
 			{
 				fcMemberScanner.restore(loadoutChecks);
 			}
-		}
-	}
-
-	private static String sha256Hex(String input)
-	{
-		try
-		{
-			MessageDigest digest = MessageDigest.getInstance("SHA-256");
-			byte[] hash = digest.digest(input.getBytes(StandardCharsets.UTF_8));
-			StringBuilder sb = new StringBuilder(hash.length * 2);
-			for (byte b : hash)
-			{
-				sb.append(String.format("%02x", b));
-			}
-			return sb.toString();
-		}
-		catch (NoSuchAlgorithmException e)
-		{
-			log.warn("SHA-256 unavailable, omitting account_hash", e);
-			return null;
 		}
 	}
 }

@@ -23,6 +23,9 @@ this build).
 - [ ] `icon.png` present (currently a generated placeholder — consider
       replacing with real artwork before submitting)
 - [ ] `LICENSE` present (BSD-2-Clause)
+- [ ] **Rewrite `README.md`** (currently a thin stub) - do this last, once all
+      features are added/set up, so it describes the final plugin: what it
+      does, setup, config options, data shared, self-hosting pointer.
 - [ ] `./gradlew build` passes clean on Java 11
 - [ ] The §5.11 Hub-readiness grep checks still pass (no `getPlayers()`
       outside `scan/FcMemberScanner`, no banned event subscriptions, no
@@ -35,7 +38,7 @@ this build).
    ```
    repository=https://github.com/Scathis/AgilityCCTracker.git
    commit=<full 40-char commit sha to submit>
-   warning=This plugin sends your RSN, stats, worn equipment, wilderness agility laps and deaths, the names, ranks and worlds of members of the configured friends chat, whether nearby friends chat members meet the chat's required loadout and whether they are on the chat's DD tiles during a DD call, and your IP address to a server not controlled or verified by the RuneLite developers.
+   warning=This plugin sends your RSN, stats, world, combat level, wilderness level and skull status, worn equipment, wilderness agility laps and deaths, the names, ranks and worlds of members of the configured friends chat, the names of friends chat members seen at the Wilderness Agility Course, whether nearby friends chat members meet the chat's required loadout and whether they are on the chat's DD tiles during a DD call, and your IP address to a server not controlled or verified by the RuneLite developers.
    ```
 
 ## 4. PR description

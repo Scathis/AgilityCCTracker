@@ -13,7 +13,6 @@ import lombok.Value;
 public class IngestBatch
 {
 	String rsn;
-	String accountHash;
 	SelfState self;
 	List<LapEvent> laps;
 	List<DeathEvent> deaths;

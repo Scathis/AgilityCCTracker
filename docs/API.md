@@ -83,7 +83,6 @@ of intent).
 ```json
 {
   "rsn": "Player Name",
-  "account_hash": "<sha256 hex of the account hash, optional>",
   "self": {
     "world": 330,
     "combat_level": 98,
