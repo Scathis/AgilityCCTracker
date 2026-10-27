@@ -108,11 +108,17 @@ wired up end-to-end:
 
 ### Kits and the pre-course check (new 2026-10-27)
 
-- [ ] Dashboard → Kits: change which slots must not be empty, untick/tick the
-      bow/crossbow rule, save → takes effect in-game within ~10s.
-- [ ] Create two kits (gear in some slots + inventory with quantities); the
-      first becomes the default; "Make default" moves it; deleting the default
-      hands it to another kit.
+- [ ] Dashboard → Settings → **Runner gear rules**: change which slots must
+      not be empty, untick/tick the bow/crossbow rule, save → takes effect
+      in-game within ~10s. (Admin only; staff can't see Settings.)
+- [ ] Settings page is grouped into cards (gear rules, gear flags & observer,
+      DD calls, DD tiles) with one Save at the bottom; "Settings saved" shows.
+- [ ] Kits → **Create kit**: name box at the top, pick gear per slot and add
+      inventory lines - nothing is saved until **Save kit** at the bottom
+      (leaving with unsaved changes warns you; Cancel discards).
+- [ ] The first kit becomes the default; **Mark as default** on another row
+      moves it; **Edit** reopens a kit with everything filled in; deleting the
+      default hands it to another kit.
 - [ ] In-game sidebar: the "My kit" dropdown lists the kits with the default
       pre-selected; your choice is remembered after a client restart.
 - [ ] Attend a mass as a **Runner** while away from the course → one orange

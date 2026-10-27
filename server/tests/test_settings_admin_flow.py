@@ -32,6 +32,49 @@ async def test_settings_update_persists(client, make_user, login_as, default_gro
     assert default_group.observer_enabled is True
 
 
+async def test_settings_page_holds_the_runner_gear_rules(
+    client, make_user, login_as, default_group, db_session
+):
+    admin = await make_user(UserRole.ADMIN)
+    csrf = login_as(admin)
+    page = await client.get("/settings")
+    assert "Runner gear rules" in page.text
+    assert "Flag runners with these slots empty" in page.text
+
+    base = {
+        "call_regex": "dd",
+        "break_regex": "brk",
+        "min_rank": "3",
+        "arrive_grace_s": "15",
+        "leave_grace_s": "5",
+        "max_minutes": "10",
+        "csrf_token": csrf,
+    }
+    await client.post("/settings", data={**base, "required": ["BOOTS", "HEAD", "WEAPON"]})
+    await db_session.refresh(default_group)
+    # WEAPON is handled by the ranged-weapon rule, never as a plain "not empty" slot.
+    assert default_group.required_slots == ["HEAD", "BOOTS"]
+    assert default_group.require_ranged_weapon is False
+
+    await client.post(
+        "/settings",
+        data={
+            **base,
+            "required": ["HEAD", "AMULET", "TORSO", "LEGS", "BOOTS"],
+            "ranged_weapon": "on",
+        },
+    )
+    await db_session.refresh(default_group)
+    assert default_group.required_slots == ["HEAD", "AMULET", "TORSO", "LEGS", "BOOTS"]
+    assert default_group.require_ranged_weapon is True
+
+
+async def test_staff_cannot_change_gear_rules(client, make_user, login_as):
+    csrf = login_as(await make_user(UserRole.STAFF))
+    response = await client.post("/settings", data={"required": "HEAD", "csrf_token": csrf})
+    assert response.status_code == 403
+
+
 async def test_settings_checkbox_unchecked_persists_false(
     client, make_user, login_as, default_group, db_session
 ):

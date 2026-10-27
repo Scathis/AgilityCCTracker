@@ -1,64 +1,70 @@
 {% extends "base.html" %}
 {% block title %}Kits{% endblock %}
 {% block content %}
-<h2>Kits</h2>
+<style>
+  .kits-head { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+  .kits-head h2 { margin: 0; }
+  .kits-head a[role=button] { margin: 0; }
+  .info-box {
+    border-left: 4px solid var(--pico-primary);
+    background: var(--pico-card-background-color);
+    border-radius: var(--pico-border-radius);
+    padding: 0.9rem 1.1rem;
+    margin: 1rem 0 1.5rem;
+  }
+  .info-box p { margin: 0 0 0.4rem; }
+  .info-box ul { margin: 0; padding-left: 1.2rem; }
+  .info-box li { margin-bottom: 0.2rem; }
+  .kits-table th.kit-col, .kits-table td.kit-col { width: 55%; }
+  .kits-table td { vertical-align: middle; }
+  .kit-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; justify-content: flex-end; }
+  .kit-actions form { margin: 0; }
+  .kit-actions a[role=button], .kit-actions button { margin: 0; padding: 0.25rem 0.75rem; width: auto; font-size: 0.9rem; }
+</style>
 
-<article>
-  <header><strong>Runner gear rules</strong> &mdash; what gets a runner flagged (chat warning, over-head label, dashboard)</header>
-  <form method="post" action="/kits/rules">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-    <fieldset>
-      <legend>Flag runners with these slots empty</legend>
-      {% for slot, label, checked in rule_slots %}
-      <label style="display:inline-block; margin-right:1rem">
-        <input type="checkbox" name="required" value="{{ slot }}" {% if checked %}checked{% endif %}> {{ label }}
-      </label>
-      {% endfor %}
-    </fieldset>
-    <label>
-      <input type="checkbox" name="ranged_weapon" {% if ranged_weapon %}checked{% endif %}>
-      Weapon must be a bow or crossbow &mdash; a crossbow also needs a shield (a bow is two-handed, so an empty shield is fine)
-    </label>
-    <button type="submit">Save rules</button>
-  </form>
-</article>
+<div class="kits-head">
+  <h2>Kits</h2>
+  <a href="/kits/new" role="button">Create kit</a>
+</div>
 
-<article>
-  <header><strong>Recommended kits</strong> &mdash; runners pick one in the plugin's sidebar; it checks their gear and inventory before they reach the course (on their own machine, nothing is sent back) and outlines missing items in their bank</header>
-  {% if kits %}
-  <table>
-    <thead><tr><th>Kit</th><th>Default</th><th></th></tr></thead>
-    <tbody>
-      {% for k in kits %}
-      <tr>
-        <td><a href="/kits/{{ k.id }}">{{ k.name }}</a></td>
-        <td>
-          {% if k.is_default %}⭐ Default
-          {% else %}
-          <form method="post" action="/kits/{{ k.id }}/default" style="display:inline">
+<div class="info-box">
+  <p><strong>Recommended kits</strong> are suggested runner setups: what to wear and what to carry.</p>
+  <ul>
+    <li>Runners pick one from the dropdown in the plugin's sidebar. The default kit is pre-selected for anyone who hasn't chosen.</li>
+    <li>Once they say they're attending as a runner, the plugin checks their gear and inventory against it until they reach the course, and outlines anything missing in their bank.</li>
+    <li>That check runs on their own machine; nothing about their inventory is sent back.</li>
+    <li>Kits are advice only. What actually gets a runner flagged is set under <a href="/settings">Settings &rarr; Runner gear rules</a>.</li>
+  </ul>
+</div>
+
+{% if kits %}
+<table class="kits-table">
+  <thead><tr><th class="kit-col">Kit</th><th>Default</th><th></th></tr></thead>
+  <tbody>
+    {% for k in kits %}
+    <tr>
+      <td class="kit-col"><a href="/kits/{{ k.id }}/edit">{{ k.name }}</a></td>
+      <td>{% if k.is_default %}⭐ Default{% else %}&mdash;{% endif %}</td>
+      <td>
+        <div class="kit-actions">
+          {% if not k.is_default %}
+          <form method="post" action="/kits/{{ k.id }}/default">
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-            <button type="submit" class="secondary outline" style="padding:0.2rem 0.6rem">Make default</button>
+            <button type="submit" class="secondary outline">Mark as default</button>
           </form>
           {% endif %}
-        </td>
-        <td>
-          <form method="post" action="/kits/{{ k.id }}/delete" style="display:inline"
-                onsubmit="return confirm('Delete kit {{ k.name }}?')">
+          <a href="/kits/{{ k.id }}/edit" role="button" class="secondary">Edit</a>
+          <form method="post" action="/kits/{{ k.id }}/delete" onsubmit="return confirm('Delete kit {{ k.name|e }}?')">
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-            <button type="submit" class="secondary outline" style="padding:0.2rem 0.6rem">Delete</button>
+            <button type="submit" class="secondary outline">Delete</button>
           </form>
-        </td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-  {% else %}
-  <p>No kits yet.</p>
-  {% endif %}
-  <form method="post" action="/kits" style="display:flex; gap:0.5rem; align-items:end">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-    <label style="flex:1">New kit name<input type="text" name="name" maxlength="64" required placeholder="e.g. Budget runner"></label>
-    <button type="submit">Create kit</button>
-  </form>
-</article>
+        </div>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<p>No kits yet &mdash; use <strong>Create kit</strong> to add the first one. It'll become the default.</p>
+{% endif %}
 {% endblock %}

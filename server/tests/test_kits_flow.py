@@ -18,56 +18,118 @@ async def _items(db_session, *pairs):
     await db_session.commit()
 
 
-async def _create_kit(client, csrf, name=None) -> int:
+async def _latest_kit(db_session, name) -> Kit:
+    result = await db_session.execute(select(Kit).where(Kit.name == name).order_by(Kit.id.desc()))
+    return result.scalars().first()
+
+
+async def _create_kit(client, db_session, csrf, name=None, **form) -> int:
     name = name or "Kit " + secrets.token_hex(3)
     response = await client.post(
-        "/kits", data={"name": name, "csrf_token": csrf}, follow_redirects=False
+        "/kits", data={"name": name, "csrf_token": csrf, **form}, follow_redirects=False
     )
     assert response.status_code == 303
-    return int(response.headers["location"].rsplit("/", 1)[1])
+    assert response.headers["location"] == "/kits"
+    return (await _latest_kit(db_session, name)).id
 
 
 async def _kit_items(db_session, kit_id):
     result = await db_session.execute(
-        select(KitItem).where(KitItem.kit_id == kit_id).order_by(KitItem.id)
+        select(KitItem).where(KitItem.kit_id == kit_id).order_by(KitItem.slot, KitItem.item_id)
     )
     return result.scalars().all()
 
 
-async def test_kits_page_renders_rules_with_defaults(client, make_user, login_as, default_group):
+async def test_kits_page_has_info_box_and_create_button(client, make_user, login_as):
     login_as(await make_user(UserRole.STAFF))
     response = await client.get("/kits")
     assert response.status_code == 200
-    assert "Flag runners with these slots empty" in response.text
-    assert "Weapon must be a bow or crossbow" in response.text
+    assert "Recommended kits" in response.text
+    assert 'href="/kits/new"' in response.text
+    # The gear rules moved to Settings.
+    assert "Flag runners with these slots empty" not in response.text
 
 
-async def test_saving_gear_rules_flows_to_status(
+async def test_new_kit_page_asks_for_a_name_at_the_top(client, make_user, login_as):
+    login_as(await make_user(UserRole.STAFF))
+    response = await client.get("/kits/new")
+    assert response.status_code == 200
+    assert 'name="name"' in response.text
+    assert "Save kit" in response.text
+    assert 'name="slot_WEAPON"' in response.text
+
+
+async def test_create_saves_everything_in_one_go(
     client, make_user, login_as, default_group, db_session
 ):
     csrf = login_as(await make_user(UserRole.STAFF))
+    await _items(
+        db_session,
+        (9185, "Rune crossbow"),
+        (1540, "Anti-dragon shield"),
+        (12625, "Stamina potion(4)"),
+    )
+    kit_id = await _create_kit(
+        client,
+        db_session,
+        csrf,
+        "Full kit",
+        slot_WEAPON="9185",
+        slot_SHIELD="1540",
+        slot_HEAD="",
+        inv_item=["12625", "12625"],
+        inv_qty=["2", "1"],
+    )
+    rows = await _kit_items(db_session, kit_id)
+    assert sorted((r.slot, r.item_id, r.qty) for r in rows) == [
+        ("INVENTORY", 12625, 3),  # duplicate lines merged
+        ("SHIELD", 1540, 1),
+        ("WEAPON", 9185, 1),
+    ]
+
+
+async def test_edit_replaces_the_kit_contents_and_name(
+    client, make_user, login_as, default_group, db_session
+):
+    csrf = login_as(await make_user(UserRole.STAFF))
+    await _items(
+        db_session, (9185, "Rune crossbow"), (861, "Magic shortbow"), (12625, "Stamina potion(4)")
+    )
+    kit_id = await _create_kit(
+        client, db_session, csrf, "Before", slot_WEAPON="9185", inv_item=["12625"], inv_qty=["2"]
+    )
+
+    page = await client.get(f"/kits/{kit_id}/edit")
+    assert page.status_code == 200
+    assert "Rune crossbow" in page.text and "Stamina potion(4)" in page.text
+
     response = await client.post(
-        "/kits/rules",
-        data={"required": ["BOOTS", "HEAD", "WEAPON"], "csrf_token": csrf},
+        f"/kits/{kit_id}",
+        data={"name": "After", "slot_WEAPON": "861", "csrf_token": csrf},
         follow_redirects=False,
     )
     assert response.status_code == 303
-    await db_session.refresh(default_group)
-    # WEAPON is handled by the ranged-weapon rule, never as a plain "not empty" slot.
-    assert default_group.required_slots == ["HEAD", "BOOTS"]
-    assert default_group.require_ranged_weapon is False
+    kit = (await db_session.execute(select(Kit).where(Kit.id == kit_id))).scalar_one()
+    await db_session.refresh(kit)
+    assert kit.name == "After"
+    assert [(r.slot, r.item_id) for r in await _kit_items(db_session, kit_id)] == [("WEAPON", 861)]
 
-    await client.post(
-        "/kits/rules",
-        data={
-            "required": ["HEAD", "AMULET", "TORSO", "LEGS", "BOOTS"],
-            "ranged_weapon": "on",
-            "csrf_token": csrf,
-        },
+    # Old detail URL still lands on the editor.
+    redirect = await client.get(f"/kits/{kit_id}", follow_redirects=False)
+    assert redirect.headers["location"] == f"/kits/{kit_id}/edit"
+
+
+async def test_save_needs_a_name_and_known_items(
+    client, make_user, login_as, default_group, db_session
+):
+    csrf = login_as(await make_user(UserRole.STAFF))
+    no_name = await client.post("/kits", data={"name": "  ", "csrf_token": csrf})
+    assert no_name.status_code == 422
+    bad_item = await client.post(
+        "/kits", data={"name": "Bad", "slot_HEAD": "999999999", "csrf_token": csrf}
     )
-    await db_session.refresh(default_group)
-    assert default_group.required_slots == ["HEAD", "AMULET", "TORSO", "LEGS", "BOOTS"]
-    assert default_group.require_ranged_weapon is True
+    assert bad_item.status_code == 404
+    assert await _latest_kit(db_session, "Bad") is None
 
 
 async def test_first_kit_becomes_default_and_default_can_move(
@@ -75,14 +137,22 @@ async def test_first_kit_becomes_default_and_default_can_move(
 ):
     csrf = login_as(await make_user(UserRole.STAFF))
     for kit in (await db_session.execute(select(Kit))).scalars():
+        for item in (
+            await db_session.execute(select(KitItem).where(KitItem.kit_id == kit.id))
+        ).scalars():
+            await db_session.delete(item)
         await db_session.delete(kit)
     await db_session.commit()
 
-    first = await _create_kit(client, csrf, "First")
-    second = await _create_kit(client, csrf, "Second")
+    first = await _create_kit(client, db_session, csrf, "First")
+    second = await _create_kit(client, db_session, csrf, "Second")
     kits = {k.id: k for k in (await db_session.execute(select(Kit))).scalars()}
     assert kits[first].is_default is True
     assert kits[second].is_default is False
+
+    listing = await client.get("/kits")
+    assert listing.text.count("Mark as default") == 1
+    assert listing.text.count(">Edit<") == 2
 
     await client.post(f"/kits/{second}/default", data={"csrf_token": csrf})
     for k in kits.values():
@@ -96,86 +166,17 @@ async def test_first_kit_becomes_default_and_default_can_move(
     assert kits[first].is_default is True
 
 
-async def test_equipment_slot_holds_one_item_and_can_be_cleared(
+async def test_search_fragment_targets_slot_or_inventory(
     client, make_user, login_as, default_group, db_session
 ):
-    csrf = login_as(await make_user(UserRole.STAFF))
-    await _items(db_session, (9185, "Rune crossbow"), (861, "Magic shortbow"))
-    kit_id = await _create_kit(client, csrf)
-
-    for item_id in (9185, 861):
-        response = await client.post(
-            f"/kits/{kit_id}/slots/WEAPON/item",
-            data={"item_id": str(item_id), "csrf_token": csrf},
-            follow_redirects=False,
-        )
-        assert response.status_code == 303
-    rows = await _kit_items(db_session, kit_id)
-    assert [(r.slot, r.item_id) for r in rows] == [("WEAPON", 861)]
-
-    detail = await client.get(f"/kits/{kit_id}")
-    assert "Magic shortbow" in detail.text
-    assert 'name="q"' in detail.text
-
-    await client.post(f"/kits/{kit_id}/slots/WEAPON/clear", data={"csrf_token": csrf})
-    assert await _kit_items(db_session, kit_id) == []
-
-
-async def test_inventory_lines_merge_and_quantities_update(
-    client, make_user, login_as, default_group, db_session
-):
-    csrf = login_as(await make_user(UserRole.STAFF))
-    await _items(db_session, (12625, "Stamina potion(4)"))
-    kit_id = await _create_kit(client, csrf)
-
-    for qty in ("2", "1"):
-        await client.post(
-            f"/kits/{kit_id}/inventory",
-            data={"item_id": "12625", "qty": qty, "csrf_token": csrf},
-        )
-    rows = await _kit_items(db_session, kit_id)
-    assert [(r.slot, r.item_id, r.qty) for r in rows] == [(INVENTORY, 12625, 3)]
-
-    await client.post(
-        f"/kits/{kit_id}/inventory/{rows[0].id}/qty", data={"qty": "5", "csrf_token": csrf}
-    )
-    await db_session.refresh(rows[0])
-    assert rows[0].qty == 5
-
-    fragment = await client.post(
-        f"/kits/{kit_id}/inventory/{rows[0].id}/delete",
-        data={"csrf_token": csrf},
-        headers={"HX-Request": "true"},
-    )
-    assert fragment.status_code == 200
-    assert "Nothing to carry yet" in fragment.text
-    assert await _kit_items(db_session, kit_id) == []
-
-
-async def test_unknown_item_and_unknown_slot_rejected(
-    client, make_user, login_as, default_group, db_session
-):
-    csrf = login_as(await make_user(UserRole.STAFF))
-    kit_id = await _create_kit(client, csrf)
-    bad_item = await client.post(
-        f"/kits/{kit_id}/slots/HEAD/item", data={"item_id": "999999999", "csrf_token": csrf}
-    )
-    assert bad_item.status_code == 404
-    bad_slot = await client.post(
-        f"/kits/{kit_id}/slots/POCKET/item", data={"item_id": "1", "csrf_token": csrf}
-    )
-    assert bad_slot.status_code == 404
-
-
-async def test_search_fragments(client, make_user, login_as, default_group, db_session):
     login_as(await make_user(UserRole.STAFF))
     await _items(db_session, (12625, "Stamina potion(4)"))
-    csrf = login_as(await make_user(UserRole.STAFF))
-    kit_id = await _create_kit(client, csrf)
-    slot = await client.get(f"/kits/{kit_id}/slots/WEAPON/search", params={"q": "zzz nothing"})
-    assert "No matches" in slot.text
-    inv = await client.get(f"/kits/{kit_id}/inventory/search", params={"q": "Stamina potion"})
-    assert "Stamina potion(4)" in inv.text
+    none = await client.get("/kits/search", params={"q": "zzz nothing", "target": "WEAPON"})
+    assert "No matches" in none.text
+    inv = await client.get("/kits/search", params={"q": "Stamina potion", "target": "INVENTORY"})
+    assert 'data-target="INVENTORY"' in inv.text and "Stamina potion(4)" in inv.text
+    bad = await client.get("/kits/search", params={"q": "x", "target": "POCKET"})
+    assert bad.status_code == 404
 
 
 async def test_status_carries_gear_rules_and_kits(client, fc_group, db_session):

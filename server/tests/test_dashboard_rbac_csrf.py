@@ -28,7 +28,7 @@ async def test_viewer_cannot_read_kits_players_or_raggers(
     user = await make_user(UserRole.VIEWER)
     login_as(user)
     kit = await _make_kit(db_session, default_group)
-    for path in ("/kits", f"/kits/{kit.id}", "/players", "/raggers"):
+    for path in ("/kits", "/kits/new", f"/kits/{kit.id}/edit", "/players", "/raggers"):
         response = await client.get(path)
         assert response.status_code == 403, path
 
@@ -39,7 +39,7 @@ async def test_staff_can_still_read_kits_players_and_raggers(
     user = await make_user(UserRole.STAFF)
     login_as(user)
     kit = await _make_kit(db_session, default_group)
-    for path in ("/kits", f"/kits/{kit.id}", "/players", "/raggers"):
+    for path in ("/kits", "/kits/new", f"/kits/{kit.id}/edit", "/players", "/raggers"):
         response = await client.get(path)
         assert response.status_code == 200, path
 
@@ -98,7 +98,7 @@ async def test_post_with_wrong_csrf_token_is_rejected(client, make_user, login_a
     assert response.status_code == 403
 
 
-async def test_viewer_cannot_edit_kits_or_gear_rules(
+async def test_viewer_cannot_edit_kits(
     client, make_user, login_as, default_group, db_session
 ):
     user = await make_user(UserRole.VIEWER)
@@ -106,10 +106,7 @@ async def test_viewer_cannot_edit_kits_or_gear_rules(
     kit = await _make_kit(db_session, default_group)
     for path, data in (
         ("/kits", {"name": "x"}),
-        ("/kits/rules", {"required": "HEAD"}),
-        (f"/kits/{kit.id}/slots/HEAD/item", {"item_id": "1"}),
-        (f"/kits/{kit.id}/slots/HEAD/clear", {}),
-        (f"/kits/{kit.id}/inventory", {"item_id": "1", "qty": "1"}),
+        (f"/kits/{kit.id}", {"name": "x"}),
         (f"/kits/{kit.id}/default", {}),
         (f"/kits/{kit.id}/delete", {}),
     ):

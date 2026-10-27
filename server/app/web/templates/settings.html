@@ -1,41 +1,105 @@
 {% extends "base.html" %}
 {% block title %}Settings{% endblock %}
 {% block content %}
+<style>
+  .settings-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+    gap: 1.25rem;
+    align-items: start;
+  }
+  .settings-grid article { margin: 0; }
+  .settings-grid article > header { margin-bottom: 0.75rem; }
+  .settings-grid article > header strong { display: block; font-size: 1.1rem; }
+  .settings-grid article > header small { display: block; opacity: 0.8; margin-top: 0.25rem; }
+  .settings-wide { grid-column: 1 / -1; }
+  .slot-chips { display: flex; flex-wrap: wrap; gap: 0.5rem 1.25rem; margin-bottom: 1rem; }
+  .slot-chips label { margin: 0; }
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 0 1rem; }
+  .tile-list { display: flex; gap: 2rem; }
+  .tile-list p { margin: 0; }
+  .settings-save {
+    position: sticky; bottom: 0; z-index: 5;
+    display: flex; align-items: center; justify-content: flex-end; gap: 1rem;
+    padding: 0.75rem 0; margin-top: 1.25rem;
+    background: var(--pico-background-color);
+  }
+  .settings-save button { width: auto; margin: 0; }
+  @media (max-width: 600px) { .two-col { grid-template-columns: 1fr; } }
+</style>
+
 <h2>Settings</h2>
+{% if request.query_params.get("saved") %}<p><mark>Settings saved.</mark></p>{% endif %}
+
 <form method="post" action="/settings">
   <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
 
-  <fieldset>
-    <legend>DD tiles</legend>
-    <p>Tile 1: {{ tiles[0].x }}, {{ tiles[0].y }}, {{ tiles[0].plane }}</p>
-    <p>Tile 2: {{ tiles[1].x }}, {{ tiles[1].y }}, {{ tiles[1].plane }}</p>
-    <p><small>Fixed for now, not editable here - contact whoever manages the server to change these.</small></p>
-  </fieldset>
+  <div class="settings-grid">
+    <article class="settings-wide">
+      <header>
+        <strong>Runner gear rules</strong>
+        <small>What gets a runner flagged: their own chat warning, the over-head labels and the dashboard's Loadout column. Antis are never checked.</small>
+      </header>
+      <fieldset>
+        <legend>Flag runners with these slots empty</legend>
+        <div class="slot-chips">
+          {% for slot, label, checked in rule_slots %}
+          <label><input type="checkbox" name="required" value="{{ slot }}" {% if checked %}checked{% endif %}> {{ label }}</label>
+          {% endfor %}
+        </div>
+      </fieldset>
+      <label>
+        <input type="checkbox" name="ranged_weapon" {% if group.require_ranged_weapon %}checked{% endif %}>
+        Weapon must be a bow or crossbow
+      </label>
+      <small>A crossbow also needs something in the shield slot; a bow is two-handed, so an empty shield is fine.</small>
+    </article>
 
-  <fieldset>
-    <legend>DD detection</legend>
-    <label>Call regex<input type="text" name="call_regex" value="{{ group.dd_call_regex or '' }}" required></label>
-    <label>Break regex<input type="text" name="break_regex" value="{{ group.dd_break_regex or '' }}" required></label>
-    <label>Min rank to call DD<input type="number" name="min_rank" value="{{ group.dd_min_rank }}" required></label>
-    <label>Arrive grace (seconds)<input type="number" name="arrive_grace_s" value="{{ group.dd_arrive_grace_s }}" required></label>
-    <label>Leave grace (seconds)<input type="number" name="leave_grace_s" value="{{ group.dd_leave_grace_s }}" required></label>
-    <label>Max minutes per call<input type="number" name="max_minutes" value="{{ group.dd_max_minutes }}" required></label>
-  </fieldset>
+    <article>
+      <header>
+        <strong>Gear flags &amp; observer</strong>
+        <small>Who gets to see other players' gear gaps in-game.</small>
+      </header>
+      <label>
+        <input type="checkbox" name="observer_enabled" {% if group.observer_enabled %}checked{% endif %}>
+        Enable FC observer (gear/DD scanning of other members)
+      </label>
+      <label>Lowest FC rank that sees gear flags
+        <input type="number" name="flag_viewer_min_rank" min="-1" max="127" value="{{ group.flag_viewer_min_rank }}" required>
+      </label>
+      <small>-1 = anyone in the chat, 0 = any ranked member (friend and up), 1 = recruit, 2 = corporal, 3 = sergeant, ...
+        Lower ranks still get their own warning and still feed the dashboard, but see no list or labels for others.</small>
+    </article>
 
-  <fieldset>
-    <legend>Observer</legend>
-    <label>
-      <input type="checkbox" name="observer_enabled" {% if group.observer_enabled %}checked{% endif %}>
-      Enable FC observer (loadout/DD scanning of other members)
-    </label>
-    <label>Lowest FC rank that sees other players' gear flags in-game
-      <input type="number" name="flag_viewer_min_rank" min="-1" max="127" value="{{ group.flag_viewer_min_rank }}" required>
-    </label>
-    <small>-1 = anyone in the chat, 0 = any ranked member (friend and up), 1 = recruit, 2 = corporal, 3 = sergeant, ...
-      Players below this rank still get their own gear warning and still feed the dashboard,
-      but the plugin shows them no list and no over-head flags for other players.</small>
-  </fieldset>
+    <article>
+      <header>
+        <strong>DD calls</strong>
+        <small>How a DD call and its break are spotted in FC chat, and how presence is timed.</small>
+      </header>
+      <label>Call regex<input type="text" name="call_regex" value="{{ group.dd_call_regex or '' }}" required></label>
+      <label>Break regex<input type="text" name="break_regex" value="{{ group.dd_break_regex or '' }}" required></label>
+      <div class="two-col">
+        <label>Min rank to call DD<input type="number" name="min_rank" value="{{ group.dd_min_rank }}" required></label>
+        <label>Max minutes per call<input type="number" name="max_minutes" value="{{ group.dd_max_minutes }}" required></label>
+        <label>Arrive grace (seconds)<input type="number" name="arrive_grace_s" value="{{ group.dd_arrive_grace_s }}" required></label>
+        <label>Leave grace (seconds)<input type="number" name="leave_grace_s" value="{{ group.dd_leave_grace_s }}" required></label>
+      </div>
+    </article>
 
-  <button type="submit">Save</button>
+    <article>
+      <header>
+        <strong>DD tiles</strong>
+        <small>Fixed for now - contact whoever manages the server to change these.</small>
+      </header>
+      <div class="tile-list">
+        <p>Tile 1: <strong>{{ tiles[0].x }}, {{ tiles[0].y }}, {{ tiles[0].plane }}</strong></p>
+        <p>Tile 2: <strong>{{ tiles[1].x }}, {{ tiles[1].y }}, {{ tiles[1].plane }}</strong></p>
+      </div>
+    </article>
+  </div>
+
+  <div class="settings-save">
+    <button type="submit">Save settings</button>
+  </div>
 </form>
 {% endblock %}

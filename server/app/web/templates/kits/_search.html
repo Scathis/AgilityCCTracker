@@ -1,0 +1,17 @@
+{% if not query %}
+<p><small>Type to search…</small></p>
+{% elif not results %}
+<p><small>No matches.</small></p>
+{% else %}
+<ul class="item-search-results">
+  {% for item in results %}
+  <li>
+    <button type="button" class="outline item-search-result kit-pick"
+            data-target="{{ target }}" data-id="{{ item.id }}" data-name="{{ item.name }}" data-icon="{{ item.icon }}">
+      <img src="{{ item.icon }}" alt="" class="item-icon-sm" loading="lazy" onerror="this.style.visibility='hidden'">
+      {{ item.name }}
+    </button>
+  </li>
+  {% endfor %}
+</ul>
+{% endif %}

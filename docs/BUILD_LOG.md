@@ -1643,3 +1643,17 @@ check while attending as a runner and outside the course (variants via
 ItemVariationMapping, so any potion dose counts), one chat line + sidebar list,
 and `ui/KitBankOverlay` outlining missing items in the bank. 100 server tests,
 plugin tests incl. GearRuleEvaluatorTest / KitCheckTest.
+
+### 2026-10-27 - Settings regrouped; Kits page redesign
+
+- Runner gear rules moved from the Kits page to **Settings** (so admin-only now),
+  and Settings regrouped into cards: Runner gear rules, Gear flags & observer, DD
+  calls, DD tiles, one sticky Save. `/kits/rules` removed.
+- Kits list: "Create kit" button + info box explaining recommended kits under
+  the title; wider Kit column; per-row Mark as default / Edit / Delete.
+- Kit editor (`/kits/new`, `/kits/{id}/edit`): name at the top, gear grid and
+  inventory edited in the page only (small inline script, item search is still
+  an HTMX fragment `/kits/search?target=`), one **Save kit** posts the whole kit
+  (`POST /kits` / `POST /kits/{id}`), replacing its contents; duplicate
+  inventory lines merged; unsaved-changes warning. The per-action HTMX save
+  routes are gone. 102 server tests passing.
