@@ -74,7 +74,7 @@ import net.runelite.client.util.Text;
 @Slf4j
 @PluginDescriptor(
 	name = "Wildy Agility FC Tracker",
-	description = "Tracks attendance, laps, loadout compliance and DD calls for a Wilderness Agility friends chat, syncing to a self-hosted server",
+	description = "Opt-in attendance, laps, gear checks, kits and DD calls for the Agility CC friends chat's Wilderness Agility Course masses",
 	tags = {"agility", "wilderness", "friends chat", "fc", "mass", "tracker", "dd"}
 )
 public class AgilityCCTrackerPlugin extends Plugin

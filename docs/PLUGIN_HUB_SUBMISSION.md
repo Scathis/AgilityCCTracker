@@ -17,14 +17,14 @@ this build).
 
 ## 2. Pre-flight checklist
 
-- [ ] `runelite-plugin.properties` present and correct (author, description,
-      warning, etc.)
-- [ ] `icon.png` present (currently a generated placeholder — consider
-      replacing with real artwork before submitting)
+- [x] `runelite-plugin.properties` present and correct (description updated
+      2026-10-27; the `warning=` line lives in the plugin-hub manifest below)
+- [ ] `icon.png` - still the generated placeholder; owner is sourcing real
+      artwork (must stay `icon.png` at the repo root, 48x72 per the Hub template)
 - [ ] `LICENSE` present (BSD-2-Clause)
-- [ ] **Rewrite `README.md`** (currently a thin stub) - do this last, once all
-      features are added/set up, so it describes the final plugin: what it
-      does, setup, config options, data shared, self-hosting pointer.
+- [x] **`README.md` rewritten 2026-10-27** - players' guide (prompt, roles,
+      panel, kits, gear checks, settings, what's shared and when), organisers'
+      dashboard summary, repo layout. Keep it in step with later changes.
 - [ ] `./gradlew build` passes clean on Java 11
 - [ ] The §5.11 Hub-readiness grep checks still pass (no `getPlayers()`
       outside `scan/FcMemberScanner`, no banned event subscriptions, no
@@ -37,7 +37,7 @@ this build).
    ```
    repository=https://github.com/Scathis/AgilityCCTracker.git
    commit=<full 40-char commit sha to submit>
-   warning=This plugin sends your RSN, stats, world, combat level, wilderness level and skull status, worn equipment, wilderness agility laps and deaths, the names, ranks and worlds of members of the configured friends chat, the names of friends chat members seen at the Wilderness Agility Course, whether nearby friends chat members meet the chat's required loadout and whether they are on the chat's DD tiles during a DD call, and your IP address to a server not controlled or verified by the RuneLite developers. Nothing is sent until you answer yes to a "mass started" prompt, or enter the Wilderness Agility Course while that friends chat has a mass running, and only for that mass.
+   warning=This plugin sends your RSN and IP address to a server not controlled or verified by the RuneLite developers, to check whether the Agility CC friends chat has a mass running. Only once you opt in to a mass (by picking Runner or Anti, or by entering the Wilderness Agility Course during it), and only for that mass, it also sends: your world, combat and skill levels, worn equipment, wilderness level and skull status, Wilderness Agility laps and deaths; the names, ranks and worlds of the friends chat's members; and, for chat members seen at the course, their names, which required gear slots they have empty, and their time on the chat's DD tiles during a DD call.
    ```
 
 ## 4. PR description
@@ -106,4 +106,10 @@ Watch the "RuneLite Plugin Hub Checks" CI run on the PR. Fix issues and
 push new `commit=` shas to the *same* PR rather than opening a new one.
 Later plugin updates (post-acceptance) are a new PR bumping `commit=` in
 this same `plugins/agility-cc-tracker` file — the plugin's own repo history
-doesn't need to change shape for this.
+doesn't need to change shape for this. Confirmed against the plugin-hub
+README 2026-10-27: branch from `upstream/master`, change only `commit=`, open
+a PR; every update is reviewed again (new third-party dependencies slow that
+a lot - there are none). Players pick updates up automatically from the Hub.
+Server-side changes (gear rules, kits, flag rank, observer switch,
+dashboard) need no plugin update; never rotate the baked-in token once the
+plugin is public, as every installed copy breaks until an update ships.
