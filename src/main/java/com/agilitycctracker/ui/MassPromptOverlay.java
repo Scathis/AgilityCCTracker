@@ -19,7 +19,6 @@ import net.runelite.client.input.MouseListener;
 import net.runelite.client.ui.overlay.Overlay;
 import net.runelite.client.ui.overlay.OverlayLayer;
 import net.runelite.client.ui.overlay.OverlayPosition;
-import net.runelite.client.ui.overlay.OverlayPriority;
 
 /**
  * The "Agility mass started" prompt, drawn inside the game view instead of
@@ -65,7 +64,7 @@ public class MassPromptOverlay extends Overlay implements MouseListener
 		this.massParticipation = massParticipation;
 		setPosition(OverlayPosition.TOP_CENTER);
 		setLayer(OverlayLayer.ABOVE_WIDGETS);
-		setPriority(OverlayPriority.HIGH);
+		setPriority(PRIORITY_HIGH);
 		setMovable(true);
 
 		int buttonW = (WIDTH - PAD * 2 - BUTTON_GAP * 2) / 3;
