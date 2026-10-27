@@ -39,13 +39,14 @@ for that mass (walking back into the course counts you as attending again).
 
 ### The sidebar panel
 
+- **Your all-time fastest lap** sits under your name and Agility xp (kept on
+  your computer, per account).
 - **Agility ring** - fills up to level 99. Past 99 it keeps going: a brighter
   second lap and a fill towards the centre, until it's solid at 200M xp.
 - **Friends chat** - a tick if you're in Agility CC, a cross (and how to
   join) if you're not.
 - **Mass** - whether one is running and for how long, and your answer.
-- **This mass** - your laps and tickets, your fastest lap this mass and your
-  best ever, whether you're in the course area, any empty required gear
+- **This mass** - your laps and tickets, your fastest lap this mass, whether you're in the course area, any empty required gear
   slots, and DD timing while a DD is called.
 - **Kit** - pick one of the organisers' recommended kits. Until you reach the
   course, it checks your gear and inventory against it, tells you what's

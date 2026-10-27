@@ -178,9 +178,10 @@ wired up end-to-end:
 - [ ] Attendance builds from sightings only: someone in the FC who never
       comes near the course never appears (not even as a hidden row); an anti
       working the area just outside the course still clocks time present.
-- [ ] Fastest lap: run two or more laps → "Fastest lap" (this mass) and
-      "Best ever" show in This session; the Previous sessions card shows the
-      mass's fastest; Best ever survives a client restart.
+- [ ] Fastest lap: run two or more laps → "Fastest lap" shows in This
+      session, and the all-time best shows under your name/Agility xp at the
+      top (hidden until you have one); the Previous sessions card shows the
+      mass's fastest; the all-time best survives a client restart.
 - [ ] Server logs (`docker logs agilitycctracker-api-1`) show no per-request
       lines - no IPs or RSNs.
 - [ ] Pre-mass check chat lines (gear + kit) appear once when you join the

@@ -115,6 +115,7 @@ public class TrackerPanel extends PluginPanel
 	private final AgilityRing ring = new AgilityRing();
 	private final JLabel nameLabel = label("", Theme.title().deriveFont(18f), Theme.GOLD_BRIGHT);
 	private final JLabel xpLabel = label("", Theme.small(), Theme.MUTED);
+	private final JLabel bestLapLabel = label("", Theme.small(), Theme.MUTED);
 
 	// Status box
 	private final StatusMark fcMark = new StatusMark();
@@ -152,7 +153,6 @@ public class TrackerPanel extends PluginPanel
 	private final JLabel courseValue = label("", Theme.body(), Theme.TEXT);
 	private final JLabel gearValue = label("", Theme.body(), Theme.TEXT);
 	private final JLabel fastestValue = label("", Theme.body(), Theme.TEXT);
-	private final JLabel bestValue = label("", Theme.body(), Theme.GOLD_BRIGHT);
 	private final JPanel ddRow = transparent(new BorderLayout());
 	private final JLabel ddValue = label("", Theme.body(), Theme.GOLD_BRIGHT);
 
@@ -236,6 +236,9 @@ public class TrackerPanel extends PluginPanel
 		c.gridy = 1;
 		c.insets = new Insets(2, 0, 0, 0);
 		names.add(xpLabel, c);
+		c.gridy = 2;
+		c.insets = new Insets(1, 0, 0, 0);
+		names.add(bestLapLabel, c);
 		header.add(names, BorderLayout.CENTER);
 		return header;
 	}
@@ -355,7 +358,6 @@ public class TrackerPanel extends PluginPanel
 		stack.add(heading("This session"), 0);
 		stack.add(row("Laps", lapsValue), 6);
 		stack.add(row("Fastest lap", fastestValue), 3);
-		stack.add(row("Best ever", bestValue), 3);
 		stack.add(row("In course", courseValue), 3);
 		stack.add(row("Gear", gearValue), 3);
 		ddRow.add(label("DD", Theme.body(), Theme.MUTED), BorderLayout.WEST);
@@ -462,6 +464,10 @@ public class TrackerPanel extends PluginPanel
 		nameLabel.setForeground(loggedIn ? Theme.GOLD_BRIGHT : Theme.MUTED);
 		ring.setXp(loggedIn ? snapshot.getAgilityXp() : -1);
 		xpLabel.setText(loggedIn ? "Agility - " + shortXp(snapshot.getAgilityXp()) + " xp" : "");
+		// All-time best lap for this account (kept locally) - shown whether or not a mass is on.
+		long best = loggedIn ? sessionHistory.getBestLapMs(Text.toJagexName(snapshot.getName())) : 0;
+		bestLapLabel.setText("Fastest lap - " + lapTime(best));
+		bestLapLabel.setVisible(best > 0);
 	}
 
 	private void refreshStatusBox(PanelSnapshot snapshot, StatusResponse status)
@@ -547,8 +553,6 @@ public class TrackerPanel extends PluginPanel
 			}
 		}
 		fastestValue.setText(massFastest > 0 ? lapTime(massFastest) : "-");
-		long best = rsn != null ? sessionHistory.getBestLapMs(rsn) : 0;
-		bestValue.setText(best > 0 ? lapTime(best) : "-");
 
 		boolean onCourse = selfStateCollector.isOnCourse();
 		courseValue.setText(onCourse ? "Yes" : "No");

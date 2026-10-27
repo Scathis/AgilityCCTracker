@@ -1825,3 +1825,9 @@ large quantities with thousands separators.
   messages" (same key) covering gear + kit lines and their timing; FC
   observer description now states exactly what it reports; role description
   mentions the separate per-role record.
+
+## 2026-10-27 - All-time fastest lap moved to the header
+
+Owner: "Best ever" now sits under the Agility xp line at the top
+("Fastest lap - 0:58.4", hidden until there is one, visible whether or not a
+mass is running); "Fastest lap" for the current mass stays in This session.
