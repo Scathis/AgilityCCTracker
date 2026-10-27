@@ -8,7 +8,15 @@ log. Update this file's "Where things stand" / "Open items" sections at the
 end of any session that changes them — treat it like a handoff note, not an
 append-only log (that's what BUILD_LOG.md is for).
 
-## Latest (2026-10-28) — dashboard accounts
+## Latest (2026-10-28) — dashboard accounts, kit item search
+
+- Kit item search was missing untradeables (Ava's devices, fire cape,
+  graceful...): the items worker used the Wiki's GE mapping. Now it loads
+  RuneLite's full cache name dump (`static.runelite.net/cache/item/names.json`,
+  ~21.7k items) plus `item/stats.ids.min.json` for each item's worn slot
+  (`items.equip_slot`, migration `e5b0c8d1a624`). Search shows each name once
+  (lowest id), best matches first, and slot boxes only offer items worn in
+  that slot; saving a kit refuses wrong-slot gear (422).
 
 - Self-registration: **Request one** on /login -> PENDING account (no
   access; login says it's awaiting approval). Admin → Users: approve with a

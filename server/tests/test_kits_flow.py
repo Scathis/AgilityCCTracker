@@ -9,12 +9,18 @@ from app.models.kit import INVENTORY, Kit, KitItem
 from app.models.user import UserRole
 
 
-async def _items(db_session, *pairs):
+async def _items(db_session, *entries):
+    """(id, name) or (id, name, slot) - slot is where it's worn, if it is."""
     now = dt.datetime.utcnow()
-    for item_id, name in pairs:
-        if (await db_session.execute(select(Item).where(Item.id == item_id))).scalar_one_or_none():
+    for item_id, name, *rest in entries:
+        slot = rest[0] if rest else None
+        existing = (
+            await db_session.execute(select(Item).where(Item.id == item_id))
+        ).scalar_one_or_none()
+        if existing is not None:
+            existing.equip_slot = slot
             continue
-        db_session.add(Item(id=item_id, name=name, updated_at=now))
+        db_session.add(Item(id=item_id, name=name, updated_at=now, equip_slot=slot))
     await db_session.commit()
 
 
@@ -65,8 +71,8 @@ async def test_create_saves_everything_in_one_go(
     csrf = login_as(await make_user(UserRole.STAFF))
     await _items(
         db_session,
-        (9185, "Rune crossbow"),
-        (1540, "Anti-dragon shield"),
+        (9185, "Rune crossbow", "WEAPON"),
+        (1540, "Anti-dragon shield", "SHIELD"),
         (12625, "Stamina potion(4)"),
     )
     kit_id = await _create_kit(
@@ -93,7 +99,10 @@ async def test_edit_replaces_the_kit_contents_and_name(
 ):
     csrf = login_as(await make_user(UserRole.STAFF))
     await _items(
-        db_session, (9185, "Rune crossbow"), (861, "Magic shortbow"), (12625, "Stamina potion(4)")
+        db_session,
+        (9185, "Rune crossbow", "WEAPON"),
+        (861, "Magic shortbow", "WEAPON"),
+        (12625, "Stamina potion(4)"),
     )
     kit_id = await _create_kit(
         client, db_session, csrf, "Before", slot_WEAPON="9185", inv_item=["12625"], inv_qty=["2"]
@@ -177,6 +186,39 @@ async def test_search_fragment_targets_slot_or_inventory(
     assert 'data-target="INVENTORY"' in inv.text and "Stamina potion(4)" in inv.text
     bad = await client.get("/kits/search", params={"q": "x", "target": "POCKET"})
     assert bad.status_code == 404
+
+
+async def test_search_shows_untradeables_once_with_best_match_first(
+    client, make_user, login_as, default_group, db_session
+):
+    login_as(await make_user(UserRole.STAFF))
+    await _items(
+        db_session,
+        (10499, "Ava's accumulator", "CAPE"),
+        (23609, "Ava's accumulator", "CAPE"),  # cache duplicate
+        (13337, "Accumulator max cape", "CAPE"),
+        (13338, "Accumulator max hood", "HEAD"),
+    )
+    page = await client.get("/kits/search", params={"q": "accumulator", "target": "CAPE"})
+    assert page.text.count('data-name="Ava') == 1
+    assert 'data-id="10499"' in page.text
+    assert 'data-id="23609"' not in page.text
+    # Only items worn in the slot being filled.
+    assert "Accumulator max hood" not in page.text
+    head = await client.get("/kits/search", params={"q": "accumulator", "target": "HEAD"})
+    assert "Accumulator max hood" in head.text and "Ava" not in head.text
+
+
+async def test_save_refuses_an_item_in_the_wrong_slot(
+    client, make_user, login_as, default_group, db_session
+):
+    csrf = login_as(await make_user(UserRole.STAFF))
+    await _items(db_session, (1079, "Rune platelegs", "LEGS"))
+    response = await client.post(
+        "/kits", data={"name": "Wrong slot", "slot_TORSO": "1079", "csrf_token": csrf}
+    )
+    assert response.status_code == 422
+    assert "isn't worn in the Body slot" in response.text
 
 
 async def test_status_carries_gear_rules_and_kits(client, fc_group, db_session):

@@ -141,6 +141,11 @@ on the dashboard. Pull and rebuild the plugin first.
 - [ ] Dashboard Kits: **Create kit** - name at the top, gear per slot,
       inventory lines, nothing saved until **Save kit** (leaving unsaved warns;
       Cancel discards). The info box sits under the title.
+- [ ] Untradeable gear can be picked (e.g. Ava's accumulator, fire cape,
+      graceful, dragon defender), each name listed once.
+- [ ] Each slot box only offers items worn in that slot (searching
+      "platelegs" in Body finds nothing; in Legs it does). Inventory search
+      offers everything.
 - [ ] Every kit has a locked "Coins 150,000 - course entry fee" line.
 - [ ] First kit becomes the default; **Mark as default** moves it; **Edit**
       reopens with everything filled; deleting the default hands it on.

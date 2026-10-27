@@ -10,7 +10,7 @@ from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import RedirectResponse
-from sqlalchemy import select
+from sqlalchemy import case, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import get_session
@@ -138,6 +138,12 @@ async def _apply_form(session: AsyncSession, request: Request, kit: Kit) -> None
     known = await _items_by_id(session, set(equipment.values()) | set(inventory))
     if any(i not in known for i in [*equipment.values(), *inventory]):
         raise HTTPException(status_code=404, detail="Unknown item")
+    for slot, item_id in equipment.items():
+        if known[item_id].equip_slot != slot:
+            raise HTTPException(
+                status_code=422,
+                detail=f"{known[item_id].name} isn't worn in the {SLOT_LABELS[slot]} slot",
+            )
 
     kit.name = name
     for old in (await session.execute(select(KitItem).where(KitItem.kit_id == kit.id))).scalars():
@@ -204,12 +210,31 @@ async def search_items(
         raise HTTPException(status_code=404, detail="Unknown slot")
     results = []
     if q:
+        # The game cache lists many items several times (noted/placeholder
+        # copies, recolours) - show each name once, using its lowest id (the
+        # plugin treats every variant of an item as the same thing anyway).
+        # Exact matches first, then names starting with the search, shortest first.
+        q = q.strip()
+        first_id = func.min(Item.id).label("id")
         rows = (
-            (await session.execute(select(Item).where(Item.name.ilike(f"%{q}%")).limit(20)))
-            .scalars()
-            .all()
-        )
-        results = [{"id": i.id, "name": i.name, "icon": item_icon_url(i.name)} for i in rows]
+            await session.execute(
+                select(first_id, Item.name)
+                .where(
+                    Item.name.ilike(f"%{q}%"),
+                    # A slot box only offers items worn in that slot.
+                    *([Item.equip_slot == target] if target != INVENTORY else []),
+                )
+                .group_by(Item.name)
+                .order_by(
+                    case((func.lower(Item.name) == q.lower(), 0), else_=1),
+                    case((Item.name.ilike(f"{q}%"), 0), else_=1),
+                    func.length(Item.name),
+                    Item.name,
+                )
+                .limit(20)
+            )
+        ).all()
+        results = [{"id": r.id, "name": r.name, "icon": item_icon_url(r.name)} for r in rows]
     context = template_context(request, user, results=results, target=target, query=q)
     return templates.TemplateResponse(request, "kits/_search.html", context)
 

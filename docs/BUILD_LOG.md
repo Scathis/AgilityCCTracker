@@ -1864,3 +1864,23 @@ redirects to /account); login lands on /account; the account page labels the
 field "Temporary password" and explains why. Changing the password clears the
 flag and refuses the same password again. Test:
 `test_temporary_password_forces_a_new_one`. 108 pass.
+
+## 2026-10-28 - Full item list with worn slots for the Kits builder
+
+- Owner couldn't add Ava's accumulator: `items` came from
+  prices.runescape.wiki's mapping, which is GE-tradeable only (4,674 items).
+  `items_worker` now fetches RuneLite's static dumps, refreshed per game
+  update: `cache/item/names.json` (id -> name, every cached item; "null"/blank
+  skipped) and `item/stats.ids.min.json` (`equipable` + `equipment.slot`,
+  mapped from EquipmentInventorySlot indexes 0/1/2/3/4/5/7/9/10/12/13 to
+  HEAD/CAPE/AMULET/WEAPON/TORSO/SHIELD/LEGS/HANDS/BOOTS/RING/AMMO). Bulk
+  MySQL upsert in 1,000-row batches. After deploy: 21,696 items, 5,703 with a
+  slot. Ids are game ids, so existing kits were unaffected (none had
+  wrong-slot gear).
+- `/kits/search`: GROUP BY name with MIN(id) (the cache repeats names for
+  noted/placeholder/recolour copies; the plugin matches any variant anyway),
+  ordered exact match, then prefix match, then shortest; filtered to
+  `equip_slot == target` for slot boxes. `_apply_form` rejects an item whose
+  `equip_slot` isn't the slot it was put in.
+- Tests: `parse_item_names`, `parse_equip_slots`, search dedupe/slot filter,
+  wrong-slot save refused. 110 pass.

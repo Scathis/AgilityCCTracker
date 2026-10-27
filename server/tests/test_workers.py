@@ -1,7 +1,7 @@
 import datetime as dt
 
 from app.workers.attendance_timeout_worker import TIMEOUT_S, should_close
-from app.workers.items_worker import parse_item_mapping
+from app.workers.items_worker import parse_equip_slots, parse_item_names
 
 
 def test_should_close_at_exactly_timeout_stays_open():
@@ -22,22 +22,21 @@ def test_should_close_recently_sighted_stays_open():
     assert should_close(last_sighted, now) is False
 
 
-def test_parse_item_mapping_extracts_id_and_name_only():
-    mapping = [
-        {"id": 4151, "name": "Abyssal whip", "highalch": 72000},
-        {"id": 995, "name": "Coins", "highalch": 0},
-    ]
-    parsed = parse_item_mapping(mapping)
-
+def test_parse_item_names_keeps_untradeables_and_skips_placeholders():
+    parsed = parse_item_names(
+        {"4151": "Abyssal whip", "10499": "Ava's accumulator", "617": "null", "9": " ", "x": "Bad"}
+    )
     assert parsed == [
         {"id": 4151, "name": "Abyssal whip"},
-        {"id": 995, "name": "Coins"},
+        {"id": 10499, "name": "Ava's accumulator"},
     ]
-    # No price/value fields survive the parse - deliberately dropped.
-    assert "highalch" not in parsed[0]
-    assert "ge_price" not in parsed[0]
 
 
-def test_parse_item_mapping_skips_entries_with_no_id():
-    parsed = parse_item_mapping([{"name": "Broken entry"}])
-    assert parsed == []
+def test_parse_equip_slots_maps_runelite_slot_indexes():
+    stats = {
+        "10499": {"equipable": True, "equipment": {"slot": 1}},
+        "1079": {"equipable": True, "equipment": {"slot": 7}},
+        "12625": {"weight": 0.02},
+        "99": {"equipable": True, "equipment": {"slot": 6}},
+    }
+    assert parse_equip_slots(stats) == {10499: "CAPE", 1079: "LEGS"}
