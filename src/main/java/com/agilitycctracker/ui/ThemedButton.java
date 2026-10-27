@@ -56,9 +56,20 @@ public class ThemedButton extends JButton
 	public Dimension getPreferredSize()
 	{
 		FontMetrics metrics = getFontMetrics(getFont());
-		int w = metrics.stringWidth(getText()) + (style == Style.LINK ? 4 : style == Style.PILL ? 22 : 16);
+		int w = metrics.stringWidth(getText()) + (style == Style.LINK ? 4 : style == Style.PILL ? 14 : 16);
 		int h = metrics.getHeight() + (style == Style.LINK ? 2 : style == Style.PILL ? 6 : 8);
 		return new Dimension(w, h);
+	}
+
+	/**
+	 * Never smaller than its preferred size: GridBagLayout falls back to every
+	 * child's minimum size when its parent is too narrow, and the LAF minimum
+	 * for a borderless button is small enough to clip the text.
+	 */
+	@Override
+	public Dimension getMinimumSize()
+	{
+		return getPreferredSize();
 	}
 
 	@Override

@@ -1722,3 +1722,19 @@ large quantities with thousands separators.
 - Tests: `SessionHistoryTest`; server `test_attendance_lists_only_people_who_turned_up`,
   sighting test asserts the flag; fixtures that expect a listed player now
   set `sighted_at_course=True`. 108 server tests pass.
+
+## 2026-10-27 - Panel layout fixes (owner test notes, round 3)
+
+- Root cause of the half-visible Discord link and the overlapping "Attending
+  as Runner / Switch to Anti": that row was wider than the panel, and
+  GridBagLayout then lays out *every* child at its minimum size. Fixed by
+  making the row fit (caption "Attending as" + "Runner | [Switch to Anti]",
+  with a gold fading `FadeBar` as the "|") and by `ThemedButton.getMinimumSize()`
+  returning its preferred size.
+- Removed the rule between the Friends chat and Mass sections; section
+  captions now use the bold title font in gold (same as card headings).
+- Tabs swap visibility instead of CardLayout (which sized both tabs to the
+  taller one, centring a short history list and leaving a gap above the
+  footer). History stays newest first.
+- Verified by rendering the real `TrackerPanel` offscreen (headless, fields
+  set by reflection) in runner / anti / not-answered / no-mass / history states.

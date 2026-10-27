@@ -18,7 +18,6 @@ import com.agilitycctracker.model.StatusResponse;
 import com.agilitycctracker.scan.FcMemberScanner;
 import com.agilitycctracker.scan.FlagAccess;
 import java.awt.BorderLayout;
-import java.awt.CardLayout;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
@@ -71,7 +70,7 @@ public class TrackerPanel extends PluginPanel
 	private static final String DISCORD_URL = "https://discord.gg/agility";
 	private static final String TAB_NOW = "now";
 	private static final String TAB_HISTORY = "history";
-	private static final DateTimeFormatter DATE = DateTimeFormatter.ofPattern("d MMM yyyy, HH:mm");
+	private static final DateTimeFormatter DATE = DateTimeFormatter.ofPattern("d MMM, HH:mm");
 
 	@Inject
 	private Client client;
@@ -123,8 +122,10 @@ public class TrackerPanel extends PluginPanel
 	private final JLabel fcState = label("", Theme.small(), Theme.MUTED);
 	private final JLabel fcHint = label("", Theme.small(), Theme.MUTED);
 	private final JLabel massValue = label("", Theme.body(), Theme.TEXT);
+	private final JLabel youCaption = caption("");
 	private final JPanel youRow = transparent(new BorderLayout());
 	private final JLabel youValue = label("", Theme.body(), Theme.TEXT);
+	private final FadeBar youBar = new FadeBar();
 	private final ThemedButton switchRole = new ThemedButton("", ThemedButton.Style.PILL);
 	private final JPanel attendButtons = transparent(new GridLayout(1, 2, 6, 0));
 	private final ThemedButton attendRunner = new ThemedButton("Runner", ThemedButton.Style.PRIMARY);
@@ -134,8 +135,9 @@ public class TrackerPanel extends PluginPanel
 	// Tabs
 	private final ThemedButton nowTab = new ThemedButton("This mass", ThemedButton.Style.TAB);
 	private final ThemedButton historyTab = new ThemedButton("Previous sessions", ThemedButton.Style.TAB);
-	private final CardLayout tabCards = new CardLayout();
-	private final JPanel tabBody = transparent(tabCards);
+	private final JPanel tabBody = transparent(new GridBagLayout());
+	private final JPanel nowBody = transparent(new GridBagLayout());
+	private final JPanel historyBody = transparent(new GridBagLayout());
 	private final JPanel historyList = transparent(new GridBagLayout());
 	private final JLabel noHistory = label("", Theme.small(), Theme.MUTED);
 	private final JLabel nothingNow = label("", Theme.small(), Theme.MUTED);
@@ -250,20 +252,25 @@ public class TrackerPanel extends PluginPanel
 		stack.add(fcRow, 3);
 		stack.add(fcHint, 3);
 
-		stack.add(rule(), 8);
-		stack.add(caption("Mass"), 8);
+		stack.add(caption("Mass"), 10);
 		stack.add(massValue, 3);
 
-		JPanel youTop = transparent(new BorderLayout());
-		youTop.add(youValue, BorderLayout.WEST);
-		youTop.add(switchRole, BorderLayout.EAST);
+		// "Runner | Switch to Anti" - the "Attending as" part is the caption
+		// above, so the row fits the panel width alongside the pill.
+		stack.add(youCaption, 10);
+		JPanel youTop = transparent(new FlowLayout(FlowLayout.LEFT, 0, 0));
+		youTop.add(youValue);
+		youTop.add(gap(4));
+		youTop.add(youBar);
+		youTop.add(gap(4));
+		youTop.add(switchRole);
 		youRow.add(youTop, BorderLayout.NORTH);
 		attendButtons.add(attendRunner);
 		attendButtons.add(attendAnti);
 		attendButtons.setBorder(BorderFactory.createEmptyBorder(6, 0, 0, 0));
 		youRow.add(attendButtons, BorderLayout.CENTER);
 		youRow.add(youError, BorderLayout.SOUTH);
-		stack.add(youRow, 4);
+		stack.add(youRow, 3);
 
 		attendRunner.addActionListener(e -> attend(MassRole.RUNNER));
 		attendAnti.addActionListener(e -> attend(MassRole.ANTI));
@@ -288,20 +295,22 @@ public class TrackerPanel extends PluginPanel
 
 	private JPanel tabBody()
 	{
-		JPanel now = transparent(new GridBagLayout());
-		Stack stack = new Stack(now);
+		// Tabs swap visibility rather than using CardLayout, which sizes every
+		// card to the tallest one (a gap under the short tab, and a centred
+		// short list).
+		Stack stack = new Stack(nowBody);
 		stack.add(sessionCard(), 0);
 		stack.add(kitCard(), 10);
 		stack.add(observersCard(), 10);
 		stack.add(noActivity(), 0);
 
-		JPanel history = transparent(new GridBagLayout());
-		Stack historyStack = new Stack(history);
+		Stack historyStack = new Stack(historyBody);
 		historyStack.add(noHistory, 0);
 		historyStack.add(historyList, 0);
 
-		tabBody.add(now, TAB_NOW);
-		tabBody.add(history, TAB_HISTORY);
+		Stack tabs = new Stack(tabBody);
+		tabs.add(nowBody, 0);
+		tabs.add(historyBody, 0);
 		showTab(TAB_NOW);
 		return tabBody;
 	}
@@ -314,7 +323,9 @@ public class TrackerPanel extends PluginPanel
 
 	private void showTab(String tab)
 	{
-		tabCards.show(tabBody, tab);
+		nowBody.setVisible(TAB_NOW.equals(tab));
+		historyBody.setVisible(TAB_HISTORY.equals(tab));
+		tabBody.revalidate();
 		nowTab.setTabSelected(TAB_NOW.equals(tab));
 		historyTab.setTabSelected(TAB_HISTORY.equals(tab));
 	}
@@ -376,6 +387,7 @@ public class TrackerPanel extends PluginPanel
 	private JPanel footer()
 	{
 		JPanel footer = transparent(new GridBagLayout());
+		footer.setBorder(BorderFactory.createEmptyBorder(0, 0, 6, 0));
 		GridBagConstraints c = new GridBagConstraints();
 		c.gridx = 0;
 		c.gridy = 0;
@@ -441,7 +453,7 @@ public class TrackerPanel extends PluginPanel
 		fcState.setText(!loggedIn ? "" : inFc ? "Joined" : "Not joined");
 		fcState.setForeground(inFc ? Theme.GOOD : Theme.BAD);
 		String owner = status != null && status.getFcOwner() != null ? status.getFcOwner() : "Agility Cc";
-		fcHint.setText(wrap("Join from the chat-channel tab: <font color='#e3b341'>" + owner + "</font>"));
+		fcHint.setText(wrap("Join from the chat-channel tab:<br><font color='#e3b341'>" + owner + "</font>"));
 		fcHint.setVisible(loggedIn && !inFc);
 
 		ActiveEvent event = status != null ? status.getActiveEvent() : null;
@@ -450,36 +462,43 @@ public class TrackerPanel extends PluginPanel
 			massValue.setText("No mass running");
 			massValue.setForeground(Theme.MUTED);
 			youRow.setVisible(false);
+			youCaption.setVisible(false);
 			return;
 		}
 		massValue.setText("Running - " + elapsed(event.getStartedAt()));
 		massValue.setForeground(Theme.GOLD_BRIGHT);
 		youRow.setVisible(loggedIn);
+		youCaption.setVisible(loggedIn);
 
 		boolean attending = massParticipation.isAttending();
 		boolean sending = massParticipation.isSending();
+		boolean declined = massParticipation.hasDeclined(status);
 		if (attending)
 		{
-			youValue.setText("Attending as " + config.role());
+			youCaption.setText("Attending as");
+			youValue.setText(config.role().toString());
 			youValue.setForeground(Theme.GOOD);
 			MassRole other = config.role() == MassRole.RUNNER ? MassRole.ANTI : MassRole.RUNNER;
 			switchRole.setText("Switch to " + other);
 		}
 		else if (sending)
 		{
+			youCaption.setText("Attendance");
 			youValue.setText("Sending...");
 			youValue.setForeground(Theme.MUTED);
 		}
-		else if (massParticipation.hasDeclined(status))
+		else if (declined)
 		{
+			youCaption.setText("Attendance");
 			youValue.setText("Not attending");
 			youValue.setForeground(Theme.MUTED);
 		}
 		else
 		{
-			youValue.setText("Are you attending?");
-			youValue.setForeground(Theme.TEXT);
+			youCaption.setText("Are you attending?");
 		}
+		youValue.setVisible(attending || sending || declined);
+		youBar.setVisible(attending);
 		switchRole.setVisible(attending);
 		attendButtons.setVisible(!attending);
 		attendRunner.setEnabled(!sending);
@@ -600,7 +619,7 @@ public class TrackerPanel extends PluginPanel
 	{
 		JPanel card = card();
 		Stack stack = new Stack(card);
-		JLabel title = label(session.getName(), Theme.title(), Theme.GOLD);
+		JLabel title = label(wrap(escape(session.getName())), Theme.title(), Theme.GOLD);
 		stack.add(title, 0);
 		String when = DATE.format(Instant.ofEpochMilli(session.getStartedAt()).atZone(ZoneId.systemDefault()));
 		stack.add(label(when + "  -  " + session.roles(), Theme.small(), Theme.MUTED), 2);
@@ -685,6 +704,11 @@ public class TrackerPanel extends PluginPanel
 		return minutes < 60 ? minutes + "m" : (minutes / 60) + "h " + (minutes % 60) + "m";
 	}
 
+	private static String escape(String text)
+	{
+		return text == null ? "" : text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
+	}
+
 	/** JLabel HTML only wraps when given a width; without one it widens the whole panel instead. */
 	private static String wrap(String html)
 	{
@@ -701,9 +725,10 @@ public class TrackerPanel extends PluginPanel
 		return label;
 	}
 
+	/** Section title inside the status box - same weight as the card headings. */
 	private static JLabel caption(String text)
 	{
-		return label(text, Theme.small(), Theme.MUTED);
+		return label(text, Theme.title(), Theme.GOLD);
 	}
 
 	private static JLabel heading(String text)
@@ -718,14 +743,6 @@ public class TrackerPanel extends PluginPanel
 		value.setHorizontalAlignment(SwingConstants.RIGHT);
 		row.add(value, BorderLayout.EAST);
 		return row;
-	}
-
-	private static JPanel rule()
-	{
-		JPanel rule = new JPanel();
-		rule.setBackground(Theme.LINE);
-		rule.setPreferredSize(new Dimension(1, 1));
-		return rule;
 	}
 
 	private static Component gap(int width)
