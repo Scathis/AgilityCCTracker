@@ -1922,3 +1922,10 @@ painted "transparency" checkerboard; keyed out (colourless pixels with every
 channel > 200), median-cleaned, cropped, box-downscaled to 40x72 and centred
 on a transparent 48x72 canvas. Checked at 1x/4x on the panel brown, RuneLite
 grey and white. The 1024x1536 original stays out of git.
+
+## 2026-10-28 - Sidebar icon
+
+`panel_icon.png` (the 16x16 navigation button) now comes from the same
+artwork: the runner only (the connected blob containing the head, so the
+spikes drop out; rope trimmed above the head), box-downscaled to 15x16 on a
+transparent 16x16. Checked at 1x/8x on the toolbar grey and panel brown.
