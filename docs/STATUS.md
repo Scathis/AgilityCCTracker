@@ -8,6 +8,16 @@ log. Update this file's "Where things stand" / "Open items" sections at the
 end of any session that changes them — treat it like a handoff note, not an
 append-only log (that's what BUILD_LOG.md is for).
 
+## Latest (2026-10-27, end of day)
+
+Everything below plus: per-role stints, rank-gated gear flags + over-head
+overlay, in-course = attending, the loadout editor replaced by Settings gear
+rules + Kits (local pre-course check, bank highlighting, 150k entry fee in every
+kit). All pushed (`c88e8a9`), CI green, **repo now public**. Next: owner's full
+in-game test pass against `DEV_SETUP.md` §5 (nothing ticked yet), then the
+README rewrite, then Phase 9 (Hub submission). Create at least one kit on the
+dashboard before testing or the plugin's kit dropdown is empty.
+
 ## Update 2026-10-27 — opt-in masses, roles, baked-in server
 
 Built and deployed (migration `a7c3e91d5b24` applied; pre-deploy backup taken):

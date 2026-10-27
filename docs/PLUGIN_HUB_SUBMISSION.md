@@ -9,9 +9,8 @@ sanity-check before a PR, not after.
 
 ## 1. Repo visibility
 
-The Hub builds plugins straight from their source repo, so this repo
-(`github.com/Scathis/AgilityCCTracker`) needs to be **public** before
-submitting. `server/` living in the same repo as the plugin is fine — no
+**Done 2026-10-27** - the repo is public. (The Hub builds plugins straight
+from their source repo, so it had to be.) `server/` living in the same repo as the plugin is fine — no
 secrets are committed anywhere in it (`.env`, backups, and anything
 token/password-shaped are all gitignored and always have been throughout
 this build).
