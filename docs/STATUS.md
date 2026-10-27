@@ -10,6 +10,21 @@ append-only log (that's what BUILD_LOG.md is for).
 
 ## Latest (2026-10-27, night — pre-submission clean-up)
 
+- **Data minimisation round 3.** No FC member list upload any more:
+  attendance is opened by course sightings (now `{name, rank}`), including
+  the player's own heartbeat while in/around the course (3x3 regions, so
+  antis count). Ranks for gear-flag entitlement come with sightings. Plugin
+  `RosterTracker`, "Share roster" (and the empty Sharing section),
+  `SelfState.world`, death world/wildy level, `WildyLevelReader` and the DD
+  `ddFailed` field are gone. Server: roster diff/service removed,
+  `attendance.world`, `deaths.world/wildy_level`,
+  `dd_presence.dd_loadout_failed` dropped, never-sighted attendance rows and
+  orphan players deleted (migration `b2e7f5a8d391`). uvicorn
+  `--no-access-log` (it logged IP + RSN every 10s) and json-file log
+  rotation (10MB x 3) on both containers.
+- **Fastest laps** (local): per-mass fastest + all-time best per account
+  ("Fastest lap" / "Best ever" in This session; per-mass on history cards).
+
 - **No stats collected.** Plugin no longer sends skills, combat level,
   wilderness level or skull status ("Share stats" option and the
   StatChanged listener removed); `SelfState` is now just `world` (roster

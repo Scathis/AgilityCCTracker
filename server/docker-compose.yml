@@ -16,6 +16,9 @@ services:
       retries: 10
     restart: unless-stopped
     networks: [internal]
+    logging: &logging
+      driver: json-file
+      options: {max-size: "10m", max-file: "3"}
 
   api:
     build: .
@@ -29,6 +32,9 @@ services:
       interval: 30s
     restart: unless-stopped
     networks: [internal]
+    # No per-request access log (it wrote every player's IP + RSN every 10s);
+    # what's left (errors, startup) is size-capped.
+    logging: *logging
 
 volumes:
   db_data: {}

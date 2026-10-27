@@ -2,7 +2,6 @@ package com.agilitycctracker.api;
 
 import com.agilitycctracker.collect.DeathTracker;
 import com.agilitycctracker.collect.LapTracker;
-import com.agilitycctracker.collect.RosterTracker;
 import com.agilitycctracker.collect.SelfStateCollector;
 import com.agilitycctracker.dd.DdTracker;
 import com.agilitycctracker.mass.MassParticipation;
@@ -11,13 +10,15 @@ import com.agilitycctracker.model.DeathEvent;
 import com.agilitycctracker.model.IngestBatch;
 import com.agilitycctracker.model.LapEvent;
 import com.agilitycctracker.model.LoadoutCheckDto;
-import com.agilitycctracker.model.RosterSnapshot;
+import com.agilitycctracker.model.CourseSighting;
 import com.agilitycctracker.model.SelfState;
 import com.agilitycctracker.model.StatusResponse;
 import com.agilitycctracker.scan.FcMemberScanner;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.HashMap;
 import java.util.Set;
 import javax.inject.Inject;
 import javax.inject.Singleton;
@@ -53,9 +54,6 @@ public class Uploader
 
 	@Inject
 	private DeathTracker deathTracker;
-
-	@Inject
-	private RosterTracker rosterTracker;
 
 	@Inject
 	private FcMemberScanner fcMemberScanner;
@@ -101,7 +99,6 @@ public class Uploader
 		SelfState self = selfStateCollector.consume();
 		List<LapEvent> laps = lapTracker.drain();
 		List<DeathEvent> deaths = deathTracker.drain();
-		RosterSnapshot roster = rosterTracker.consume();
 		List<LoadoutCheckDto> loadoutChecks = fcMemberScanner.drain();
 
 		// Deliberately not part of the "nothing changed, skip the POST"
@@ -109,10 +106,15 @@ public class Uploader
 		// auto-timeout), not a durable event, so it's fine if a skipped
 		// upload occasionally drops one, but it must never itself be
 		// suppressed just because nothing else happened to change.
-		Set<String> courseSightings = new HashSet<>(fcMemberScanner.getCurrentlyInCourse());
-		if (selfStateCollector.isOnCourse())
+		Map<String, Integer> seen = new HashMap<>(fcMemberScanner.getCurrentlyInCourse());
+		if (selfStateCollector.isAtMass())
 		{
-			courseSightings.add(rsn);
+			seen.put(rsn, selfStateCollector.getFcRank());
+		}
+		List<CourseSighting> courseSightings = new ArrayList<>();
+		for (Map.Entry<String, Integer> entry : seen.entrySet())
+		{
+			courseSightings.add(new CourseSighting(entry.getKey(), entry.getValue()));
 		}
 
 		boolean ddClosed = ddTracker.getBrokenAt() != null;
@@ -128,7 +130,7 @@ public class Uploader
 			}
 		}
 
-		if (self == null && laps.isEmpty() && deaths.isEmpty() && roster == null
+		if (self == null && laps.isEmpty() && deaths.isEmpty()
 			&& loadoutChecks.isEmpty() && dd == null && courseSightings.isEmpty())
 		{
 			// Nothing but rsn would be sent - skip the POST entirely.
@@ -151,11 +153,7 @@ public class Uploader
 		}
 		if (!courseSightings.isEmpty())
 		{
-			builder.courseSightings(new ArrayList<>(courseSightings));
-		}
-		if (roster != null)
-		{
-			builder.roster(roster);
+			builder.courseSightings(courseSightings);
 		}
 		if (!loadoutChecks.isEmpty())
 		{
@@ -199,10 +197,6 @@ public class Uploader
 			if (!deaths.isEmpty())
 			{
 				deathTracker.restore(deaths);
-			}
-			if (roster != null)
-			{
-				rosterTracker.restore(roster);
 			}
 			if (!loadoutChecks.isEmpty())
 			{

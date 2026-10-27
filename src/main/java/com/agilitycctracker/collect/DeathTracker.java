@@ -27,9 +27,6 @@ public class DeathTracker
 	@Inject
 	private Client client;
 
-	@Inject
-	private WildyLevelReader wildyLevelReader;
-
 	private final Deque<DeathEvent> queue = new ArrayDeque<>();
 
 	public void onActorDeath(ActorDeath event)
@@ -45,10 +42,10 @@ public class DeathTracker
 			return;
 		}
 
-		Integer wildyLevel = wildyLevelReader.detect();
+		// Only the time is sent: every death that matters happens at the course.
 		synchronized (this)
 		{
-			queue.addLast(new DeathEvent(System.currentTimeMillis(), client.getWorld(), wildyLevel != null ? wildyLevel : 0));
+			queue.addLast(new DeathEvent(System.currentTimeMillis()));
 			while (queue.size() > MAX_QUEUE)
 			{
 				queue.pollFirst();

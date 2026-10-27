@@ -20,6 +20,8 @@ public class MassSession
 	private long courseMs;
 	private boolean runner;
 	private boolean anti;
+	/** Quickest lap this mass in ms, 0 when none was timed. */
+	private long fastestLapMs;
 
 	/** "Runner", "Anti" or "Runner + Anti" for someone who swapped mid-mass. */
 	public String roles()

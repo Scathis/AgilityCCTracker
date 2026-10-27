@@ -64,7 +64,7 @@ class StatusOut(BaseModel):
     flag_viewer_min_rank: int
     active_event: ActiveEventOut | None
     # Plugin users who answered the active mass's "attending?" prompt. A
-    # roster member who's absent here is a non-plugin user, treated as a runner.
+    # FC member who's absent here is a non-plugin user, treated as a runner.
     participants: list[ParticipantOut]
     gear_rules: GearRulesOut
     kits: list[KitOut]

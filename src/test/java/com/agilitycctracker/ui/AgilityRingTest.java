@@ -37,4 +37,12 @@ public class AgilityRingTest
 		assertEquals("43k", TrackerPanel.shortXp(43_210));
 		assertEquals("13.0M", TrackerPanel.shortXp(13_034_431));
 	}
+
+	@Test
+	public void lapTimeFormat()
+	{
+		assertEquals("1:02.4", TrackerPanel.lapTime(62_400));
+		assertEquals("0:58.0", TrackerPanel.lapTime(57_960));
+		assertEquals("2:00.0", TrackerPanel.lapTime(120_000));
+	}
 }

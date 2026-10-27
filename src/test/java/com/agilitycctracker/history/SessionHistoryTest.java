@@ -30,4 +30,16 @@ public class SessionHistoryTest
 		session.setAnti(true);
 		assertEquals("Runner + Anti", session.roles());
 	}
+
+	@Test
+	public void aroundCourseIsTheCourseRegionAndItsNeighbours()
+	{
+		int course = 11837;
+		assertEquals(true, com.agilitycctracker.collect.SelfStateCollectorAccess.isAroundCourse(course));
+		assertEquals(true, com.agilitycctracker.collect.SelfStateCollectorAccess.isAroundCourse(course + 1));
+		assertEquals(true, com.agilitycctracker.collect.SelfStateCollectorAccess.isAroundCourse(course - 256));
+		assertEquals(false, com.agilitycctracker.collect.SelfStateCollectorAccess.isAroundCourse(course + 2));
+		assertEquals(false, com.agilitycctracker.collect.SelfStateCollectorAccess.isAroundCourse(course + 512));
+		assertEquals(false, com.agilitycctracker.collect.SelfStateCollectorAccess.isAroundCourse(-1));
+	}
 }

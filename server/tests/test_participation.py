@@ -26,8 +26,7 @@ DD_PRESENCE = {
     "left_before_break": False,
     "seen_running": False,
     "observed_ms": 5000,
-    "dd_failed": [],
-}
+    }
 
 
 async def _respond(client, token, rsn, event_id, attending=True, role="RUNNER"):
@@ -92,7 +91,6 @@ async def _open_attendance(db_session, event, rsn, rank):
             joined_at=now,
             last_sighted_at=now,
             rank=rank,
-            world=330,
         )
     )
     await db_session.commit()
@@ -165,7 +163,7 @@ async def test_ingest_ignored_without_active_mass(client, fc_group, db_session):
     payload = {
         "rsn": rsn,
         "laps": [{"lap_count": 1, "completed_at": 1_700_000_000_000}],
-        "deaths": [{"died_at": 1_700_000_000_000, "world": 330, "wildy_level": 5}],
+        "deaths": [{"died_at": 1_700_000_000_000}],
     }
     response = await client.post("/api/v1/ingest", json=payload, headers=_headers(token))
     assert response.status_code == 200
@@ -200,10 +198,10 @@ async def test_anti_reporter_is_attendance_time_only(client, fc_group, db_sessio
     called_at = to_epoch_ms(dt.datetime.utcnow())
     payload = {
         "rsn": anti,
-        "self": {"world": 330, "loadout_failed": ["run-helm"]},
+        "self": {"loadout_failed": ["run-helm"]},
         "laps": [{"lap_count": 1, "completed_at": 1_700_000_000_000}],
-        "deaths": [{"died_at": 1_700_000_000_000, "world": 330, "wildy_level": 5}],
-        "roster": {"ts": called_at, "members": [{"name": anti, "rank": 0, "world": 330}]},
+        "deaths": [{"died_at": 1_700_000_000_000}],
+        "course_sightings": [{"name": anti, "rank": 0}],
         "dd": {"called_at": called_at, "presence": [{"rsn": anti, **DD_PRESENCE}]},
     }
     response = await client.post("/api/v1/ingest", json=payload, headers=_headers(token))
@@ -246,7 +244,6 @@ async def test_observer_reports_skip_antis_and_declined_but_not_unanswered(
                 joined_at=now,
                 last_sighted_at=now,
                 rank=0,
-                world=330,
             )
         )
     await db_session.commit()
@@ -341,7 +338,6 @@ async def test_attendance_tab_keeps_each_role_separate(db_session, default_group
             joined_at=now - dt.timedelta(minutes=30),
             last_sighted_at=now,
             rank=0,
-            world=330,
         )
     )
     switch = now - dt.timedelta(minutes=20)

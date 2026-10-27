@@ -92,7 +92,7 @@ public class FcMemberScanner
 	// course_sightings heartbeat (BUILD_LOG.md: attendance auto-timeout).
 	// Deliberately not queue/drain semantics like loadout checks - this is
 	// a live heartbeat, not a durable event that needs restore-on-failure.
-	private final Set<String> currentlyInCourse = ConcurrentHashMap.newKeySet();
+	private final Map<String, Integer> currentlyInCourse = new ConcurrentHashMap<>();
 
 	// Whether the local player may be shown other players' gear gaps (sidebar
 	// list + over-head flags): in the tracked FC, at or above the server's
@@ -177,9 +177,11 @@ public class FcMemberScanner
 			WorldPoint location = p.getWorldLocation();
 			boolean onDdTile = isOnAnyTile(location, tiles);
 			boolean inCourseArea = location.getRegionID() == WILDERNESS_AGILITY_COURSE_REGION;
+			FriendsChatMember member = fc.findByName(rsn);
+			int rank = member != null && member.getRank() != null ? member.getRank().getValue() : -1;
 			if (inCourseArea)
 			{
-				currentlyInCourse.add(rsn);
+				currentlyInCourse.put(rsn, rank);
 			}
 			Map<Slot, WornItem> worn = readVisibleGear(p);
 
@@ -197,12 +199,11 @@ public class FcMemberScanner
 			// duties during a DD call rather than actually participating -
 			// excluded from DD presence entirely (see the matching check
 			// and its longer comment in SelfDdSampler.onTick()).
-			FriendsChatMember member = fc != null ? fc.findByName(rsn) : null;
-			boolean isRanked = member != null && member.getRank() != null && member.getRank().getValue() >= 0;
+			boolean isRanked = rank >= 0;
 			if (!isRanked)
 			{
 				// DD gear (bow) check dropped 2026-10-27 - presence/timing only.
-				ddTracker.onObservation(rsn, onDdTile, inCourseArea, Collections.emptyList(), now);
+				ddTracker.onObservation(rsn, onDdTile, inCourseArea, now);
 			}
 
 			// worn/location/rsn all go out of scope here - never stored past this iteration.
@@ -292,10 +293,10 @@ public class FcMemberScanner
 		}
 	}
 
-	/** For Uploader's course_sightings heartbeat - RSNs of FC members seen in the course area as of the most recent tick. */
-	public Set<String> getCurrentlyInCourse()
+	/** For Uploader's course_sightings heartbeat - FC members seen in the course area this tick, with their FC rank. */
+	public Map<String, Integer> getCurrentlyInCourse()
 	{
-		return new HashSet<>(currentlyInCourse);
+		return new HashMap<>(currentlyInCourse);
 	}
 
 	public List<LoadoutCheckDto> drain()

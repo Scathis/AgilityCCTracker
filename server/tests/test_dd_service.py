@@ -39,7 +39,6 @@ def _presence(**overrides):
         left_before_break=False,
         seen_running=False,
         observed_ms=3_000,
-        dd_loadout_failed=(),
     )
     defaults.update(overrides)
     return PresenceMerge(**defaults)
@@ -81,9 +80,7 @@ def test_merge_presence_ors_the_flags():
     assert merged.seen_running is True
 
 
-def test_merge_presence_unions_failed_checks_and_sources():
-    existing = _presence(dd_loadout_failed=("dd-bow",), sources=("Alice",))
-    incoming = _presence(dd_loadout_failed=("dd-no-xbow",))
-    merged = merge_presence(existing, incoming, reporter="Bob")
-    assert set(merged.dd_loadout_failed) == {"dd-bow", "dd-no-xbow"}
+def test_merge_presence_unions_sources():
+    existing = _presence(sources=("Alice",))
+    merged = merge_presence(existing, _presence(), reporter="Bob")
     assert set(merged.sources) == {"Alice", "Bob"}

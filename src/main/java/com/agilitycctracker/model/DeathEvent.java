@@ -6,6 +6,4 @@ import lombok.Value;
 public class DeathEvent
 {
 	long diedAt;
-	int world;
-	int wildyLevel;
 }

@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Deque;
 import java.util.List;
+import java.util.function.LongConsumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import javax.inject.Inject;
@@ -39,6 +40,15 @@ public class LapTracker
 	private int lastTicketCount = -1;
 	private int sessionLapCount;
 	private int sessionTicketsGained;
+	private volatile LongConsumer lapTimeListener = ms ->
+	{
+	};
+
+	/** Told the duration of every lap that has one (not the first lap after a reset). */
+	public void setLapTimeListener(LongConsumer listener)
+	{
+		lapTimeListener = listener;
+	}
 
 	public void onChatMessage(ChatMessage event)
 	{
@@ -78,6 +88,10 @@ public class LapTracker
 		lastTicketCount = currentTickets;
 		sessionLapCount++;
 		sessionTicketsGained += ticketsGained != null ? ticketsGained : 0;
+		if (lapTimeMs != null)
+		{
+			lapTimeListener.accept(lapTimeMs);
+		}
 	}
 
 	/** Session-scoped (not event-scoped) totals, for TrackerPanel display. */

@@ -34,10 +34,10 @@
 {% elif tab == "deaths" %}
 <h3>Deaths</h3>
 <table>
-  <thead><tr><th>RSN</th><th>Died at</th><th>World</th><th>Wildy level</th></tr></thead>
+  <thead><tr><th>RSN</th><th>Died at</th></tr></thead>
   <tbody>
     {% for death, player in deaths %}
-    <tr><td>{{ player.rsn }}</td><td>{{ death.died_at }}</td><td>{{ death.world }}</td><td>{{ death.wildy_level }}</td></tr>
+    <tr><td>{{ player.rsn }}</td><td>{{ death.died_at }}</td></tr>
     {% endfor %}
   </tbody>
 </table>

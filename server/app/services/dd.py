@@ -33,14 +33,13 @@ class PresenceMerge:
     left_before_break: bool
     seen_running: bool
     observed_ms: int
-    dd_loadout_failed: tuple[str, ...] = field(default_factory=tuple)
     sources: tuple[str, ...] = field(default_factory=tuple)
 
 
 def merge_presence(
     existing: PresenceMerge | None, incoming: PresenceMerge, reporter: str
 ) -> PresenceMerge:
-    """Idempotent, order-independent merge: max/min/OR/union per field, per §6.4 step 7."""
+    """Idempotent, order-independent merge: max/min/OR per field, per §6.4 step 7."""
     if existing is None:
         return PresenceMerge(
             arrived_after_ms=incoming.arrived_after_ms,
@@ -48,7 +47,6 @@ def merge_presence(
             left_before_break=incoming.left_before_break,
             seen_running=incoming.seen_running,
             observed_ms=incoming.observed_ms,
-            dd_loadout_failed=tuple(sorted(set(incoming.dd_loadout_failed))),
             sources=(reporter,),
         )
 
@@ -63,8 +61,5 @@ def merge_presence(
         left_before_break=existing.left_before_break or incoming.left_before_break,
         seen_running=existing.seen_running or incoming.seen_running,
         observed_ms=max(existing.observed_ms, incoming.observed_ms),
-        dd_loadout_failed=tuple(
-            sorted(set(existing.dd_loadout_failed) | set(incoming.dd_loadout_failed))
-        ),
         sources=tuple(sorted(set(existing.sources) | {reporter})),
     )

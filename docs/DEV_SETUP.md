@@ -173,11 +173,18 @@ wired up end-to-end:
 
 ### Plugin, additional in-game checks
 
-- [ ] Die in the Wilderness → a death appears on the event's Deaths tab with
-      the world and wilderness level.
+- [ ] Die in the Wilderness → a death appears on the event's Deaths tab
+      (name and time only).
+- [ ] Attendance builds from sightings only: someone in the FC who never
+      comes near the course never appears (not even as a hidden row); an anti
+      working the area just outside the course still clocks time present.
+- [ ] Fastest lap: run two or more laps → "Fastest lap" (this mass) and
+      "Best ever" show in This session; the Previous sessions card shows the
+      mass's fastest; Best ever survives a client restart.
+- [ ] Server logs (`docker logs agilitycctracker-api-1`) show no per-request
+      lines - no IPs or RSNs.
 - [ ] Sidebar panel: status and the "Runners in view" list show.
-- [ ] Config toggles: turn off Share roster (the FC member list stops
-      reaching the dashboard); turn off FC observer
+- [ ] Config toggles: turn off FC observer
       (other members stop being scanned); turn off Loadout chat warnings
       (boots warning disappears); turn off Show sidebar panel (panel goes away).
 - [ ] Blank API URL, or a wrong token → plugin sits idle without spamming

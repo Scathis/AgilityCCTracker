@@ -42,14 +42,16 @@ record, so time spent as an anti and as a runner are never mixed together.
 - **Friends chat** - a tick if you're in Agility CC, a cross (and how to
   join) if you're not.
 - **Mass** - whether one is running and for how long, and your answer.
-- **This mass** - your laps and tickets, whether you're in the course area,
-  any empty required gear slots, and DD timing while a DD is called.
+- **This mass** - your laps and tickets, your fastest lap this mass and your
+  best ever, whether you're in the course area, any empty required gear
+  slots, and DD timing while a DD is called.
 - **Kit** - pick one of the organisers' recommended kits. Until you reach the
   course, it checks your gear and inventory against it, tells you what's
   missing, and outlines the missing items in your bank. Every kit includes the
   150,000 coin course entry fee. This check never leaves your computer.
-- **Previous sessions** - each mass you've attended: date, role, laps and time
-  on the course. Kept on your computer only, per account.
+- **Previous sessions** - each mass you've attended: date, role, laps,
+  fastest lap and time on the course. Kept on your computer only, per
+  account.
 
 ### Missing-gear checks
 
@@ -72,7 +74,6 @@ Open RuneLite's configuration for **Wildy Agility FC Tracker**:
 | Setting | What it does |
 |---|---|
 | My role | Runner or Anti - remembered for the next mass. |
-| Share roster | Send the friends chat member list while a mass runs (how the dashboard knows who's in the chat). |
 | FC observer | Report which required slots chat members you can see at the course have empty, and their DD presence. |
 | Show sidebar panel | Show or hide the panel. |
 | Gear chat warnings | The red chat line when one of your own required slots is empty. |
@@ -87,20 +88,24 @@ Once you pick Runner or Anti - or walk into the course during a mass - and
 only for that mass, it sends to the Agility CC server
 (`agilitycc.grestinator.com`, not run or checked by the RuneLite developers):
 
-- your RSN and world, and which of your required gear slots are empty
-  (never what you're wearing);
-- your Wilderness Agility laps (with tickets gained) and deaths;
-- the names, ranks and worlds of the friends chat's members;
-- for chat members seen at the course: their name, which required gear slots
-  they have empty (never what they're actually wearing), and how long they
-  were on the DD tiles during a DD call.
+- that you're at the mass (while you're in or right around the course) and
+  your friends chat rank - this is what your attendance time is built from;
+- which of your required gear slots are empty (never what you're wearing);
+- your Wilderness Agility laps (with tickets and lap time) and the time of
+  any deaths;
+- for chat members you can see in the course: their name and FC rank, which
+  required gear slots they have empty (never what they're actually wearing),
+  and how long they were on the DD tiles during a DD call.
+
+It never sends the friends chat member list, anyone's world or position,
+worn items, inventory, skills or stats. Your IP address reaches the server
+with every request - that's how the internet works - but it's never logged
+or stored.
 
 For antis, laps, missing-gear checks and DD calls are ignored, and nobody's plugin
 reports on antis or on people who said **Not today**. The server ignores everything from a
-player who hasn't opted in to the current mass. Nothing about other players'
-locations or items ever leaves your client - and neither do your own worn
-items, inventory, skills or stats. (Your Agility level in the panel is read
-locally and never sent.)
+player who hasn't opted in to the current mass. Your Agility level in the
+panel is read locally and never sent.
 
 ---
 

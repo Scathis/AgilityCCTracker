@@ -40,7 +40,7 @@ async def test_death_ingest_is_idempotent(client, fc_group, db_session):
     await _attend(db_session, await _start_event(db_session, group), rsn)
     payload = {
         "rsn": rsn,
-        "deaths": [{"died_at": 1_700_000_000_000, "world": 330, "wildy_level": 12}],
+        "deaths": [{"died_at": 1_700_000_000_000}],
     }
 
     assert (
@@ -171,7 +171,6 @@ async def test_fc_scan_loadout_check_needs_an_attendance_row(client, fc_group, d
             joined_at=dt.datetime.utcnow(),
             last_sighted_at=dt.datetime.utcnow(),
             rank=0,
-            world=330,
         )
     )
     await db_session.commit()
@@ -212,7 +211,6 @@ async def test_observer_disabled_drops_fc_scan_but_not_self(client, fc_group, db
             joined_at=dt.datetime.utcnow(),
             last_sighted_at=dt.datetime.utcnow(),
             rank=0,
-            world=330,
         )
     )
     await db_session.commit()
@@ -280,8 +278,7 @@ async def test_dd_presence_merges_multiple_reporters_without_duplicating(
                     "left_before_break": False,
                     "seen_running": False,
                     "observed_ms": 20000,
-                    "dd_failed": [],
-                }
+                                    }
             ],
         },
     }
@@ -297,8 +294,7 @@ async def test_dd_presence_merges_multiple_reporters_without_duplicating(
                     "left_before_break": False,
                     "seen_running": False,
                     "observed_ms": 45000,
-                    "dd_failed": [],
-                }
+                                    }
             ],
         },
     }
@@ -347,7 +343,6 @@ async def test_course_sighting_keeps_open_attendance_alive(client, fc_group, db_
             joined_at=stale_time,
             last_sighted_at=stale_time,
             rank=0,
-            world=330,
         )
     )
     await db_session.commit()
@@ -368,24 +363,62 @@ async def test_course_sighting_keeps_open_attendance_alive(client, fc_group, db_
     assert attendance.sighted_at_course is True
 
 
-async def test_course_sighting_does_not_open_a_new_attendance_record(client, fc_group, db_session):
-    """A sighting alone can't invent attendance for someone with no
-    existing open session - that stays the roster diff's job."""
+async def test_course_sighting_opens_attendance_with_rank(client, fc_group, db_session):
+    """Attendance comes from sightings alone - no FC member list. A first
+    sighting opens a session with the reported rank; a later sighting from an
+    older build (bare name, rank unknown) doesn't lower it."""
     group, token = fc_group
     event = Event(fc_group_id=group.id, name="E", started_at=dt.datetime.utcnow(), ended_at=None)
     db_session.add(event)
     await db_session.commit()
 
-    never_attended_rsn = _rsn()
+    seen_rsn = _rsn()
     reporter_rsn = _rsn()
     await _attend(db_session, event, reporter_rsn)
-    payload = {"rsn": reporter_rsn, "course_sightings": [never_attended_rsn]}
+    payload = {"rsn": reporter_rsn, "course_sightings": [{"name": seen_rsn, "rank": 3}]}
     assert (
         await client.post("/api/v1/ingest", json=payload, headers=_headers(token))
     ).status_code == 200
+    legacy = {"rsn": reporter_rsn, "course_sightings": [seen_rsn]}
+    assert (
+        await client.post("/api/v1/ingest", json=legacy, headers=_headers(token))
+    ).status_code == 200
 
-    result = await db_session.execute(select(Attendance).where(Attendance.event_id == event.id))
-    assert result.scalars().all() == []
+    result = await db_session.execute(
+        select(Attendance)
+        .join(Player, Attendance.player_id == Player.id)
+        .where(Attendance.event_id == event.id, Player.rsn == seen_rsn)
+    )
+    attendance = result.scalar_one()
+    assert attendance.rank == 3
+    assert attendance.sighted_at_course is True
+    assert attendance.left_at is None
+
+
+async def test_fc_member_list_is_ignored(client, fc_group, db_session):
+    """Older builds still upload the whole FC member list; nobody on it gets
+    a player or attendance record from it."""
+    group, token = fc_group
+    event = Event(fc_group_id=group.id, name="E", started_at=dt.datetime.utcnow(), ended_at=None)
+    db_session.add(event)
+    await db_session.commit()
+
+    reporter_rsn = _rsn()
+    chat_only = _rsn()
+    await _attend(db_session, event, reporter_rsn)
+    payload = {
+        "rsn": reporter_rsn,
+        "roster": {
+            "ts": 1_700_000_000_000,
+            "members": [{"name": chat_only, "rank": 0, "world": 330}],
+        },
+    }
+    assert (
+        await client.post("/api/v1/ingest", json=payload, headers=_headers(token))
+    ).status_code == 200
+    assert (
+        await db_session.execute(select(Player).where(Player.rsn == chat_only))
+    ).scalar_one_or_none() is None
 
 
 async def test_oversized_rsn_rejected_with_422(client, fc_group):

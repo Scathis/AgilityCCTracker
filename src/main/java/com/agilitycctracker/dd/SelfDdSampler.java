@@ -67,7 +67,7 @@ public class SelfDdSampler
 		boolean inCourseArea = location.getRegionID() == WILDERNESS_AGILITY_COURSE_REGION;
 
 		// The DD gear (bow) check was dropped 2026-10-27 - presence/timing only.
-		ddTracker.onObservation(Text.toJagexName(local.getName()), onDdTile, inCourseArea, Collections.emptyList(), System.currentTimeMillis());
+		ddTracker.onObservation(Text.toJagexName(local.getName()), onDdTile, inCourseArea, System.currentTimeMillis());
 	}
 
 	private boolean isOnAnyTile(WorldPoint location, List<DdTile> tiles)

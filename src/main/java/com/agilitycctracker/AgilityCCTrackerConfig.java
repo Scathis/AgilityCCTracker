@@ -16,13 +16,6 @@ public interface AgilityCCTrackerConfig extends Config
 	String massSection = "mass";
 
 	@ConfigSection(
-		name = "Sharing",
-		description = "What your own plugin reports about you",
-		position = 1
-	)
-	String sharingSection = "sharing";
-
-	@ConfigSection(
 		name = "FC observer",
 		description = "Reporting which required gear slots other FC members in view have empty, and their DD presence",
 		position = 2
@@ -57,18 +50,6 @@ public interface AgilityCCTrackerConfig extends Config
 	default long selectedKitId()
 	{
 		return 0;
-	}
-
-	@ConfigItem(
-		keyName = "shareRoster",
-		name = "Share roster",
-		description = "Upload the FC roster while an event is active",
-		section = sharingSection,
-		position = 0
-	)
-	default boolean shareRoster()
-	{
-		return true;
 	}
 
 	@ConfigItem(

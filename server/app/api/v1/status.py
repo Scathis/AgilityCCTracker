@@ -81,7 +81,7 @@ async def get_status(
         )
 
     # Who's attending as what is only handed to viewers entitled to see gear
-    # flags (their FC rank, as last reported by roster snapshots from *other*
+    # flags (their FC rank, as last reported with course sightings by *other*
     # plugin users, is at or above the group's threshold). Everyone else gets
     # just their own entry, which the plugin needs to restore its own answer.
     participants: list[ParticipantOut] = []
@@ -138,7 +138,7 @@ async def _viewer_entitled(
     session: AsyncSession, event_id: int, rsn: str | None, fc_group: FcGroup
 ) -> bool:
     """True if `rsn`'s currently-open attendance row (rank reported by
-    *roster snapshots*, not by the asker) meets the group's flag threshold."""
+    *course sightings*, not a field the asker sets) meets the group's flag threshold."""
     if rsn is None:
         return False
     result = await session.execute(

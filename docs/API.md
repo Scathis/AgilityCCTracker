@@ -19,7 +19,7 @@ recovered later, only rotated.
 
 - **Rate limit:** 5 failed-auth attempts per IP per 5 minutes → `429`.
 - **Body size limit:** ~100KB per request → `413` if exceeded.
-- **List size limits** (rejected if exceeded): roster ≤ 600 members, laps ≤
+- **List size limits** (rejected if exceeded): course sightings ≤ 200, laps ≤
   200, loadout checks ≤ 300, DD presence entries ≤ 300.
 
 ## `GET /healthz`
@@ -89,7 +89,7 @@ the FC's currently active mass, `422` for a bad role.
 
 `GET /status?rsn=<viewer>` (the plugin passes the local player's name) also returns `flag_viewer_min_rank`: the lowest FC rank (`-1` unranked, `0` friend, `1` recruit, …) that the plugin shows other players' gear gaps to, set on the dashboard Settings page.
 
-`/status` lists the answers for the active mass as `participants`, but **only to an entitled viewer** — one whose currently-open attendance row (rank taken from roster snapshots reported by other plugin users, never from the asker) is at or above `flag_viewer_min_rank`. Everyone else gets just their own entry (enough to restore their own answer). The `rsn` is self-reported, so this stops the stock plugin, not a modified client
+`/status` lists the answers for the active mass as `participants`, but **only to an entitled viewer** — one whose currently-open attendance row (rank taken from course sightings reported by plugin users, not a field the asker sets) is at or above `flag_viewer_min_rank`. Everyone else gets just their own entry (enough to restore their own answer). The `rsn` is self-reported, so this stops the stock plugin, not a modified client
 (`[{"rsn", "status": "ATTENDING"|"DECLINED", "role": "RUNNER"|"ANTI"}]`).
 Someone not listed has no plugin answer (e.g. mobile) and is treated as a
 runner by observers.
@@ -100,7 +100,7 @@ runner by observers.
 nothing stored, no player row created) unless the reporter has an
 `ATTENDING` answer for the currently active mass. For `ANTI` reporters the
 server also drops `laps`, `dd` and `self.loadout_failed` (attendance time,
-roster, sightings and deaths are still kept). Observer-reported
+sightings and deaths are still kept). Observer-reported
 `loadout_checks` and DD presence about an anti, or about a plugin user who
 declined, are dropped too.
 
@@ -122,14 +122,12 @@ of intent).
 {
   "rsn": "Player Name",
   "self": {
-    "world": 330,
     "loadout_failed": ["HEAD"]
   },
   "laps": [{"lap_count": 1234, "completed_at": 1727190000000, "lap_time_ms": 61200, "tickets_gained": 1}],
-  "deaths": [{"died_at": 1727190000000, "world": 330, "wildy_level": 52}],
-  "roster": {"ts": 1727190000000, "members": [{"name": "A", "rank": 0, "world": 330}]},
+  "deaths": [{"died_at": 1727190000000}],
   "loadout_checks": [{"rsn": "B", "failed": ["WEAPON"], "ts": 1727190000000}],
-  "course_sightings": ["Player Name", "B"],
+  "course_sightings": [{"name": "Player Name", "rank": -1}, {"name": "B", "rank": 2}],
   "dd": {
     "called_at": 1727190000000,
     "broken_at": null,
@@ -140,18 +138,19 @@ of intent).
         "ms_on_tile": 42000,
         "left_before_break": false,
         "seen_running": false,
-        "observed_ms": 60000,
-        "dd_failed": []
+        "observed_ms": 60000
       }
     ]
   }
 }
 ```
 
-**Note what's never in here:** no coordinates or item ids for anyone other
-than the reporter themselves. Other players only ever show up as RSN + rank
-+ world (roster), or as loadout *requirement keys* they failed (never which
-items they were or weren't wearing), or as DD presence timing/booleans. This
+**Note what's never in here:** no coordinates, worlds, item ids, inventory or
+stats - for anyone, the reporter included. Other players only ever show up as
+RSN + FC rank when seen at the course, as the *slot keys* they have empty
+(never what they're wearing), or as DD presence timing/booleans. The FC
+member list is not sent (older builds' `roster`, `self.world` and death
+`world`/`wildy_level` are accepted and ignored). This
 is a hard boundary enforced in the plugin, not just a server-side filter —
 see `BUILD_PLAN.md` §1.1–1.2 and `scan/FcMemberScanner`.
 
@@ -160,19 +159,17 @@ see `BUILD_PLAN.md` §1.1–1.2 and `scan/FcMemberScanner`.
 0. Opt-in gate (above).
 1. Upsert the reporter's `players` row by RSN; mark `is_plugin_user = true`,
    bump `last_seen`.
-2. `self`: stored as a new `player_snapshots` row only if it changed since
-   the reporter's last plugin snapshot. `loadout_failed` is stored as a
-   `loadout_checks` row (`source='self'`) only if changed and an event is
-   currently active.
+2. `self.loadout_failed` is stored as a `loadout_checks` row
+   (`source='self'`) only if changed and an event is currently active.
 3. `laps`: inserted idempotently (`UNIQUE(player_id, lap_count)` — a
    duplicate POST is a no-op). Assigned to whichever event's time window
    contains `completed_at`, if any.
-4. `deaths`: same idempotency pattern.
-5. `roster` (only while an event is active): diffed against currently-open
-   attendance sessions for that event. A member missing from a newer
-   snapshot closes their session — but only if the reporter is on the same
-   world as that session, so one reporter world-hopping doesn't
-   incorrectly close everyone else's attendance.
+4. `deaths`: same idempotency pattern (time only).
+5. `course_sightings`: the reporter (sent while they're in or right around
+   the course) and FC members they see in it. Each keeps that player's open
+   attendance session alive, or opens one (rank = highest reported); the
+   timeout worker closes sessions nobody has sighted for 2 minutes. This is
+   the only source of attendance.
 6. `loadout_checks` from FC-scan observations: only stored if an event is
    active, `observer_enabled` is true, and the named RSN has an attendance
    row in this event — and only if it differs from the last stored result
@@ -180,8 +177,7 @@ see `BUILD_PLAN.md` §1.1–1.2 and `scan/FcMemberScanner`.
 7. `dd`: matched to an existing `dd_calls` row within ±10s of `called_at`,
    or a new one is created. Presence rows are merged per-player: max of
    `ms_on_tile`/`observed_ms`, min of `arrived_after_ms`, booleans OR'd,
-   `dd_loadout_failed` unioned, `sources` tracks which reporters
-   contributed.
+   `sources` tracks which reporters contributed.
 8. After a DD call closes: `laps_during_dd` is computed from laps whose
    `completed_at` falls inside `[called_at, broken_at]`; any lap during
    that window also sets `seen_running = true`.

@@ -48,7 +48,6 @@ async def test_full_event_lifecycle_and_every_tab_renders(
             last_sighted_at=dt.datetime.utcnow(),
             sighted_at_course=True,
             rank=0,
-            world=330,
         )
     )
     await db_session.commit()
@@ -107,7 +106,6 @@ async def test_manual_gap_form_submission(
             joined_at=dt.datetime.utcnow(),
             last_sighted_at=dt.datetime.utcnow(),
             rank=0,
-            world=330,
         )
     )
     await db_session.commit()
@@ -157,7 +155,6 @@ async def test_attendance_status_shows_present_vs_away(
             left_at=None,
             sighted_at_course=True,
             rank=0,
-            world=330,
         )
     )
     left_time = dt.datetime.utcnow() - dt.timedelta(minutes=10)
@@ -170,7 +167,6 @@ async def test_attendance_status_shows_present_vs_away(
             left_at=left_time,
             sighted_at_course=True,
             rank=0,
-            world=330,
         )
     )
     await db_session.commit()
@@ -209,7 +205,6 @@ async def test_attendance_lists_only_people_who_turned_up(
                 last_sighted_at=now,
                 sighted_at_course=sighted,
                 rank=0,
-                world=330,
             )
         )
     await db_session.commit()

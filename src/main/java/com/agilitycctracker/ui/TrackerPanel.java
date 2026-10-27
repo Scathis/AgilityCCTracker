@@ -149,6 +149,8 @@ public class TrackerPanel extends PluginPanel
 	private final JLabel lapsValue = label("", Theme.body(), Theme.TEXT);
 	private final JLabel courseValue = label("", Theme.body(), Theme.TEXT);
 	private final JLabel gearValue = label("", Theme.body(), Theme.TEXT);
+	private final JLabel fastestValue = label("", Theme.body(), Theme.TEXT);
+	private final JLabel bestValue = label("", Theme.body(), Theme.GOLD_BRIGHT);
 	private final JPanel ddRow = transparent(new BorderLayout());
 	private final JLabel ddValue = label("", Theme.body(), Theme.GOLD_BRIGHT);
 
@@ -335,6 +337,8 @@ public class TrackerPanel extends PluginPanel
 		Stack stack = new Stack(sessionCard);
 		stack.add(heading("This session"), 0);
 		stack.add(row("Laps", lapsValue), 6);
+		stack.add(row("Fastest lap", fastestValue), 3);
+		stack.add(row("Best ever", bestValue), 3);
 		stack.add(row("In course", courseValue), 3);
 		stack.add(row("Gear", gearValue), 3);
 		ddRow.add(label("DD", Theme.body(), Theme.MUTED), BorderLayout.WEST);
@@ -512,6 +516,21 @@ public class TrackerPanel extends PluginPanel
 	{
 		lapsValue.setText(lapTracker.getSessionLapCount() + "  (" + lapTracker.getSessionTicketsGained() + " tickets)");
 
+		String rsn = lastSnapshot.getName() != null ? Text.toJagexName(lastSnapshot.getName()) : null;
+		StatusResponse status = statusHolder.get();
+		long massFastest = 0;
+		if (rsn != null && status != null && status.getActiveEvent() != null)
+		{
+			List<MassSession> sessions = sessionHistory.getSessions(rsn);
+			if (!sessions.isEmpty() && sessions.get(0).getEventId() == status.getActiveEvent().getId())
+			{
+				massFastest = sessions.get(0).getFastestLapMs();
+			}
+		}
+		fastestValue.setText(massFastest > 0 ? lapTime(massFastest) : "-");
+		long best = rsn != null ? sessionHistory.getBestLapMs(rsn) : 0;
+		bestValue.setText(best > 0 ? lapTime(best) : "-");
+
 		boolean onCourse = selfStateCollector.isOnCourse();
 		courseValue.setText(onCourse ? "Yes" : "No");
 		courseValue.setForeground(onCourse ? Theme.GOOD : Theme.MUTED);
@@ -626,6 +645,11 @@ public class TrackerPanel extends PluginPanel
 		stack.add(row("Laps", label(session.isRunner()
 			? session.getLaps() + "  (" + session.getTickets() + " tickets)"
 			: "-", Theme.body(), Theme.TEXT)), 6);
+		if (session.isRunner())
+		{
+			stack.add(row("Fastest lap", label(session.getFastestLapMs() > 0 ? lapTime(session.getFastestLapMs()) : "-",
+				Theme.body(), Theme.TEXT)), 3);
+		}
 		stack.add(row("On course", label(duration(session.getCourseMs()), Theme.body(), Theme.TEXT)), 3);
 		return card;
 	}
@@ -682,6 +706,13 @@ public class TrackerPanel extends PluginPanel
 			return String.format("%dk", xp / 1000);
 		}
 		return String.format("%,d", Math.max(xp, 0));
+	}
+
+	/** 62,400 ms -> "1:02.4". */
+	static String lapTime(long ms)
+	{
+		long tenths = Math.round(ms / 100.0);
+		return String.format("%d:%02d.%d", tenths / 600, (tenths / 10) % 60, tenths % 10);
 	}
 
 	static String duration(long ms)

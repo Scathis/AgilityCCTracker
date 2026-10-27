@@ -32,5 +32,4 @@ class DdPresence(Base):
     seen_running: Mapped[bool] = mapped_column(Boolean, default=False)
     laps_during_dd: Mapped[int] = mapped_column(Integer, default=0)
     observed_ms: Mapped[int] = mapped_column(Integer, default=0)
-    dd_loadout_failed: Mapped[list] = mapped_column(JSON, default=list)
     sources: Mapped[list] = mapped_column(JSON, default=list)

@@ -24,12 +24,10 @@ Rsn = Annotated[str, Field(max_length=RSN_MAX_LENGTH)]
 
 
 class SelfStateIn(BaseModel):
-    # Only what the server uses: the reporter's world (FC roster diff) and
-    # which of their required slots are empty. Never skills, gear or
-    # location - older plugin builds still send skills/combat_level/
-    # equipment/wildy_level/skulled/on_course; pydantic drops unknown
-    # fields, so they're ignored.
-    world: int | None = None
+    # Only which of the reporter's required slots are empty. Never skills,
+    # gear, world or location - older plugin builds still send world/skills/
+    # combat_level/equipment/wildy_level/skulled/on_course; pydantic drops
+    # unknown fields, so they're ignored.
     loadout_failed: list[str] | None = None
 
 
@@ -41,20 +39,16 @@ class LapEventIn(BaseModel):
 
 
 class DeathEventIn(BaseModel):
+    # Time only - every death that matters happens at the course. Older
+    # builds' world/wildy_level are ignored.
     died_at: int
-    world: int
-    wildy_level: int
 
 
-class RosterMemberIn(BaseModel):
-    name: str = Field(max_length=RSN_MAX_LENGTH)
-    rank: int
-    world: int
-
-
-class RosterSnapshotIn(BaseModel):
-    ts: int
-    members: list[RosterMemberIn] = Field(max_length=600)
+class CourseSightingIn(BaseModel):
+    name: Rsn
+    # FC rank (RuneLite FriendsChatRank value, -1 unranked/unknown) - used
+    # only to decide who sees gear flags.
+    rank: int = -1
 
 
 class LoadoutCheckIn(BaseModel):
@@ -73,8 +67,6 @@ class DdPresenceIn(BaseModel):
     left_before_break: bool
     seen_running: bool
     observed_ms: int
-    # The DD gear check was dropped 2026-10-27; accepted and ignored.
-    dd_failed: list[str] = Field(default_factory=list)
 
 
 class DdSectionIn(BaseModel):
@@ -88,15 +80,15 @@ class IngestBatchIn(BaseModel):
     self_state: SelfStateIn | None = Field(default=None, alias="self")
     laps: list[LapEventIn] = Field(default_factory=list, max_length=200)
     deaths: list[DeathEventIn] = Field(default_factory=list, max_length=50)
-    roster: RosterSnapshotIn | None = None
     loadout_checks: list[LoadoutCheckIn] = Field(default_factory=list, max_length=300)
     dd: DdSectionIn | None = None
-    # RSNs actually sighted at the course this upload cycle (self + anyone
-    # observed in-course) - sent every cycle regardless of whether anything
-    # else changed, unlike the rest of this payload. Keeps attendance
-    # sessions alive; see _process_course_sightings() and
-    # workers/attendance_timeout_worker.py.
-    course_sightings: list[Rsn] = Field(default_factory=list, max_length=200)
+    # Who is at the mass this upload cycle (the reporter, when near the
+    # course, plus FC members they can see in it), with FC rank - sent every
+    # cycle. Attendance is built from this alone; see
+    # _process_course_sightings() and workers/attendance_timeout_worker.py.
+    # Older builds send bare names (rank unknown). The FC member list
+    # ("roster") they also send is ignored.
+    course_sightings: list[CourseSightingIn | Rsn] = Field(default_factory=list, max_length=200)
 
 
 class RespondIn(BaseModel):

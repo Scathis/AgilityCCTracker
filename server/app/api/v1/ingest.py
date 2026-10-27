@@ -20,10 +20,10 @@ from app.models.lap import Lap
 from app.models.loadout import LoadoutCheck, LoadoutCheckSource
 from app.models.player import Player
 from app.schemas.ingest import (
+    CourseSightingIn,
     DdSectionIn,
     IngestBatchIn,
     LoadoutCheckIn,
-    RosterSnapshotIn,
     SelfStateIn,
 )
 from app.services.dd import PresenceMerge, find_matching_call, merge_broken_at, merge_presence
@@ -34,7 +34,6 @@ from app.services.participation import (
     is_attending,
     participants_by_rsn,
 )
-from app.services.roster import OpenSession, diff_roster
 from app.util.time import from_epoch_ms
 
 router = APIRouter()
@@ -87,16 +86,9 @@ async def post_ingest(
 
     # Step 4: deaths.
     for death in batch.deaths:
-        await _process_death(
-            session, reporter, fc_group.id, death.died_at, death.world, death.wildy_level
-        )
+        await _process_death(session, reporter, fc_group.id, death.died_at)
 
-    # Step 5: roster.
-    if batch.roster is not None:
-        reporter_world = batch.self_state.world if batch.self_state is not None else None
-        await _process_roster(session, fc_group.id, active_event, reporter_world, batch.roster, now)
-
-    # Step 5b: course sightings keep an open attendance session alive.
+    # Step 5: course sightings - attendance is built from these alone.
     if batch.course_sightings:
         await _process_course_sightings(session, active_event, batch.course_sightings, now)
 
@@ -242,8 +234,6 @@ async def _process_death(
     player: Player,
     fc_group_id: int,
     died_at_ms: int,
-    world: int,
-    wildy_level: int,
 ) -> None:
     died_at = from_epoch_ms(died_at_ms)
     existing = await session.execute(
@@ -257,82 +247,62 @@ async def _process_death(
             player_id=player.id,
             event_id=event.id if event else None,
             died_at=died_at,
-            world=world,
-            wildy_level=wildy_level,
         )
     )
-
-
-async def _process_roster(
-    session: AsyncSession,
-    fc_group_id: int,
-    event: Event,
-    reporter_world: int | None,
-    roster: RosterSnapshotIn,
-    now: dt.datetime,
-) -> None:
-    open_result = await session.execute(
-        select(Attendance, Player)
-        .join(Player, Attendance.player_id == Player.id)
-        .where(Attendance.event_id == event.id, Attendance.left_at.is_(None))
-    )
-    rows = open_result.all()
-    open_sessions = [OpenSession(player_id=p.id, rsn=p.rsn, world=a.world) for a, p in rows]
-    attendance_by_player_id = {a.player_id: a for a, _ in rows}
-
-    snapshot_rsns = {m.name for m in roster.members}
-    diff = diff_roster(snapshot_rsns, open_sessions, reporter_world)
-
-    snapshot_ts = from_epoch_ms(roster.ts)
-    members_by_rsn = {m.name: m for m in roster.members}
-
-    for rsn in diff.to_open:
-        member = members_by_rsn[rsn]
-        player = await _get_or_create_player(session, rsn, now)
-        session.add(
-            Attendance(
-                event_id=event.id,
-                player_id=player.id,
-                joined_at=snapshot_ts,
-                last_sighted_at=snapshot_ts,
-                rank=member.rank,
-                world=member.world,
-            )
-        )
-
-    for player_id in diff.to_close:
-        attendance_by_player_id[player_id].left_at = snapshot_ts
-
-    # Members still present: keep world/rank current for future diffs.
-    for session_info in open_sessions:
-        member = members_by_rsn.get(session_info.rsn)
-        if member is not None:
-            attendance = attendance_by_player_id[session_info.player_id]
-            attendance.world = member.world
-            attendance.rank = member.rank
 
 
 async def _process_course_sightings(
-    session: AsyncSession, event: Event, sightings: list[str], now: dt.datetime
+    session: AsyncSession,
+    event: Event,
+    sightings: list[CourseSightingIn | str],
+    now: dt.datetime,
 ) -> None:
-    """Keeps an already-open attendance session alive - never opens a new
-    one (that stays the roster diff's job, so a sighting alone can't invent
-    an attendance record for someone who was never actually a roster
-    member). If a player's session has already been auto-closed by
-    workers/attendance_timeout_worker.py, this is a no-op for them until the
-    next roster snapshot reopens a fresh session - see BUILD_LOG.md."""
+    """Attendance comes only from people seen at the mass - the reporter near
+    the course, or FC members another plugin user sees in it. A sighting
+    keeps an open session alive, or opens one if there isn't one (closed
+    again by workers/attendance_timeout_worker.py once nobody has seen them
+    for a while). The FC member list is never uploaded. Rank is kept at the
+    highest value reported (-1 = unranked or unknown, from older builds)."""
+    ranks: dict[str, tuple[str, int]] = {}
+    for sighting in sightings:
+        name, rank = (sighting, -1) if isinstance(sighting, str) else (sighting.name, sighting.rank)
+        key = name.lower()
+        if key not in ranks or rank > ranks[key][1]:
+            ranks[key] = (name, rank)
+    if not ranks:
+        return
+
     result = await session.execute(
-        select(Attendance)
+        select(Attendance, Player)
         .join(Player, Attendance.player_id == Player.id)
         .where(
             Attendance.event_id == event.id,
             Attendance.left_at.is_(None),
-            Player.rsn.in_(sightings),
+            Player.rsn.in_([name for name, _ in ranks.values()]),
         )
     )
-    for attendance in result.scalars().all():
+    open_for: set[str] = set()
+    for attendance, player in result.all():
+        _, rank = ranks[player.rsn.lower()]
         attendance.last_sighted_at = now
         attendance.sighted_at_course = True
+        attendance.rank = max(attendance.rank, rank)
+        open_for.add(player.rsn.lower())
+
+    for key, (name, rank) in ranks.items():
+        if key in open_for:
+            continue
+        player = await _get_or_create_player(session, name, now)
+        session.add(
+            Attendance(
+                event_id=event.id,
+                player_id=player.id,
+                joined_at=now,
+                last_sighted_at=now,
+                sighted_at_course=True,
+                rank=rank,
+            )
+        )
 
 
 async def _process_loadout_checks(
@@ -424,7 +394,6 @@ async def _process_dd(
                 left_before_break=existing_row.left_before_break,
                 seen_running=existing_row.seen_running,
                 observed_ms=existing_row.observed_ms,
-                dd_loadout_failed=tuple(existing_row.dd_loadout_failed or []),
                 sources=tuple(existing_row.sources or []),
             )
             if existing_row is not None
@@ -436,7 +405,6 @@ async def _process_dd(
             left_before_break=presence.left_before_break,
             seen_running=presence.seen_running,
             observed_ms=presence.observed_ms,
-            dd_loadout_failed=tuple(presence.dd_failed),
         )
         merged = merge_presence(existing_merge, incoming, reporter=reporter_rsn)
 
@@ -458,7 +426,6 @@ async def _process_dd(
             existing_row.left_before_break = merged.left_before_break
             existing_row.seen_running = seen_running
             existing_row.observed_ms = merged.observed_ms
-            existing_row.dd_loadout_failed = list(merged.dd_loadout_failed)
             existing_row.sources = list(merged.sources)
             existing_row.laps_during_dd = laps_during_dd
         else:
@@ -472,7 +439,6 @@ async def _process_dd(
                     seen_running=seen_running,
                     laps_during_dd=laps_during_dd,
                     observed_ms=merged.observed_ms,
-                    dd_loadout_failed=list(merged.dd_loadout_failed),
                     sources=list(merged.sources),
                 )
             )

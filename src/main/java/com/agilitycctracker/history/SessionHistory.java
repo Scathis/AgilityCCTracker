@@ -23,6 +23,9 @@ import net.runelite.client.config.ConfigManager;
 public class SessionHistory
 {
 	static final String KEY = "sessionHistory";
+	static final String BEST_LAP_KEY = "bestLapMs";
+	/** The course's own fastest possible lap is ~40s; anything quicker is a timing glitch. */
+	static final long MIN_REAL_LAP_MS = 30_000;
 	static final int MAX_SESSIONS = 30;
 	private static final long TICK_MS = 600;
 	private static final long SAVE_EVERY_MS = 30_000;
@@ -39,6 +42,7 @@ public class SessionHistory
 	/** Newest first. */
 	private final List<MassSession> sessions = new ArrayList<>();
 	private String loadedFor;
+	private long bestLapMs;
 	private int lastLapCount;
 	private int lastTickets;
 	private boolean dirty;
@@ -57,7 +61,7 @@ public class SessionHistory
 		MassSession current = sessions.isEmpty() ? null : sessions.get(0);
 		if (current == null || current.getEventId() != eventId)
 		{
-			current = new MassSession(eventId, eventName, System.currentTimeMillis(), 0, 0, 0, false, false);
+			current = new MassSession(eventId, eventName, System.currentTimeMillis(), 0, 0, 0, false, false, 0);
 			sessions.add(0, current);
 			while (sessions.size() > MAX_SESSIONS)
 			{
@@ -113,6 +117,37 @@ public class SessionHistory
 		}
 	}
 
+	/**
+	 * A timed lap (LapTracker's listener, client thread) - updates this
+	 * mass's fastest and the all-time best. Laps outside a mass session
+	 * aren't counted.
+	 */
+	public synchronized void onLapTime(long ms)
+	{
+		if (ms < MIN_REAL_LAP_MS || sessions.isEmpty() || loadedFor == null)
+		{
+			return;
+		}
+		MassSession current = sessions.get(0);
+		if (current.getFastestLapMs() == 0 || ms < current.getFastestLapMs())
+		{
+			current.setFastestLapMs(ms);
+			dirty = true;
+		}
+		if (bestLapMs == 0 || ms < bestLapMs)
+		{
+			bestLapMs = ms;
+			configManager.setRSProfileConfiguration("agilitycctracker", BEST_LAP_KEY, ms);
+		}
+	}
+
+	/** All-time fastest lap for this account in ms, 0 when none yet. */
+	public synchronized long getBestLapMs(String rsn)
+	{
+		ensureLoaded(rsn);
+		return bestLapMs;
+	}
+
 	/** Copy for the sidebar (EDT), newest first. */
 	public synchronized List<MassSession> getSessions(String rsn)
 	{
@@ -121,7 +156,7 @@ public class SessionHistory
 		for (MassSession s : sessions)
 		{
 			copy.add(new MassSession(s.getEventId(), s.getName(), s.getStartedAt(), s.getLaps(), s.getTickets(),
-				s.getCourseMs(), s.isRunner(), s.isAnti()));
+				s.getCourseMs(), s.isRunner(), s.isAnti(), s.getFastestLapMs()));
 		}
 		return copy;
 	}
@@ -139,6 +174,8 @@ public class SessionHistory
 		sessions.clear();
 		loadedFor = rsn;
 		dirty = false;
+		Long best = configManager.getRSProfileConfiguration("agilitycctracker", BEST_LAP_KEY, Long.class);
+		bestLapMs = best != null ? best : 0;
 		String json = configManager.getRSProfileConfiguration("agilitycctracker", KEY);
 		if (json == null || json.isEmpty())
 		{

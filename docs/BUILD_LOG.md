@@ -1777,3 +1777,33 @@ large quantities with thousands separators.
   `a1d6e4f7c290` drops the FK, both player columns and `player_snapshots`.
   `items_worker` kept - it feeds the Kits item search.
 - Tests: RBAC test now asserts `/players` 404s too; 102 server tests pass.
+
+## 2026-10-27 - No FC member list, no IP logging, fastest laps
+
+- IP: can't avoid receiving it (TCP), so it's never written down: uvicorn
+  `--no-access-log` (each 10s status poll logged `IP - GET ...?rsn=NAME`) and
+  `logging: json-file, max-size 10m, max-file 3` for api + mysql (no rotation
+  before). The only IP use left is the in-memory failed-auth/login limiter.
+- Roster removed. Attendance sessions are now opened (not just kept alive) by
+  course sightings; `CourseSighting{name, rank}` replaces bare names (server
+  accepts both; bare = rank -1; rank only ever raised). The reporter's own
+  heartbeat goes out while `SelfStateCollector.isAroundCourse(region)` (course
+  region +-1 in x/y) so antis outside the course proper still count; observer
+  scanning stays course-region only. Rank for the player's own heartbeat is
+  read on the client thread in `onSecondTick` (-1 outside the tracked FC).
+  Plugin: `RosterTracker`, `RosterSnapshot`, `RosterMember`, FC member
+  join/leave handlers, "Share roster", `SelfState.world` removed. Server:
+  `services/roster.py` + test, `_process_roster`, `RosterSnapshotIn` removed;
+  `attendance.world` dropped; never-sighted attendance rows and players with
+  no remaining references deleted in `b2e7f5a8d391`.
+- `ddFailed` / `dd_loadout_failed` removed end to end (always empty since the
+  DD bow check went).
+- Deaths: time only (`DeathEvent(diedAt)`); `WildyLevelReader` and
+  `util/WildernessLevel` (+ test) deleted; Deaths tab shows name + time.
+- Fastest lap: `LapTracker.setLapTimeListener` -> `SessionHistory.onLapTime`
+  (ignores < 30s glitches): `MassSession.fastestLapMs` and an RS-profile
+  `bestLapMs`. Panel rows "Fastest lap" / "Best ever"; history cards show the
+  mass's fastest. Lap times are still uploaded and stored (owner: keep).
+- Tests: plugin `lapTimeFormat`, `aroundCourse...`; server
+  `test_course_sighting_opens_attendance_with_rank`,
+  `test_fc_member_list_is_ignored`; removed roster/dd-failed tests. 97 pass.

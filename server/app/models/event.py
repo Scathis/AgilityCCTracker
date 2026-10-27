@@ -38,16 +38,16 @@ class Attendance(Base):
     player_id: Mapped[int] = mapped_column(ForeignKey("players.id"), index=True)
     joined_at: Mapped[dt.datetime] = mapped_column(DateTime())
     left_at: Mapped[dt.datetime | None] = mapped_column(DateTime(), nullable=True)
+    # FC rank as reported with course sightings (-1 unranked/unknown) - the
+    # only use is deciding who sees gear flags (api/v1/status.py).
     rank: Mapped[int] = mapped_column(Integer)
-    world: Mapped[int] = mapped_column(Integer)
-    # Last time this player was actually sighted at the course (a lap, a
-    # self-reported on_course ping, or being observed in-course by another
-    # plugin user) - distinct from joined_at/left_at, which track FC-channel
-    # membership. Drives the auto-timeout close in workers/attendance_timeout_worker.py.
+    # A session is opened by a course sighting (the player near the course,
+    # or seen in it by another plugin user) and closed by
+    # workers/attendance_timeout_worker.py once nobody has seen them for a
+    # while; last_sighted_at drives that.
     last_sighted_at: Mapped[dt.datetime] = mapped_column(DateTime())
-    # True once anyone's plugin has seen this player at the course during this
-    # session. FC roster snapshots open a session for everyone in the chat;
-    # the dashboard only lists people who actually turned up.
+    # Always true since sightings became the only source (2026-10-27); kept
+    # for the attendance-tab filter and older rows.
     sighted_at_course: Mapped[bool] = mapped_column(Boolean, default=False, server_default="0")
 
 

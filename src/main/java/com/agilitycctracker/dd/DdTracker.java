@@ -3,10 +3,8 @@ package com.agilitycctracker.dd;
 import com.agilitycctracker.model.DdPresenceDto;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import javax.inject.Singleton;
 
 /**
@@ -37,7 +35,6 @@ public class DdTracker
 		boolean leftBeforeBreak;
 		boolean seenRunning;
 		long observedMs;
-		final Set<String> ddFailed = new LinkedHashSet<>();
 	}
 
 	/** A ranked member called "DD". Ignored if a window is already open. */
@@ -79,7 +76,7 @@ public class DdTracker
 	}
 
 	/** One sample for one RSN (self or an observed FC member) this tick. No-op if no window is open. */
-	public synchronized void onObservation(String rsn, boolean onDdTile, boolean inCourseArea, List<String> ddFailed, long now)
+	public synchronized void onObservation(String rsn, boolean onDdTile, boolean inCourseArea, long now)
 	{
 		if (!isWindowOpen())
 		{
@@ -97,7 +94,6 @@ public class DdTracker
 			sample.msOnTile += TICK_MS;
 			sample.lastOnTileAt = now;
 			sample.offSince = null;
-			sample.ddFailed.addAll(ddFailed);
 			return;
 		}
 
@@ -128,8 +124,7 @@ public class DdTracker
 				s.msOnTile,
 				s.leftBeforeBreak,
 				s.seenRunning,
-				s.observedMs,
-				new ArrayList<>(s.ddFailed)));
+				s.observedMs));
 		}
 		return result;
 	}
@@ -143,8 +138,7 @@ public class DdTracker
 			return null;
 		}
 		Long arrivedAfterMs = s.firstOnTileAt != null ? s.firstOnTileAt - calledAt : null;
-		return new DdPresenceDto(rsn, arrivedAfterMs, s.msOnTile, s.leftBeforeBreak, s.seenRunning, s.observedMs,
-			new ArrayList<>(s.ddFailed));
+		return new DdPresenceDto(rsn, arrivedAfterMs, s.msOnTile, s.leftBeforeBreak, s.seenRunning, s.observedMs);
 	}
 
 	public synchronized Long getCalledAt()

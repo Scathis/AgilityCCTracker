@@ -31,7 +31,7 @@ public class DdTrackerTest
 	public void onTimeArrivalRecordsZeroDelay()
 	{
 		tracker.openWindow(0, ARRIVE_GRACE_MS, LEAVE_GRACE_MS);
-		tracker.onObservation("Alice", true, true, Collections.emptyList(), TICK_MS);
+		tracker.onObservation("Alice", true, true, TICK_MS);
 
 		DdPresenceDto sample = find(tracker.summaries(), "Alice");
 		assertEquals(Long.valueOf(TICK_MS), sample.getArrivedAfterMs());
@@ -45,7 +45,7 @@ public class DdTrackerTest
 	{
 		tracker.openWindow(0, ARRIVE_GRACE_MS, LEAVE_GRACE_MS);
 		long lateArrival = 20_000; // after the 15s arrive grace
-		tracker.onObservation("Bob", true, true, Collections.emptyList(), lateArrival);
+		tracker.onObservation("Bob", true, true, lateArrival);
 
 		DdPresenceDto sample = find(tracker.summaries(), "Bob");
 		assertEquals(Long.valueOf(lateArrival), sample.getArrivedAfterMs());
@@ -55,12 +55,12 @@ public class DdTrackerTest
 	public void leftBeforeBreakFlagsAfterExceedingLeaveGrace()
 	{
 		tracker.openWindow(0, ARRIVE_GRACE_MS, LEAVE_GRACE_MS);
-		tracker.onObservation("Carl", true, true, Collections.emptyList(), 1_000);
+		tracker.onObservation("Carl", true, true, 1_000);
 		// Off-tile continuously from 1_000 onward.
-		tracker.onObservation("Carl", false, true, Collections.emptyList(), 2_000);
+		tracker.onObservation("Carl", false, true, 2_000);
 		assertFalse("not yet past the 5s leave grace", find(tracker.summaries(), "Carl").isLeftBeforeBreak());
 
-		tracker.onObservation("Carl", false, true, Collections.emptyList(), 7_001); // 6001ms off, > 5000ms grace
+		tracker.onObservation("Carl", false, true, 7_001); // 6001ms off, > 5000ms grace
 		assertTrue("should have left before break by now", find(tracker.summaries(), "Carl").isLeftBeforeBreak());
 	}
 
@@ -68,23 +68,12 @@ public class DdTrackerTest
 	public void seenRunningFlagsWhenNeverOnTileAfterGrace()
 	{
 		tracker.openWindow(0, ARRIVE_GRACE_MS, LEAVE_GRACE_MS);
-		tracker.onObservation("Dan", false, true, Collections.emptyList(), 5_000);
+		tracker.onObservation("Dan", false, true, 5_000);
 		assertFalse("still inside arrive grace", find(tracker.summaries(), "Dan").isSeenRunning());
 
-		tracker.onObservation("Dan", false, true, Collections.emptyList(), 16_000); // past 15s arrive grace
+		tracker.onObservation("Dan", false, true, 16_000); // past 15s arrive grace
 		assertTrue("kept running past the grace period without ever showing on a tile",
 			find(tracker.summaries(), "Dan").isSeenRunning());
-	}
-
-	@Test
-	public void wrongWeaponAtDdIsUnionedWhileOnTile()
-	{
-		tracker.openWindow(0, ARRIVE_GRACE_MS, LEAVE_GRACE_MS);
-		tracker.onObservation("Eve", true, true, Collections.singletonList("dd-bow"), 1_000);
-		tracker.onObservation("Eve", true, true, Collections.emptyList(), 2_000);
-
-		DdPresenceDto sample = find(tracker.summaries(), "Eve");
-		assertEquals(Collections.singletonList("dd-bow"), sample.getDdFailed());
 	}
 
 	@Test
@@ -103,7 +92,7 @@ public class DdTrackerTest
 	public void openWindowIsIgnoredWhileOneIsAlreadyOpen()
 	{
 		tracker.openWindow(0, ARRIVE_GRACE_MS, LEAVE_GRACE_MS);
-		tracker.onObservation("Frank", true, true, Collections.emptyList(), 1_000);
+		tracker.onObservation("Frank", true, true, 1_000);
 		tracker.openWindow(50_000, ARRIVE_GRACE_MS, LEAVE_GRACE_MS); // should be a no-op
 
 		assertEquals(Long.valueOf(0), tracker.getCalledAt());
@@ -113,7 +102,7 @@ public class DdTrackerTest
 	@Test
 	public void observationsAreIgnoredWhenNoWindowIsOpen()
 	{
-		tracker.onObservation("Grace", true, true, Collections.emptyList(), 1_000);
+		tracker.onObservation("Grace", true, true, 1_000);
 		assertTrue(tracker.summaries().isEmpty());
 	}
 
@@ -121,7 +110,7 @@ public class DdTrackerTest
 	public void acknowledgeClosedResetsForANewCall()
 	{
 		tracker.openWindow(0, ARRIVE_GRACE_MS, LEAVE_GRACE_MS);
-		tracker.onObservation("Hank", true, true, Collections.emptyList(), 1_000);
+		tracker.onObservation("Hank", true, true, 1_000);
 		tracker.closeWindow(2_000);
 		tracker.acknowledgeClosed();
 

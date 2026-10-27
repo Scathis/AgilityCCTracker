@@ -5,7 +5,6 @@ import com.agilitycctracker.api.StatusHolder;
 import com.agilitycctracker.api.Uploader;
 import com.agilitycctracker.collect.DeathTracker;
 import com.agilitycctracker.collect.LapTracker;
-import com.agilitycctracker.collect.RosterTracker;
 import com.agilitycctracker.collect.SelfStateCollector;
 import com.agilitycctracker.dd.DdCallDetector;
 import com.agilitycctracker.dd.DdTracker;
@@ -43,8 +42,6 @@ import net.runelite.api.events.ActorDeath;
 import net.runelite.api.events.ChatMessage;
 import net.runelite.api.FriendsChatManager;
 import net.runelite.api.events.FriendsChatChanged;
-import net.runelite.api.events.FriendsChatMemberJoined;
-import net.runelite.api.events.FriendsChatMemberLeft;
 import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.GameTick;
 import net.runelite.api.events.ItemContainerChanged;
@@ -105,9 +102,6 @@ public class AgilityCCTrackerPlugin extends Plugin
 
 	@Inject
 	private DeathTracker deathTracker;
-
-	@Inject
-	private RosterTracker rosterTracker;
 
 	@Inject
 	private ApiClient apiClient;
@@ -184,6 +178,7 @@ public class AgilityCCTrackerPlugin extends Plugin
 		log.info("Wildy Agility FC Tracker started");
 		lastAccountHash = client.getAccountHash();
 
+		lapTracker.setLapTimeListener(sessionHistory::onLapTime);
 		massParticipation.setCallbacks(
 			() -> clientThread.invoke(this::onMassActivated),
 			() -> clientThread.invoke(this::clearCollected));
@@ -271,7 +266,6 @@ public class AgilityCCTrackerPlugin extends Plugin
 	private void onMassActivated()
 	{
 		clearCollected();
-		rosterTracker.onFriendsChatJoined();
 		if (massParticipation.isRunner())
 		{
 			selfLoadoutCheck.refresh();
@@ -285,7 +279,6 @@ public class AgilityCCTrackerPlugin extends Plugin
 		selfStateCollector.reset();
 		lapTracker.reset();
 		deathTracker.reset();
-		rosterTracker.reset();
 		selfLoadoutCheck.reset();
 		fcMemberScanner.reset();
 		ddTracker.reset();
@@ -298,7 +291,6 @@ public class AgilityCCTrackerPlugin extends Plugin
 		selfStateCollector.reset();
 		lapTracker.reset();
 		deathTracker.reset();
-		rosterTracker.reset();
 		selfLoadoutCheck.reset();
 		fcMemberScanner.reset();
 		ddTracker.reset();
@@ -436,26 +428,6 @@ public class AgilityCCTrackerPlugin extends Plugin
 	}
 
 	@Subscribe
-	public void onFriendsChatMemberJoined(FriendsChatMemberJoined event)
-	{
-		if (!massParticipation.isAttending())
-		{
-			return;
-		}
-		rosterTracker.onMemberChanged();
-	}
-
-	@Subscribe
-	public void onFriendsChatMemberLeft(FriendsChatMemberLeft event)
-	{
-		if (!massParticipation.isAttending())
-		{
-			return;
-		}
-		rosterTracker.onMemberChanged();
-	}
-
-	@Subscribe
 	public void onFriendsChatChanged(FriendsChatChanged event)
 	{
 		if (event.isJoined())
@@ -465,10 +437,6 @@ public class AgilityCCTrackerPlugin extends Plugin
 			{
 				log.info("Joined friends chat - name='{}' owner='{}' myRank={} memberCount={}",
 					fc.getName(), fc.getOwner(), fc.getMyRank(), fc.getMembers().length);
-			}
-			if (massParticipation.isAttending())
-			{
-				rosterTracker.onFriendsChatJoined();
 			}
 		}
 	}
@@ -512,8 +480,9 @@ public class AgilityCCTrackerPlugin extends Plugin
 	{
 		if (!unsupportedWorld() && massParticipation.isAttending())
 		{
-			selfStateCollector.onTick();
-			rosterTracker.onTick();
+			FriendsChatManager fc = client.getFriendsChatManager();
+			int rank = inTrackedFc(statusHolder.get()) && fc.getMyRank() != null ? fc.getMyRank().getValue() : -1;
+			selfStateCollector.onTick(rank);
 		}
 		// This method runs on the client thread, so read here (not inside
 		// TrackerPanel.refresh(), which runs on the EDT via invokeLater).

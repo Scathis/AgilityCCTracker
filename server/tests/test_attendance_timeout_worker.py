@@ -40,7 +40,6 @@ async def _make_attendance(db_session, group, last_sighted_at: dt.datetime) -> A
         joined_at=last_sighted_at,
         last_sighted_at=last_sighted_at,
         rank=0,
-        world=330,
     )
     db_session.add(attendance)
     await db_session.commit()
