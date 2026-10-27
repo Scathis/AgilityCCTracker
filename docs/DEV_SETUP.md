@@ -51,195 +51,210 @@ panel. Your choice is remembered as **My role** in the plugin config.
 
 ## 5. Manual test checklist
 
-Work through this in-game against the live server to confirm everything's
-wired up end-to-end:
+Rewritten 2026-10-28 to match everything built up to then (all unticked).
+Work through it in-game against the live server. You'll want: a ranked
+account and an unranked one in the Agility CC FC, a second account or friend
+(with and without the plugin), a dashboard admin login, and at least one kit
+on the dashboard. Pull and rebuild the plugin first.
 
-- [ ] Join the FC. Start a mass on the dashboard → within ~10s the in-game
-      "Agility mass started" prompt appears at the top of the game view (no
-      separate window, game keeps focus) plus an orange chat line; click
-      **Runner** → your account shows up in that mass's attendance.
-- [ ] Clicking the prompt's buttons never also clicks the game underneath
-      (no walking/interacting). Alt+drag moves it; it stays where you put it.
-- [ ] Run a lap on the Wilderness Agility course → a lap row appears on the
-      dashboard, with tickets and a snapshot.
-- [ ] Unequip your boots → you get a chat warning ("FC gear check: No boots"),
-      and the dashboard shows the gap. Same for helm, amulet, body and legs
-      (the defaults ticked on the dashboard Kits page).
-- [ ] Get a second account/friend into view wearing a crossbow with no
-      shield → the dashboard shows SHIELD for them (over-head label "No
-      shield"); with a bow and no shield they're fine; with a non-bow weapon
-      (or nothing) they show "No bow".
-      Check the server logs / request body only ever contains requirement
-      *keys* (e.g. `run-xbow-shield`), never raw item ids for another
-      player.
-- [ ] Have a ranked account type `dd` in FC chat. One account stands on a
-      DD tile, another keeps running. Type `break dd` → the DD tab on the
-      dashboard shows arrival time, time on tile, and correctly flags the
-      one that kept running. The leaderboard updates.
-- [ ] Stop the event.
+### A. Mass start and the in-game prompt
 
-### Opt-in and roles (new 2026-10-27)
-
-- [ ] Before answering the prompt (or after **Not today**), *outside the
-      course*: die and move about → nothing reaches the dashboard, the panel
-      says "Are you attending?" / "Not attending", and nothing is scanned.
-- [ ] Close the prompt with its × → nothing is sent; the sidebar's Runner /
-      Anti buttons still answer.
-- [ ] Answer **Not today** (or close the prompt), then walk into the course →
-      within a tick you're marked attending with your configured role, a chat
-      line says so, and the dashboard shows you. Same if you never answered.
-- [ ] In the course but in a **different** friends chat → not auto-marked.
-- [ ] Answer Yes as **Runner** → laps, DD and own-gear warnings all work as in
-      the checks above.
-- [ ] Answer Yes as **Anti** → attendance time shows (Role column says Anti),
-      but no laps, no DD presence, no loadout warnings, and the dashboard
-      Loadout column says "n/a (anti)". Dying in the course as an anti still
-      shows up on the dashboard's deaths.
-- [ ] Switch role mid-mass with the panel's "Switch to …" link (or **My
-      role** in the plugin config), e.g. Anti → Runner → Anti → the dashboard Attendance tab shows a separate row per role, each
-      with its own time present and laps (never combined); runner-only
-      behaviour switches on/off.
+- [ ] Start a mass on the dashboard → within ~10s an **"Agility mass
+      started"** box appears at the top of the game view (no separate window;
+      the game keeps focus) plus a **red** chat line.
+- [ ] The box's buttons (**Runner** / **Anti** / **Not today**) work, and a
+      click on them never also clicks the game underneath. The **×** hides it
+      without answering. Alt+drag moves it.
+- [ ] Clicking **Runner** → you appear on the event's Attendance tab with
+      Role "Runner".
+- [ ] Stop the mass and start another → the prompt appears again; the old
+      answer doesn't carry over.
 - [ ] Log out and back in mid-mass → no prompt; you're restored as attending
       with the same role.
-- [ ] Stop the mass, start another → prompt appears again; the old answer does
-      not carry over.
-- [ ] Sidebar panel (new look): Agility ring shows your level (fills to 99;
-      past 99 a brighter second lap + inward fill, solid at 200M - hover for
-      exact xp); your name; FC box says "Agility CC" with a green tick /
-      "Joined" in the FC and a red cross / "Not joined" + join hint outside it;
-      mass row shows "Running - Nm" or "No mass running"; connection status
-      and an "Agility CC Discord" link (opens discord.gg/agility) in small
-      print at the bottom. Nothing is cut off or causes a sideways scrollbar.
-- [ ] "Switch to Anti/Runner" is a gold-edged pill that fills on hover.
-- [ ] **Previous sessions** tab: after a mass, it lists that mass with its
-      date, role(s), laps (runners) and time on course. It survives a client
-      restart and is per account (log into another account → its own list).
-- [ ] The pre-mass kit check chat line and the mass prompt chat lines are
-      red and readable.
-- [ ] Bank highlighting traces the missing items' own outline, not a box.
-- [ ] Dashboard Attendance tab: starting a mass no longer lists the whole FC
-      - only people seen at the course, who picked Runner/Anti, or ran a lap.
-- [ ] An observer standing next to an **anti** and a **No**-answerer doesn't
-      report either of them for gear/DD; a friend without the plugin is still
-      gear-checked as a runner.
-- [ ] No API URL / token is visible or editable anywhere in the plugin config.
 
-### Kits and the pre-course check (new 2026-10-27)
+### B. Opt-in, roles and leaving a mass
 
-- [ ] Dashboard → Settings → **Runner gear rules**: change which slots must
-      not be empty, untick/tick the bow/crossbow rule, save → takes effect
-      in-game within ~10s. (Admin only; staff can't see Settings.)
-- [ ] Settings page is grouped into cards (gear rules, gear flags & observer,
-      DD calls, DD tiles) with one Save at the bottom; "Settings saved" shows.
-- [ ] Kits → **Create kit**: name box at the top, pick gear per slot and add
-      inventory lines - nothing is saved until **Save kit** at the bottom
-      (leaving with unsaved changes warns you; Cancel discards).
-- [ ] The first kit becomes the default; **Mark as default** on another row
-      moves it; **Edit** reopens a kit with everything filled in; deleting the
-      default hands it to another kit.
-- [ ] In-game sidebar: the "My kit" dropdown lists the kits with the default
-      pre-selected; your choice is remembered after a client restart.
-- [ ] Attend a mass as a **Runner** while away from the course → one orange
-      chat line ("Pre-mass check (<kit>): N thing(s) missing…" or "all set"),
-      and the sidebar lists exactly what's missing ("Wear: …", "Bring: … x2").
-- [ ] Open your bank → the missing items are outlined; take them out / equip
-      them and the outlines and sidebar lines disappear.
-- [ ] Every kit shows a locked "Coins 150,000 - course entry fee" line in the
-      editor; with fewer than 150k coins in your inventory the pre-course check
-      says "Bring: Coins x…" and outlines coins in your bank.
-- [ ] Any dose of a kit potion counts (e.g. Stamina potion (2) for a (4) in the
-      kit); quantity counts potions, not doses.
-- [ ] As an **Anti**, or once you're in the course → no kit check, no outlines.
-- [ ] Nothing about your inventory reaches the server (dashboard player page
-      shows worn gear only, as before).
-- [ ] DD tab on the dashboard no longer has a "Loadout gaps" column.
+- [ ] Before answering (or after **Not today**), outside the course: move
+      about, die → nothing reaches the dashboard and nothing is scanned; the
+      panel says "Are you attending?" / "Not attending".
+- [ ] After **Not today** or ×, walk into the course → you're marked attending
+      with your saved role within a tick, a red chat line says so, and the
+      dashboard shows you. Same if you never answered.
+- [ ] In the course but in a **different** friends chat → not auto-marked.
+- [ ] As **Anti**: attendance time builds (Role "Anti"), but no laps, no DD
+      presence, no gear checks (Loadout column "n/a (anti)"); a death still
+      shows on the Deaths tab.
+- [ ] **Switch to Anti / Switch to Runner** (gold pill in the panel) mid-mass
+      → the Attendance tab shows a separate row per role, each with its own
+      time and laps; runner-only things switch on/off.
+- [ ] **Not attending any more** (link under the role row) → you drop to "Not
+      attending", the Runner/Anti buttons come back and nothing more is
+      tracked - unless you walk into the course, which marks you attending
+      again.
 
-### Gear flags and who can see them (new 2026-10-27)
+### C. Sidebar panel
 
-- [ ] As a **ranked** member (rank ≥ the threshold on dashboard Settings) at
-      the course during a mass: a red label ("No helm, boots") appears over
-      each runner with missing gear, and the sidebar's "FC members in view"
-      list fills in.
-- [ ] Runners with full gear show no label; antis and members who answered No
-      never get a label.
-- [ ] As an **unranked** member (or with the threshold raised above your
-      rank): no labels, an empty "FC members in view" list - but you still get
-      your own gear warning, and the dashboard still shows your scan results.
-- [ ] Turn off **Show gear flags** in the plugin config → labels disappear.
-- [ ] Standing in a different friends chat (not Agility CC) → nothing is
-      scanned and no flags show.
-- [ ] Change **Lowest FC rank that sees gear flags** on the dashboard Settings
-      page → takes effect within ~10 seconds, no plugin restart.
+- [ ] Agility ring shows your level (fills to 99; past 99 a brighter second
+      lap and an inward fill, solid at 200M); hover shows exact xp.
+- [ ] Name at the top; under it "Agility - …xp" and, once you have one, your
+      all-time **Fastest lap**.
+- [ ] Diamond divider, then the status box: **Friends chat** "Agility CC" with
+      a green tick / "Joined", or a red cross / "Not joined" plus "Join from
+      the chat-channel tab: Agility Cc"; **Mass** "Running - Nm" or "No mass
+      running"; **Attending as** "Runner | Switch to Anti" (or "Are you
+      attending?" with Runner/Anti buttons).
+- [ ] Section titles are gold and bigger than the text under them; no stray
+      line between Friends chat and Mass; nothing overlaps or is cut off and
+      there's no sideways scrollbar.
+- [ ] Footer: "Connected" (green dot) and an **Agility CC Discord** link that
+      opens discord.gg/agility. No "Copy my tile".
+- [ ] Tabs **This mass** / **Previous sessions** switch cleanly, content sits at
+      the top, no big gap above the footer.
 
-### Plugin, additional in-game checks
+### D. Laps, fastest laps and previous sessions
 
-- [ ] Die in the Wilderness → a death appears on the event's Deaths tab
-      (name and time only).
-- [ ] Attendance builds from sightings only: someone in the FC who never
-      comes near the course never appears (not even as a hidden row); an anti
-      working the area just outside the course still clocks time present.
-- [ ] Fastest lap: run two or more laps → "Fastest lap" shows in This
-      session, and the all-time best shows under your name/Agility xp at the
-      top (hidden until you have one); the Previous sessions card shows the
-      mass's fastest; the all-time best survives a client restart.
-- [ ] Server logs (`docker logs agilitycctracker-api-1`) show no per-request
-      lines - no IPs or RSNs.
-- [ ] Pre-mass check chat lines (gear + kit) appear once when you join the
-      mass and once on logging in mid-mass - not on gear swaps or world hops;
-      opening a bank repeats them only if something's still missing.
-- [ ] "Not attending any more" in the panel: you drop to "Not attending", the
-      Runner/Anti buttons come back, and nothing more is tracked - unless you
-      walk into the course, which marks you attending again.
-- [ ] Plugin settings read correctly: Mass / FC observer / Display sections;
-      no Share stats/gear/roster options; "Pre-mass check messages" toggle.
-- [ ] Sidebar panel: status and the "Runners in view" list show.
-- [ ] Config toggles: turn off FC observer
-      (other members stop being scanned); turn off Loadout chat warnings
-      (boots warning disappears); turn off Show sidebar panel (panel goes away).
-- [ ] Blank API URL, or a wrong token → plugin sits idle without spamming
-      errors; a wrong token shows as invalid in the panel.
-- [ ] Stand outside the course region with the observer on → no other players
-      are scanned or reported.
-- [ ] Ranked members are excluded from DD presence.
-- [ ] Switch accounts / log out and back in → state resets cleanly, nothing
-      carries over from the previous account.
-- [ ] At the course with no event running → nothing is scanned; during an
-      active event, attendance doesn't time out while you're still sighted at
-      the course.
+- [ ] Run a lap → a lap row appears on the dashboard's Laps tab with tickets;
+      the panel's Laps count goes up.
+- [ ] Two or more laps → **Fastest lap** (this mass) shows in This session; the
+      all-time best under your name updates when beaten and survives a client
+      restart.
+- [ ] After the mass, **Previous sessions** lists it newest-first: name, date,
+      role(s), laps (runners), fastest lap, time on course. Survives a
+      restart; another account on the same PC has its own list.
 
-### Dashboard
+### E. Your own missing-gear check and chat messages
 
-- [ ] Login/logout works; 5 wrong passwords gets rate-limited.
-- [ ] Event Attendance tab shows rank, time present, plugin user, loadout
-      status and laps; Laps tab shows the leaderboard and chart.
-- [ ] DD tab: staff can edit call/break times; leaderboard top-3 card and CSV
+- [ ] As a runner with a required slot empty (defaults: helm, amulet, body,
+      legs, boots, plus whatever's ticked in Settings) → one red line "FC gear
+      check: No boots" when you join the mass; the panel's Gear row shows it;
+      the dashboard Loadout column shows the slot.
+- [ ] Weapon rule: a bow with no shield is fine; a crossbow with no shield →
+      "No shield"; any other weapon (or none) → "No bow".
+- [ ] Chat lines (gear + kit) come **once** when you join the mass and once on
+      logging in mid-mass - **not** on every gear swap or world hop. Opening
+      a bank repeats them only if something's still missing.
+- [ ] Turn off **Pre-mass check messages** in the plugin settings → no gear or
+      kit chat lines (panel still shows them).
+
+### F. Kits and the pre-mass check
+
+- [ ] Dashboard Kits: **Create kit** - name at the top, gear per slot,
+      inventory lines, nothing saved until **Save kit** (leaving unsaved warns;
+      Cancel discards). The info box sits under the title.
+- [ ] Every kit has a locked "Coins 150,000 - course entry fee" line.
+- [ ] First kit becomes the default; **Mark as default** moves it; **Edit**
+      reopens with everything filled; deleting the default hands it on.
+- [ ] In-game **Kit** card (runners only): dropdown lists kits with the default
+      pre-selected; your choice survives a restart.
+- [ ] Attending as a runner away from the course → the Kit card lists exactly
+      what's missing ("Wear: …", "Bring: … x2"), and the chat line says the
+      same (or "you're all set").
+- [ ] Open your bank → missing items are outlined **around the item shape**
+      (gold), not a box; take/equip them and the outlines and lines go.
+- [ ] Fewer than 150k coins → "Bring: Coins x…" and coins outlined.
+- [ ] Any potion dose counts (a (2) for a (4) in the kit); quantity counts
+      potions, not doses.
+- [ ] As an anti, or once inside the course → no kit check, no outlines.
+
+### G. Gear flags and the observer
+
+- [ ] As a **ranked** member (at/above the Settings threshold) in the course
+      during a mass: a red label ("No helm, boots") over runners missing gear,
+      and the **Runners in view** card fills in.
+- [ ] Runners with full gear, antis and people not attending never get a label.
+- [ ] As an **unranked** member (or with the threshold above your rank): no
+      labels and no Runners in view card - you still get your own gear line,
+      and your scans still reach the dashboard.
+- [ ] **Show gear flags** off → labels go. **FC observer** off → other members
+      stop being scanned/reported.
+- [ ] In a different friends chat, or standing outside the course region →
+      nothing scanned, no flags.
+- [ ] Change the flag rank on dashboard Settings → takes effect within ~10s.
+- [ ] A friend without the plugin is still checked as a runner and appears in
+      attendance once seen in the course.
+
+### H. DD calls
+
+- [ ] A ranked account types `dd` in FC chat; one account stands on a DD tile,
+      another keeps running; `break dd` → the DD tab shows arrival time, time
+      on tile, and flags the one that kept running. Leaderboard updates.
+- [ ] Ranked members are left out of DD presence.
+- [ ] The panel's This session shows DD timing only while a DD is called.
+
+### I. Attendance and deaths
+
+- [ ] Starting a mass no longer lists the whole FC - only people seen at the
+      course, who picked Runner/Anti, or ran a lap. Someone who's only in the
+      chat never appears.
+- [ ] An anti working the area just outside the course still clocks time.
+- [ ] Attendance doesn't time out while you're still at the course; it closes
+      ~2 minutes after nobody's seen you.
+- [ ] Die in the Wilderness during a mass → the Deaths tab shows name and time
+      only (no world / wildy level).
+
+### J. Plugin settings
+
+- [ ] Sections are **Mass** (My role), **FC observer** (FC observer) and
+      **Display** (Show sidebar panel, Pre-mass check messages, Show gear
+      flags). No Share stats / gear / roster, and no server URL or token
+      anywhere.
+- [ ] Hovering each setting shows a description that matches what it does.
+- [ ] **Show sidebar panel** off → the panel goes away.
+
+### K. What's sent (privacy)
+
+- [ ] Nothing at all until you opt in (only the "is a mass running?" check).
+- [ ] No worn items, inventory, skills, combat level, world, wilderness level
+      or position for anyone - only empty slot names (e.g. `BOOTS`),
+      laps/tickets/lap times, death times, DD timings, and names + FC rank of
+      people seen at the mass. (Claude can confirm from a captured request.)
+- [ ] The FC member list is never uploaded.
+
+### L. Dashboard accounts
+
+- [ ] **Request one** on the login page → "Request sent"; logging in with it
+      says it's waiting for an admin. Bad inputs are refused (short password,
+      mismatch, taken name); a 4th sign-up from the same place within an hour
+      is refused.
+- [ ] Admin → Users: approve as Viewer/Staff/Admin (then it can log in), or
+      reject it.
+- [ ] Change an account's role; **Remove** an account (it's logged out straight
+      away).
+- [ ] **Reset password** → temporary password shown once; logging in with it
+      lands on Account, every other page sends you back there, the temporary
+      password can't be reused as the new one; once changed, everything works.
+- [ ] **Account** page: change your own password (wrong current password is
+      refused).
+- [ ] The **grestinator** row says it can't be changed or removed and has no
+      buttons; your own row can't be demoted or removed.
+- [ ] Roles: viewer sees Events + DD Leaderboard + Account; staff also Kits and
+      can start/stop masses; admin also Settings and Admin.
+- [ ] 5 wrong passwords in a row gets rate-limited.
+
+### M. Dashboard pages
+
+- [ ] Events: Start/Stop mass; Attendance tab columns (RSN, Rank, Status, Time
+      present, Plugin?, Role, Laps, Loadout); names are plain text.
+- [ ] Laps tab leaderboard; Deaths tab (name + time); Manual gap form
+      records a missing-gear note for an attendee.
+- [ ] DD tab: staff can edit call/break times; DD leaderboard top-3 and CSV
       export work.
-- [ ] Manual gap form logs a staff-entered gap for an attendee.
-- [ ] Loadouts: edit a slot's required items, search an item by name, add
-      one, delete it.
-- [ ] No "Raggers" or "Players" anywhere on the dashboard (both removed
-      2026-10-27); the event page's tab is just "Deaths", and names in tables
-      are plain text.
-- [ ] Settings: save DD tiles, regexes, min rank, grace periods, max minutes,
-      crossbow-counts-as-bow and the observer kill switch; turning the kill
-      switch off stops plugin scanning on its next status poll with no plugin
-      update.
-- [ ] Accounts: "Request one" on the login page creates a request; logging
-      in with it says it's waiting for approval. On Admin → Users, approve it
-      as Viewer/Staff/Admin (then it can log in) or reject it. Change an
-      account's role; remove an account (it's logged out straight away);
-      reset a password (temporary one shown once) - logging in with it lands
-      on Account, every other page sends you back there, and it won't accept
-      the temporary password again as the new one; once changed, the
-      dashboard works normally. The grestinator row says it can't be changed or removed and
-      has no buttons; your own row can't be demoted or removed.
-- [ ] Admin: rotate the token (shown once, old token stops working).
-- [ ] Roles: viewer sees only Events + DD Leaderboard; staff sees everything
-      except Admin.
+- [ ] Settings (admin): cards for Runner gear rules, Gear flags & observer, DD
+      calls, DD tiles (read-only); one Save at the bottom; "Settings saved".
+      Turning the observer switch off stops plugin scanning within ~10s.
+- [ ] No Raggers, Players or Loadouts pages anywhere.
 - [ ] Phone-width rendering is usable.
+- [ ] **Don't** rotate the plugin token from Admin → Groups on the live server:
+      the token is built into the plugin, so it would break every install
+      until a new plugin version ships.
 
-### Server (checked by Claude)
+### N. Server (checked by Claude)
 
+- [ ] `/docs`, `/redoc`, `/openapi.json` return 404.
+- [ ] No per-request log lines (no IPs or RSNs) and logs are size-capped.
+- [ ] A spoofed `X-Forwarded-For` from outside doesn't change the rate-limit
+      key (only `192.168.1.130` is trusted).
+- [ ] `/api/v1/status` and `/api/v1/ingest` return 401 without the token.
 - [ ] Item-name worker running (feeds the Kits item search).
 - [ ] Nightly 04:00 backup has run.
 
