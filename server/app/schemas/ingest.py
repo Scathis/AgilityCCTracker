@@ -24,15 +24,12 @@ Rsn = Annotated[str, Field(max_length=RSN_MAX_LENGTH)]
 
 
 class SelfStateIn(BaseModel):
+    # Only what the server uses: the reporter's world (FC roster diff) and
+    # which of their required slots are empty. Never skills, gear or
+    # location - older plugin builds still send skills/combat_level/
+    # equipment/wildy_level/skulled/on_course; pydantic drops unknown
+    # fields, so they're ignored.
     world: int | None = None
-    combat_level: int | None = None
-    skills: dict[str, int] | None = None
-    # No worn items: the server only ever learns which required slots are
-    # empty (loadout_failed). Older plugin builds still send "equipment";
-    # pydantic drops unknown fields, so it's ignored.
-    wildy_level: int | None = None
-    on_course: bool | None = None
-    skulled: bool | None = None
     loadout_failed: list[str] | None = None
 
 

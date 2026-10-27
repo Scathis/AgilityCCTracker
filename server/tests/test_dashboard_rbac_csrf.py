@@ -19,27 +19,27 @@ async def test_viewer_can_read_pages(client, make_user, login_as, default_group)
         assert response.status_code == 200, path
 
 
-async def test_viewer_cannot_read_kits_or_players(
+async def test_viewer_cannot_read_kits(
     client, make_user, login_as, default_group, db_session
 ):
     """Viewer's read access is deliberately scoped to Events + DD Leaderboard
-    only - Kits (then Loadouts)/Players were viewer-readable until the owner
+    only - Kits (then Loadouts) and Players were viewer-readable until the owner
     asked for them to be removed from that list."""
     user = await make_user(UserRole.VIEWER)
     login_as(user)
     kit = await _make_kit(db_session, default_group)
-    for path in ("/kits", "/kits/new", f"/kits/{kit.id}/edit", "/players"):
+    for path in ("/kits", "/kits/new", f"/kits/{kit.id}/edit"):
         response = await client.get(path)
         assert response.status_code == 403, path
 
 
-async def test_staff_can_still_read_kits_and_players(
+async def test_staff_can_still_read_kits(
     client, make_user, login_as, default_group, db_session
 ):
     user = await make_user(UserRole.STAFF)
     login_as(user)
     kit = await _make_kit(db_session, default_group)
-    for path in ("/kits", "/kits/new", f"/kits/{kit.id}/edit", "/players"):
+    for path in ("/kits", "/kits/new", f"/kits/{kit.id}/edit"):
         response = await client.get(path)
         assert response.status_code == 200, path
 
@@ -114,13 +114,17 @@ async def test_viewer_cannot_edit_kits(
         assert response.status_code == 403, path
 
 
-async def test_raggers_feature_is_gone(client, make_user, login_as, default_group):
-    """Ragger tracking was removed 2026-10-27 (owner: not something the FC
-    tracks); its pages must not come back by accident."""
+async def test_raggers_and_players_pages_are_gone(client, make_user, login_as, default_group):
+    """Ragger tracking and the Players pages (with the hiscores stats
+    lookups behind them) were removed 2026-10-27 - not something the FC
+    tracks; they must not come back by accident."""
     user = await make_user(UserRole.ADMIN)
     login_as(user)
-    assert (await client.get("/raggers")).status_code == 404
-    assert "Raggers" not in (await client.get("/events")).text
+    for path in ("/raggers", "/players", "/players/1"):
+        assert (await client.get(path)).status_code == 404, path
+    events_page = (await client.get("/events")).text
+    assert "Raggers" not in events_page
+    assert 'href="/players"' not in events_page
 
 
 async def test_staff_cannot_manage_users_or_groups(

@@ -48,7 +48,6 @@ import net.runelite.api.events.FriendsChatMemberLeft;
 import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.GameTick;
 import net.runelite.api.events.ItemContainerChanged;
-import net.runelite.api.events.StatChanged;
 import net.runelite.api.gameval.InventoryID;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.config.ConfigManager;
@@ -398,16 +397,6 @@ public class AgilityCCTrackerPlugin extends Plugin
 		FriendsChatManager fc = client.getFriendsChatManager();
 		return fc != null && status != null
 			&& FlagAccess.isConfiguredFc(Text.toJagexName(fc.getOwner()), Text.toJagexName(status.getFcOwner()));
-	}
-
-	@Subscribe
-	public void onStatChanged(StatChanged event)
-	{
-		if (unsupportedWorld() || !massParticipation.isAttending())
-		{
-			return;
-		}
-		selfStateCollector.onStatChanged();
 	}
 
 	@Subscribe

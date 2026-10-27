@@ -3,7 +3,7 @@
   <tbody>
     {% for a in attendees %}
     <tr>
-      <td><a href="/players/{{ a.player.id }}">{{ a.player.rsn }}</a></td>
+      <td>{{ a.player.rsn }}</td>
       <td>{{ a.rank }}</td>
       <td>
         {% if a.currently_present %}🟢 Present

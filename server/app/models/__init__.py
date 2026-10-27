@@ -11,14 +11,13 @@ from app.models.item import Item
 from app.models.kit import Kit, KitItem
 from app.models.lap import Lap
 from app.models.loadout import Loadout, LoadoutCheck
-from app.models.player import Player, PlayerSnapshot
+from app.models.player import Player
 from app.models.user import User
 
 __all__ = [
     "Base",
     "FcGroup",
     "Player",
-    "PlayerSnapshot",
     "Event",
     "Attendance",
     "EventParticipant",

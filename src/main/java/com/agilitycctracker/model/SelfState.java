@@ -1,25 +1,18 @@
 package com.agilitycctracker.model;
 
 import java.util.List;
-import java.util.Map;
 import lombok.Builder;
 import lombok.Value;
 
 /**
- * Everything the local player's own plugin instance may report about
- * themselves. Fields are all boxed/nullable so partial updates (only a
- * changed subset, or fields disabled by a sharing toggle) can omit sections
- * cleanly when serialised.
+ * Everything the local player's own plugin reports about themselves: their
+ * world (the server's FC roster diff needs it) and which of their required
+ * gear slots are empty. Nothing else - no skills, gear or location.
  */
 @Value
 @Builder
 public class SelfState
 {
 	Integer world;
-	Integer combatLevel;
-	Map<String, Integer> skills;
-	Integer wildyLevel;
-	Boolean onCourse;
-	Boolean skulled;
 	List<String> loadoutFailed;
 }

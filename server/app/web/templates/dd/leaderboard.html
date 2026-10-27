@@ -16,7 +16,7 @@
   <thead><tr><th>#</th><th>RSN</th><th>Time on tile</th></tr></thead>
   <tbody>
     {% for rsn, ms in leaderboard %}
-    <tr><td>{{ loop.index }}</td><td><a href="/players?q={{ rsn }}">{{ rsn }}</a></td><td>{{ (ms // 60000) }}m {{ (ms // 1000) % 60 }}s</td></tr>
+    <tr><td>{{ loop.index }}</td><td>{{ rsn }}</td><td>{{ (ms // 60000) }}m {{ (ms // 1000) % 60 }}s</td></tr>
     {% else %}
     <tr><td colspan="3">No DD data yet.</td></tr>
     {% endfor %}

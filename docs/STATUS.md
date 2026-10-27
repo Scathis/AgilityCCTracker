@@ -10,6 +10,15 @@ append-only log (that's what BUILD_LOG.md is for).
 
 ## Latest (2026-10-27, night — pre-submission clean-up)
 
+- **No stats collected.** Plugin no longer sends skills, combat level,
+  wilderness level or skull status ("Share stats" option and the
+  StatChanged listener removed); `SelfState` is now just `world` (roster
+  diff) + `loadoutFailed`. The Agility ring reads xp locally. Server:
+  Players pages, the OSRS hiscores worker (it looked up every non-plugin
+  attendee's stats), `player_snapshots` and `players.latest_snapshot_id` /
+  `hiscores_updated_at` removed (migration `a1d6e4f7c290`). Names in
+  dashboard tables are plain text now.
+
 - **The server never learns what anyone is wearing - the player included.**
   The plugin's own worn-item upload ("Share gear") is gone; only which
   required slots are empty is ever sent. Server ignores an `equipment` field

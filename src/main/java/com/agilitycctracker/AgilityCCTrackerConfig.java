@@ -60,23 +60,11 @@ public interface AgilityCCTrackerConfig extends Config
 	}
 
 	@ConfigItem(
-		keyName = "shareStats",
-		name = "Share stats",
-		description = "Upload your own skills and combat level",
-		section = sharingSection,
-		position = 0
-	)
-	default boolean shareStats()
-	{
-		return true;
-	}
-
-	@ConfigItem(
 		keyName = "shareRoster",
 		name = "Share roster",
 		description = "Upload the FC roster while an event is active",
 		section = sharingSection,
-		position = 1
+		position = 0
 	)
 	default boolean shareRoster()
 	{

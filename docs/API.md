@@ -100,7 +100,7 @@ runner by observers.
 nothing stored, no player row created) unless the reporter has an
 `ATTENDING` answer for the currently active mass. For `ANTI` reporters the
 server also drops `laps`, `dd` and `self.loadout_failed` (attendance time,
-roster, sightings, stats and deaths are still kept). Observer-reported
+roster, sightings and deaths are still kept). Observer-reported
 `loadout_checks` and DD presence about an anti, or about a plugin user who
 declined, are dropped too.
 
@@ -123,11 +123,6 @@ of intent).
   "rsn": "Player Name",
   "self": {
     "world": 330,
-    "combat_level": 98,
-    "skills": {"attack": 13034431},
-    "wildy_level": 52,
-    "on_course": true,
-    "skulled": false,
     "loadout_failed": ["HEAD"]
   },
   "laps": [{"lap_count": 1234, "completed_at": 1727190000000, "lap_time_ms": 61200, "tickets_gained": 1}],

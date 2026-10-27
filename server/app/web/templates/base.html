@@ -19,7 +19,6 @@
       <li><a href="/dd/leaderboard">DD Leaderboard</a></li>
       {% if user.role.value in ("staff", "admin") %}
       <li><a href="/kits">Kits</a></li>
-      <li><a href="/players">Players</a></li>
       {% endif %}
       {% if user.role.value == "admin" %}
       <li><a href="/settings">Settings</a></li>

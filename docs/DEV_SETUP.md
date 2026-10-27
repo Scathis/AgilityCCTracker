@@ -176,8 +176,8 @@ wired up end-to-end:
 - [ ] Die in the Wilderness → a death appears on the event's Deaths tab with
       the world and wilderness level.
 - [ ] Sidebar panel: status and the "Runners in view" list show.
-- [ ] Config toggles: turn off Share stats / Share roster in
-      turn (matching data stops reaching the dashboard); turn off FC observer
+- [ ] Config toggles: turn off Share roster (the FC member list stops
+      reaching the dashboard); turn off FC observer
       (other members stop being scanned); turn off Loadout chat warnings
       (boots warning disappears); turn off Show sidebar panel (panel goes away).
 - [ ] Blank API URL, or a wrong token → plugin sits idle without spamming
@@ -201,10 +201,9 @@ wired up end-to-end:
 - [ ] Manual gap form logs a staff-entered gap for an attendee.
 - [ ] Loadouts: edit a slot's required items, search an item by name, add
       one, delete it.
-- [ ] Players: search works; a profile shows stats, lap history and DD totals
-      (no worn gear - the server never receives it).
-- [ ] No "Raggers" anywhere on the dashboard (removed 2026-10-27); the event
-      page's tab is just "Deaths".
+- [ ] No "Raggers" or "Players" anywhere on the dashboard (both removed
+      2026-10-27); the event page's tab is just "Deaths", and names in tables
+      are plain text.
 - [ ] Settings: save DD tiles, regexes, min rank, grace periods, max minutes,
       crossbow-counts-as-bow and the observer kill switch; turning the kill
       switch off stops plugin scanning on its next status poll with no plugin
@@ -217,7 +216,7 @@ wired up end-to-end:
 
 ### Server (checked by Claude)
 
-- [ ] Hiscores and item-price workers running.
+- [ ] Item-name worker running (feeds the Kits item search).
 - [ ] Nightly 04:00 backup has run.
 
 ## 6. Testing without an IDE (beta testers)

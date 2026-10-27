@@ -17,7 +17,6 @@ class Settings(BaseSettings):
     public_read: bool = False
     log_level: str = "info"
 
-    hiscores_enabled: bool = True
     items_enabled: bool = True
     user_agent: str = "AgilityCCTracker/1.0"
 

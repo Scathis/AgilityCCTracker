@@ -1759,3 +1759,21 @@ large quantities with thousands separators.
   README, config descriptions and the Hub warning / PR draft; the PR draft's
   "gaps-only" bullet now covers the player's own gear too, and no longer
   mentions the removed DD gear check.
+
+## 2026-10-27 - Stats removed; Players pages removed
+
+- Plugin: `SelfState` reduced to `world` + `loadoutFailed`. Gone: skills,
+  combat level, wildy level, skull status, on_course (the last three were
+  never read server-side; own course presence still goes up as a course
+  sighting), the "Share stats" option and `onStatChanged`. `WildyLevelReader`
+  stays for death records. The Agility ring uses `client.getSkillExperience`
+  locally only.
+- Server: `web/routes/players.py` + templates, nav link and the player links
+  in the attendance / laps / DD leaderboard tables removed;
+  `workers/hiscores_worker.py`, `hiscores_enabled` and its tests removed;
+  `PlayerSnapshot` / `SnapshotSource` removed, `_process_self` only stores
+  the self loadout check. `SelfStateIn` only accepts `world` and
+  `loadout_failed` (older builds' extra fields are ignored). Migration
+  `a1d6e4f7c290` drops the FK, both player columns and `player_snapshots`.
+  `items_worker` kept - it feeds the Kits item search.
+- Tests: RBAC test now asserts `/players` 404s too; 102 server tests pass.

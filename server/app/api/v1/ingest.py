@@ -18,7 +18,7 @@ from app.models.event import Attendance, Event, EventParticipant
 from app.models.fc_group import FcGroup
 from app.models.lap import Lap
 from app.models.loadout import LoadoutCheck, LoadoutCheckSource
-from app.models.player import Player, PlayerSnapshot, SnapshotSource
+from app.models.player import Player
 from app.schemas.ingest import (
     DdSectionIn,
     IngestBatchIn,
@@ -65,7 +65,7 @@ async def post_ingest(
     reporter.is_plugin_user = True
     reporter.last_seen = now
 
-    # Step 2: self state -> player_snapshots (+ self-reported loadout_failed).
+    # Step 2: self-reported loadout_failed (which required slots are empty).
     # Antis are attendance-time only: no running-loadout checks.
     if batch.self_state is not None:
         if is_anti_reporter:
@@ -160,31 +160,6 @@ async def _process_self(
     self_state: SelfStateIn,
     now: dt.datetime,
 ) -> None:
-    latest = None
-    if player.latest_snapshot_id is not None:
-        result = await session.execute(
-            select(PlayerSnapshot).where(PlayerSnapshot.id == player.latest_snapshot_id)
-        )
-        latest = result.scalar_one_or_none()
-
-    changed = latest is None or (
-        latest.world != self_state.world
-        or latest.combat_level != self_state.combat_level
-        or latest.skills != self_state.skills
-    )
-    if changed:
-        snapshot = PlayerSnapshot(
-            player_id=player.id,
-            captured_at=now,
-            source=SnapshotSource.PLUGIN,
-            world=self_state.world,
-            combat_level=self_state.combat_level,
-            skills=self_state.skills,
-        )
-        session.add(snapshot)
-        await session.flush()
-        player.latest_snapshot_id = snapshot.id
-
     if active_event is not None and self_state.loadout_failed is not None:
         anchor = await running_anchor(session, active_event.fc_group_id)
         await _store_loadout_check_if_changed(

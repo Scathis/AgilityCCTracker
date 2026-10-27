@@ -37,7 +37,7 @@ this build).
    ```
    repository=https://github.com/Scathis/AgilityCCTracker.git
    commit=<full 40-char commit sha to submit>
-   warning=This plugin sends your RSN and IP address to a server not controlled or verified by the RuneLite developers, to check whether the Agility CC friends chat has a mass running. Only once you opt in to a mass (by picking Runner or Anti, or by entering the Wilderness Agility Course during it), and only for that mass, it also sends: your world, combat and skill levels, wilderness level and skull status, which of your required gear slots are empty, Wilderness Agility laps and deaths; the names, ranks and worlds of the friends chat's members; and, for chat members seen at the course, their names, which required gear slots they have empty, and their time on the chat's DD tiles during a DD call. No one's worn items or inventory are ever sent - only which required slots are empty.
+   warning=This plugin sends your RSN and IP address to a server not controlled or verified by the RuneLite developers, to check whether the Agility CC friends chat has a mass running. Only once you opt in to a mass (by picking Runner or Anti, or by entering the Wilderness Agility Course during it), and only for that mass, it also sends: your world, which of your required gear slots are empty, and your Wilderness Agility laps and deaths; the names, ranks and worlds of the friends chat's members; and, for chat members seen at the course, their names, which required gear slots they have empty, and their time on the chat's DD tiles during a DD call. No one's worn items, inventory or stats are ever sent - only which required slots are empty.
    ```
 
 ## 4. PR description

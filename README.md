@@ -72,7 +72,6 @@ Open RuneLite's configuration for **Wildy Agility FC Tracker**:
 | Setting | What it does |
 |---|---|
 | My role | Runner or Anti - remembered for the next mass. |
-| Share stats | Send your own skill levels and combat level. |
 | Share roster | Send the friends chat member list while a mass runs (how the dashboard knows who's in the chat). |
 | FC observer | Report which required slots chat members you can see at the course have empty, and their DD presence. |
 | Show sidebar panel | Show or hide the panel. |
@@ -88,9 +87,8 @@ Once you pick Runner or Anti - or walk into the course during a mass - and
 only for that mass, it sends to the Agility CC server
 (`agilitycc.grestinator.com`, not run or checked by the RuneLite developers):
 
-- your RSN, world, combat level and skill levels, wilderness level and
-  skull status, and which of your required gear slots are empty (never what
-  you're wearing);
+- your RSN and world, and which of your required gear slots are empty
+  (never what you're wearing);
 - your Wilderness Agility laps (with tickets gained) and deaths;
 - the names, ranks and worlds of the friends chat's members;
 - for chat members seen at the course: their name, which required gear slots
@@ -101,7 +99,8 @@ For antis, laps, missing-gear checks and DD calls are ignored, and nobody's plug
 reports on antis or on people who said **Not today**. The server ignores everything from a
 player who hasn't opted in to the current mass. Nothing about other players'
 locations or items ever leaves your client - and neither do your own worn
-items or inventory.
+items, inventory, skills or stats. (Your Agility level in the panel is read
+locally and never sent.)
 
 ---
 
