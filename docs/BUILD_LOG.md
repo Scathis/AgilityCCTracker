@@ -1913,3 +1913,12 @@ box outside the open search panel toggles it; the `toggle` event focuses and
 selects the slot's search input and closes any other open slot; a mousedown
 outside any slot box (or Esc) closes them, and outside the inventory search
 clears its results. Open boxes get a gold border.
+
+## 2026-10-28 - Plugin icon
+
+`icon.png` replaced: owner's AI-generated artwork (gold figure on the rope
+swing over spikes, palette from the dashboard theme). Source was RGB with a
+painted "transparency" checkerboard; keyed out (colourless pixels with every
+channel > 200), median-cleaned, cropped, box-downscaled to 40x72 and centred
+on a transparent 48x72 canvas. Checked at 1x/4x on the panel brown, RuneLite
+grey and white. The 1024x1536 original stays out of git.

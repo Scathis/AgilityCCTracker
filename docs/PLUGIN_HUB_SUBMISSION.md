@@ -19,8 +19,12 @@ this build).
 
 - [x] `runelite-plugin.properties` present and correct (description updated
       2026-10-27; the `warning=` line lives in the plugin-hub manifest below)
-- [ ] `icon.png` - still the generated placeholder; owner is sourcing real
-      artwork (must stay `icon.png` at the repo root, 48x72 per the Hub template)
+- [x] `icon.png` - done 2026-10-28: gold runner on the rope swing over the
+      spikes (the Wilderness course's first obstacle). Owner generated it with
+      another AI at 1024x1536; the painted checkerboard was keyed out (dark
+      outline makes it clean) and it was box-downscaled to 40x72 centred on a
+      transparent 48x72 canvas (the Hub's maximum). The large original is not
+      committed.
 - [ ] `LICENSE` present (BSD-2-Clause)
 - [x] **`README.md` rewritten 2026-10-27** - players' guide (prompt, roles,
       panel, kits, missing-gear checks, settings, what's shared and when), organisers'
