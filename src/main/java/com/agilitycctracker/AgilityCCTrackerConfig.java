@@ -10,29 +10,29 @@ public interface AgilityCCTrackerConfig extends Config
 {
 	@ConfigSection(
 		name = "Mass",
-		description = "Your role in the mass",
+		description = "Your role in the Agility CC mass",
 		position = 0
 	)
 	String massSection = "mass";
 
 	@ConfigSection(
 		name = "FC observer",
-		description = "Reporting which required gear slots other FC members in view have empty, and their DD presence",
-		position = 2
+		description = "What your plugin reports about other Agility CC members it can see in the course",
+		position = 1
 	)
 	String observerSection = "observer";
 
 	@ConfigSection(
 		name = "Display",
-		description = "Overlay, panel and chat display options",
-		position = 3
+		description = "Panel, chat and overlay options - nothing here changes what is sent",
+		position = 2
 	)
 	String displaySection = "display";
 
 	@ConfigItem(
 		keyName = "role",
 		name = "My role",
-		description = "Runner or Anti. Only runners get missing-gear checks and are tracked for laps and DD; antis are attendance time only.",
+		description = "Runner or Anti. Runners are tracked for laps and DD and get missing-gear checks; antis are attendance time only. Changing it mid-mass starts a separate record for the new role.",
 		section = massSection,
 		position = 0
 	)
@@ -55,7 +55,7 @@ public interface AgilityCCTrackerConfig extends Config
 	@ConfigItem(
 		keyName = "fcObserver",
 		name = "FC observer",
-		description = "Report which required gear slots FC members in view have empty (never what they are wearing), and their DD presence. Also needs the server's own observer switch enabled.",
+		description = "While you're attending and standing in the course, report Agility CC members you can see there: their name and FC rank (this is how players without the plugin get attendance), which required gear slots they have empty (never what they're wearing), and their time on the DD tiles during a DD call. Antis and people not attending are skipped. Also needs the organisers' observer switch on.",
 		section = observerSection,
 		position = 0
 	)
@@ -78,8 +78,8 @@ public interface AgilityCCTrackerConfig extends Config
 
 	@ConfigItem(
 		keyName = "loadoutWarnings",
-		name = "Gear chat warnings",
-		description = "Show a chat warning when your own gear has gaps (empty required slot, no bow/crossbow, crossbow without a shield)",
+		name = "Pre-mass check messages",
+		description = "Red chat lines about your own gear (an empty required slot, no bow/crossbow, a crossbow without a shield) and your kit. Shown once when you join a mass or log in during one, and when you open a bank if something's still missing.",
 		section = displaySection,
 		position = 1
 	)

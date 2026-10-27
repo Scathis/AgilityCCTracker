@@ -29,7 +29,7 @@ import net.runelite.client.game.ItemVariationMapping;
 /**
  * Local-only pre-course check: while a runner is attending a mass but not yet
  * in the course, compares their worn gear and inventory with the selected
- * kit and lists what's missing (sidebar + one chat line), and tells the bank
+ * kit and lists what's missing (sidebar, plus a chat line via announce()), and tells the bank
  * overlay which items to outline. Nothing here is ever uploaded.
  *
  * Item variants count as the same item (RuneLite's ItemVariationMapping), so
@@ -66,7 +66,6 @@ public class KitCheck
 	private volatile Kit activeKit;
 	private volatile List<String> missingLines = Collections.emptyList();
 	private volatile Set<Integer> missingBaseIds = Collections.emptySet();
-	private long announcedForEvent = -1;
 
 	/** The selected kit if it still exists, else the FC's default, else the first one. */
 	public static Kit selectKit(List<Kit> kits, long selectedId)
@@ -156,16 +155,30 @@ public class KitCheck
 		activeKit = kit;
 		missingLines = lines;
 		missingBaseIds = bases;
+	}
 
-		long eventId = status.getActiveEvent().getId();
-		if (announcedForEvent != eventId)
+	/**
+	 * One chat line about the kit, at a moment the plugin chooses (becoming an
+	 * attendee: {@code evenIfReady} true, so "you're all set" is said too;
+	 * opening a bank: only when something is missing). No-op unless the check
+	 * is running (runner, mass on, not in the course yet).
+	 */
+	public void announce(boolean evenIfReady)
+	{
+		Kit kit = activeKit;
+		if (kit == null || !config.loadoutWarnings())
 		{
-			announcedForEvent = eventId;
-			String text = missing.isEmpty()
-				? "Pre-mass check (" + kit.getName() + "): you're all set."
-				: "Pre-mass check (" + kit.getName() + "): " + missing.size() + " thing(s) missing - see the tracker sidebar; they're outlined in your bank.";
-			client.addChatMessage(ChatMessageType.GAMEMESSAGE, "", "<col=ff0000>" + text + "</col>", null);
+			return;
 		}
+		int missing = missingLines.size();
+		if (missing == 0 && !evenIfReady)
+		{
+			return;
+		}
+		String text = missing == 0
+			? "Pre-mass check (" + kit.getName() + "): you're all set."
+			: "Pre-mass check (" + kit.getName() + "): " + missing + " thing(s) missing - see the tracker sidebar; they're outlined in your bank.";
+		client.addChatMessage(ChatMessageType.GAMEMESSAGE, "", "<col=ff0000>" + text + "</col>", null);
 	}
 
 	public boolean isActive()
@@ -201,7 +214,6 @@ public class KitCheck
 	public void reset()
 	{
 		clear();
-		announcedForEvent = -1;
 	}
 
 	private int base(int itemId)

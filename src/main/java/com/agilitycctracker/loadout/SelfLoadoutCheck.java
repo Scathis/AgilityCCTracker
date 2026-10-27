@@ -66,7 +66,16 @@ public class SelfLoadoutCheck
 		}
 		lastFailed = failed;
 		selfStateCollector.setLoadoutFailed(failed);
+	}
 
+	/**
+	 * One chat line if a required slot is empty. Only called at the moments the
+	 * plugin chooses (becoming an attendee, opening a bank) - never on every
+	 * gear change, which spammed chat while players swapped gear or hopped.
+	 */
+	public void announce()
+	{
+		List<String> failed = getLastFailed();
 		if (config.loadoutWarnings() && !failed.isEmpty())
 		{
 			warnInChat(failed);

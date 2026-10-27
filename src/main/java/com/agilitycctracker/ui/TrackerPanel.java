@@ -128,6 +128,8 @@ public class TrackerPanel extends PluginPanel
 	private final FadeBar youBar = new FadeBar();
 	private final ThemedButton switchRole = new ThemedButton("", ThemedButton.Style.PILL);
 	private final JPanel attendButtons = transparent(new GridLayout(1, 2, 6, 0));
+	private final JPanel leaveRow = transparent(new FlowLayout(FlowLayout.LEFT, 0, 0));
+	private final ThemedButton leave = new ThemedButton("Not attending any more", ThemedButton.Style.LINK);
 	private final ThemedButton attendRunner = new ThemedButton("Runner", ThemedButton.Style.PRIMARY);
 	private final ThemedButton attendAnti = new ThemedButton("Anti", ThemedButton.Style.SECONDARY);
 	private final JLabel youError = label("", Theme.small(), Theme.BAD);
@@ -270,8 +272,23 @@ public class TrackerPanel extends PluginPanel
 		attendButtons.add(attendRunner);
 		attendButtons.add(attendAnti);
 		attendButtons.setBorder(BorderFactory.createEmptyBorder(6, 0, 0, 0));
-		youRow.add(attendButtons, BorderLayout.CENTER);
+		JPanel youBody = transparent(new GridBagLayout());
+		Stack youStack = new Stack(youBody);
+		youStack.add(attendButtons, 0);
+		leaveRow.add(leave);
+		leaveRow.setBorder(BorderFactory.createEmptyBorder(4, 0, 0, 0));
+		youStack.add(leaveRow, 0);
+		youRow.add(youBody, BorderLayout.CENTER);
 		youRow.add(youError, BorderLayout.SOUTH);
+		leave.setToolTipText("Stops tracking you for this mass. Going into the course still counts as attending.");
+		leave.addActionListener(e ->
+		{
+			StatusResponse status = statusHolder.get();
+			if (status != null && status.getActiveEvent() != null)
+			{
+				massParticipation.answer(status.getActiveEvent().getId(), false, null);
+			}
+		});
 		stack.add(youRow, 3);
 
 		attendRunner.addActionListener(e -> attend(MassRole.RUNNER));
@@ -505,6 +522,8 @@ public class TrackerPanel extends PluginPanel
 		youBar.setVisible(attending);
 		switchRole.setVisible(attending);
 		attendButtons.setVisible(!attending);
+		leaveRow.setVisible(attending);
+		leave.setEnabled(!sending);
 		attendRunner.setEnabled(!sending);
 		attendAnti.setEnabled(!sending);
 		String error = attending ? null : massParticipation.getLastError();

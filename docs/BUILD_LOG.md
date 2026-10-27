@@ -1807,3 +1807,21 @@ large quantities with thousands separators.
 - Tests: plugin `lapTimeFormat`, `aroundCourse...`; server
   `test_course_sighting_opens_attendance_with_rank`,
   `test_fc_member_list_is_ignored`; removed roster/dd-failed tests. 97 pass.
+
+## 2026-10-27 - Quieter checks, leave a mass, settings tidy
+
+- Owner: the checks spammed chat. `SelfLoadoutCheck` warned on every change
+  of the failed set (every gear swap, and again after each hop since reset()
+  cleared it); `KitCheck` re-announced whenever it was cleared (leaving the
+  course area, hops). Now neither posts on its own: the plugin sets
+  `checksDue` to ALWAYS on activation (answering the prompt, auto-attend,
+  login restore, role change) and IF_PROBLEM on `WidgetLoaded(BANKMAIN)`, and
+  `announceChecks()` posts once on the next attending tick
+  (`SelfLoadoutCheck.announce()`, `KitCheck.announce(evenIfReady)`).
+- Panel: "Not attending any more" link under "Runner | Switch to ..." ->
+  `answer(eventId, false)`; the in-course auto-attend rule still applies.
+- Config audit after the data-collection changes: sections renumbered
+  (Mass / FC observer / Display), "Gear chat warnings" -> "Pre-mass check
+  messages" (same key) covering gear + kit lines and their timing; FC
+  observer description now states exactly what it reports; role description
+  mentions the separate per-role record.

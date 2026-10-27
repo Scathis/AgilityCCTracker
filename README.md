@@ -34,6 +34,8 @@ counted as attending with your saved role, and told so in chat.
 
 Swapping mid-mass (the **Switch to...** button in the panel) starts a separate
 record, so time spent as an anti and as a runner are never mixed together.
+Changed your mind? **Not attending any more** in the panel stops tracking you
+for that mass (walking back into the course counts you as attending again).
 
 ### The sidebar panel
 
@@ -60,7 +62,8 @@ slot is **empty** (or the weapon isn't a bow/crossbow). Runners are expected to 
 (by default helm, amulet, body, legs and boots) and to use a bow or crossbow -
 a crossbow also needs something in the shield slot; a bow is two-handed, so
 an empty shield is fine. If you're missing something, you get a red chat
-line.
+line - once when you join the mass (or log in during it), and again when you
+open a bank if it's still missing. Never on every gear swap.
 
 Ranked members of the chat (the minimum rank is set by the organisers) also
 see a short label over runners in view who are missing gear, so they can help
@@ -74,9 +77,9 @@ Open RuneLite's configuration for **Wildy Agility FC Tracker**:
 | Setting | What it does |
 |---|---|
 | My role | Runner or Anti - remembered for the next mass. |
-| FC observer | Report which required slots chat members you can see at the course have empty, and their DD presence. |
+| FC observer | While you're in the course, report Agility CC members you can see there: name and FC rank (how players without the plugin get attendance), empty required slots, and DD tile time. |
 | Show sidebar panel | Show or hide the panel. |
-| Gear chat warnings | The red chat line when one of your own required slots is empty. |
+| Pre-mass check messages | The red chat lines about your own gear and kit: once when you join the mass or log in during it, and when you open a bank if something's missing. |
 | Show gear flags | The over-head labels on runners missing gear (ranked members only). |
 
 ### What's shared, and when

@@ -183,6 +183,14 @@ wired up end-to-end:
       mass's fastest; Best ever survives a client restart.
 - [ ] Server logs (`docker logs agilitycctracker-api-1`) show no per-request
       lines - no IPs or RSNs.
+- [ ] Pre-mass check chat lines (gear + kit) appear once when you join the
+      mass and once on logging in mid-mass - not on gear swaps or world hops;
+      opening a bank repeats them only if something's still missing.
+- [ ] "Not attending any more" in the panel: you drop to "Not attending", the
+      Runner/Anti buttons come back, and nothing more is tracked - unless you
+      walk into the course, which marks you attending again.
+- [ ] Plugin settings read correctly: Mass / FC observer / Display sections;
+      no Share stats/gear/roster options; "Pre-mass check messages" toggle.
 - [ ] Sidebar panel: status and the "Runners in view" list show.
 - [ ] Config toggles: turn off FC observer
       (other members stop being scanned); turn off Loadout chat warnings

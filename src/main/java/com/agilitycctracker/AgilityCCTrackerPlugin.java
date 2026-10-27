@@ -45,6 +45,8 @@ import net.runelite.api.events.FriendsChatChanged;
 import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.GameTick;
 import net.runelite.api.events.ItemContainerChanged;
+import net.runelite.api.events.WidgetLoaded;
+import net.runelite.api.gameval.InterfaceID;
 import net.runelite.api.gameval.InventoryID;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.config.ConfigManager;
@@ -164,6 +166,18 @@ public class AgilityCCTrackerPlugin extends Plugin
 	private ScheduledExecutorService executor;
 
 	private NavigationButton navigationButton;
+
+	/** When the pre-mass gear + kit chat lines are next due (see announceChecks). */
+	private enum CheckAnnouncement
+	{
+		NONE,
+		/** Became an attendee (mass start, answered, logged back in): always say the kit result. */
+		ALWAYS,
+		/** Opened a bank: only speak up if something's missing. */
+		IF_PROBLEM
+	}
+
+	private CheckAnnouncement checksDue = CheckAnnouncement.NONE;
 	private long lastAccountHash = -1;
 
 	@Provides
@@ -270,6 +284,7 @@ public class AgilityCCTrackerPlugin extends Plugin
 		{
 			selfLoadoutCheck.refresh();
 		}
+		checksDue = CheckAnnouncement.ALWAYS;
 	}
 
 	/** Drops everything gathered so far, without touching the cached /status. */
@@ -360,6 +375,7 @@ public class AgilityCCTrackerPlugin extends Plugin
 		boolean inCourse = local != null && local.getWorldLocation().getRegionID() == WILDERNESS_AGILITY_COURSE_REGION;
 		// Local-only "are you ready?" check against the chosen kit, until they reach the course.
 		kitCheck.onTick(inCourse);
+		announceChecks();
 
 		StatusResponse active = statusHolder.get();
 		if (active != null && active.getActiveEvent() != null)
@@ -380,6 +396,32 @@ public class AgilityCCTrackerPlugin extends Plugin
 		if (dd != null)
 		{
 			ddTracker.autoCloseIfExpired(System.currentTimeMillis(), dd.getMaxMinutes());
+		}
+	}
+
+	/** Posts the gear + kit chat lines once, when due - not on every change or hop. */
+	private void announceChecks()
+	{
+		if (checksDue == CheckAnnouncement.NONE)
+		{
+			return;
+		}
+		if (massParticipation.isRunner())
+		{
+			selfLoadoutCheck.refresh();
+			selfLoadoutCheck.announce();
+			kitCheck.announce(checksDue == CheckAnnouncement.ALWAYS);
+		}
+		checksDue = CheckAnnouncement.NONE;
+	}
+
+	@Subscribe
+	public void onWidgetLoaded(WidgetLoaded event)
+	{
+		if (event.getGroupId() == InterfaceID.BANKMAIN && massParticipation.isAttending()
+			&& checksDue == CheckAnnouncement.NONE)
+		{
+			checksDue = CheckAnnouncement.IF_PROBLEM;
 		}
 	}
 
