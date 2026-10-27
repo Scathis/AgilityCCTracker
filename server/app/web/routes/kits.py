@@ -24,7 +24,8 @@ from app.web.templating import templates
 
 router = APIRouter()
 
-# 28 slots, one of which always holds the course entry fee.
+# 28 inventory squares, one of which always holds the course entry fee (coins
+# stack); nothing else is assumed to stack, so items besides the fee <= 27.
 MAX_INVENTORY_LINES = 27
 MAX_QTY = 100_000
 MAX_NAME = 64
@@ -129,10 +130,14 @@ async def _apply_form(session: AsyncSession, request: Request, kit: Kit) -> None
         if item_id == COINS_ITEM_ID:
             continue  # the entry fee is fixed and always added - see app.models.kit
         inventory[item_id] = min(inventory.get(item_id, 0) + max(1, qty), MAX_QTY)
-    if len(inventory) > MAX_INVENTORY_LINES:
+    # Nothing is treated as stackable (owner: safer to over-count space than
+    # under-count it), so every item takes its own square: the fee's square
+    # plus 27 more.
+    if sum(inventory.values()) > MAX_INVENTORY_LINES:
         raise HTTPException(
             status_code=422,
-            detail=f"A kit can carry at most {MAX_INVENTORY_LINES} items besides the entry fee",
+            detail=f"That doesn't fit: a kit has {MAX_INVENTORY_LINES} inventory squares "
+            "besides the entry fee, and every item takes its own square",
         )
 
     known = await _items_by_id(session, set(equipment.values()) | set(inventory))

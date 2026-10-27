@@ -208,7 +208,7 @@
 
   <section class="editor-section">
     <h3>Inventory</h3>
-    <p><small>Fills in as you add items below.</small></p>
+    <p><small>Fills in as you add items below - one square per item.</small></p>
     <div class="inv-panel">
       <div class="inv-grid" id="inv-grid" aria-label="Inventory preview"></div>
     </div>
@@ -218,7 +218,7 @@
 
   <section class="editor-section">
     <h3>Items to carry</h3>
-    <p><small>Quantities count items, not doses: "Stamina potion &times; 2" is met by any two stamina potions of any dose. Every kit always carries the 150,000 coin course entry fee in one slot, leaving {{ max_lines }} for everything else.</small></p>
+    <p><small>Every item takes its own inventory square (nothing is assumed to stack), so a kit can carry {{ max_lines }} items besides the 150,000 coin course entry fee. Quantities count items, not doses: "Stamina potion &times; 2" is met by any two stamina potions of any dose.</small></p>
     <table class="inventory-table">
       <thead><tr><th>Item</th><th>Quantity</th><th></th></tr></thead>
       <tbody>
@@ -233,7 +233,7 @@
         <tr data-id="{{ line.item.id }}">
           <td><div class="item-cell"><img src="{{ line.item.icon }}" alt="" class="item-icon-sm" loading="lazy" onerror="this.style.visibility='hidden'">{{ line.item.name }}</div>
             <input type="hidden" name="inv_item" value="{{ line.item.id }}"></td>
-          <td><input type="number" name="inv_qty" value="{{ line.qty }}" min="1" max="100000" aria-label="Quantity"></td>
+          <td><input type="number" name="inv_qty" value="{{ line.qty }}" min="1" max="{{ max_lines }}" aria-label="Quantity"></td>
           <td><button type="button" class="secondary outline slot-remove-btn kit-remove" aria-label="Remove">&times;</button></td>
         </tr>
         {% endfor %}
@@ -241,7 +241,7 @@
     </table>
     <p id="inventory-empty" {% if inventory %}hidden{% endif %}><small>Nothing else to carry yet.</small></p>
     <div class="inv-add">
-      <input type="number" id="inv-add-qty" value="1" min="1" max="100000" aria-label="Quantity to add">
+      <input type="number" id="inv-add-qty" value="1" min="1" max="{{ max_lines }}" aria-label="Quantity to add">
       <input type="search" name="q" placeholder="Search items to carry..." autocomplete="off"
              class="kit-search"
              hx-get="/kits/search?target=INVENTORY"
@@ -298,25 +298,35 @@
     return div;
   }
 
-  // One square per line: the entry fee first, then each item in list order.
+  function qtyOf(tr) { return Math.max(1, parseInt(tr.querySelector('input[name="inv_qty"]').value, 10) || 1); }
+
+  // Squares used by everything except `skip` (a line being edited).
+  function usedSquares(skip) {
+    let used = 0;
+    rows.querySelectorAll('tr').forEach(function (tr) { if (tr !== skip) { used += qtyOf(tr); } });
+    return used;
+  }
+
+  // The entry fee (coins stack) takes the first square; nothing else is
+  // assumed to stack, so every item gets its own square, in list order.
   function renderInventory() {
     const grid = document.getElementById('inv-grid');
     grid.innerHTML = '';
     grid.appendChild(cell('{{ fee.item.icon }}', '{{ fee.item.name }}', {{ fee.qty }}, true));
-    const lines = rows.querySelectorAll('tr');
-    lines.forEach(function (tr) {
+    let filled = 1;
+    rows.querySelectorAll('tr').forEach(function (tr) {
       const img = tr.querySelector('img');
       const name = tr.querySelector('.item-cell').textContent.trim();
-      const qty = parseInt(tr.querySelector('input[name="inv_qty"]').value, 10) || 1;
-      grid.appendChild(cell(img ? img.src : '', name, qty, false));
+      for (let i = 0; i < qtyOf(tr) && filled < 28; i++, filled++) {
+        grid.appendChild(cell(img ? img.src : '', name, 1, false));
+      }
     });
-    for (let i = lines.length + 1; i < 28; i++) {
+    for (let i = filled; i < 28; i++) {
       const blank = document.createElement('div');
       blank.className = 'inv-cell';
       grid.appendChild(blank);
     }
-    document.getElementById('inv-caption').textContent =
-      (lines.length + 1) + ' / 28 slots';
+    document.getElementById('inv-caption').textContent = filled + ' / 28 squares';
   }
   function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
 
@@ -335,17 +345,23 @@
     if (String(id) === '{{ fee.item.id }}') { alert('The 150,000 coin entry fee is already in every kit.'); return; }
     const qtyInput = document.getElementById('inv-add-qty');
     const qty = Math.max(1, parseInt(qtyInput.value, 10) || 1);
+    const free = maxLines - usedSquares(null);
+    if (qty > free) {
+      alert(free > 0
+        ? 'Only ' + free + ' inventory square' + (free === 1 ? '' : 's') + ' left - every item takes its own square.'
+        : 'The inventory is full - every item takes its own square.');
+      return;
+    }
     const existing = rows.querySelector('tr[data-id="' + id + '"]');
     if (existing) {
       const q = existing.querySelector('input[name="inv_qty"]');
-      q.value = Math.min(100000, (parseInt(q.value, 10) || 0) + qty);
+      q.value = qtyOf(existing) + qty;
     } else {
-      if (rows.children.length >= maxLines) { alert('A kit can carry at most ' + maxLines + ' items besides the entry fee.'); return; }
       const tr = document.createElement('tr');
       tr.dataset.id = id;
       tr.innerHTML = '<td><div class="item-cell"><img src="' + esc(icon) + '" alt="" class="item-icon-sm" onerror="this.style.visibility=\'hidden\'">' + esc(name) + '</div>'
         + '<input type="hidden" name="inv_item" value="' + esc(id) + '"></td>'
-        + '<td><input type="number" name="inv_qty" value="' + qty + '" min="1" max="100000" aria-label="Quantity"></td>'
+        + '<td><input type="number" name="inv_qty" value="' + qty + '" min="1" max="{{ max_lines }}" aria-label="Quantity"></td>'
         + '<td><button type="button" class="secondary outline slot-remove-btn kit-remove" aria-label="Remove">&times;</button></td>';
       rows.appendChild(tr);
     }
@@ -383,7 +399,12 @@
   });
 
   form.addEventListener('input', function (e) {
-    if (e.target.name === 'inv_qty') { renderInventory(); }
+    if (e.target.name === 'inv_qty') {
+      const tr = e.target.closest('tr');
+      const room = maxLines - usedSquares(tr);
+      if ((parseInt(e.target.value, 10) || 0) > room) { e.target.value = Math.max(1, room); }
+      renderInventory();
+    }
     if (!e.target.classList.contains('kit-search') && e.target.id !== 'inv-add-qty') { markDirty(); }
   });
   renderInventory();

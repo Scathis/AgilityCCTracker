@@ -147,10 +147,11 @@ on the dashboard. Pull and rebuild the plugin first.
       "platelegs" in Body finds nothing; in Legs it does). Inventory search
       offers everything.
 - [ ] Kit editor layout: gear grid on the left, a game-style 4x7 inventory
-      on the right. The coins (150K, padlock) take the first square; each
-      item added under "Items to carry" fills the next square with its
-      stack number (yellow, white "K" from 100K), and changing a quantity or
-      removing a line updates it straight away. "N / 28 slots" below it.
+      on the right. The coins (150K, padlock) take the first square; nothing
+      else stacks, so "Shark x 3" fills three squares. Adding, removing or
+      changing a quantity updates it straight away; "N / 28 squares" below.
+      You can't add more than fits (27 items besides the coins) - the editor
+      says how many squares are left, and saving an overfull kit is refused.
       On a phone the two stack.
 - [ ] Every kit has a locked "Coins 150,000 - course entry fee" line.
 - [ ] First kit becomes the default; **Mark as default** moves it; **Edit**

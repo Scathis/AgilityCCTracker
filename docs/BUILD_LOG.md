@@ -1895,3 +1895,12 @@ square per line in list order with an OSRS-style stack label (yellow < 100K,
 white K, green M), "N / 28 slots" caption. One square per line, matching the
 server's 27-lines-plus-fee limit (stackability isn't known). The table stays
 for editing quantities. Verified with a headless-Chrome screenshot.
+
+## 2026-10-28 - Kit inventory: nothing stacks
+
+Owner: assume nothing stacks (over-counting space beats under-counting).
+The preview gives every item its own square (no stack labels except the
+coins fee); the editor refuses additions that don't fit and clamps quantity
+edits to the space left; the server rejects a kit whose inventory quantities
+sum to more than 27 (`MAX_INVENTORY_LINES`), replacing the old
+27-distinct-lines check. Test `test_every_item_takes_its_own_square`. 111 pass.

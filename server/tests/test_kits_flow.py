@@ -284,3 +284,28 @@ async def test_entry_fee_is_locked_into_every_kit(
         },
     )
     assert many.status_code == 422
+
+
+async def test_every_item_takes_its_own_square(
+    client, make_user, login_as, default_group, db_session
+):
+    """Nothing is assumed to stack: 27 items fit beside the entry fee, 28 don't."""
+    csrf = login_as(await make_user(UserRole.STAFF))
+    await _items(db_session, (385, "Shark"), (12625, "Stamina potion(4)"))
+    too_many = await client.post(
+        "/kits",
+        data={
+            "name": "Overfull",
+            "inv_item": ["385", "12625"],
+            "inv_qty": ["25", "3"],
+            "csrf_token": csrf,
+        },
+    )
+    assert too_many.status_code == 422
+    assert "doesn't fit" in too_many.text
+
+    kit_id = await _create_kit(
+        client, db_session, csrf, "Full", inv_item=["385", "12625"], inv_qty=["24", "3"]
+    )
+    rows = await _kit_items(db_session, kit_id)
+    assert sum(r.qty for r in rows if r.slot == INVENTORY) == 27
