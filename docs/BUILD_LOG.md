@@ -1555,3 +1555,23 @@ newly-restricted paths.
 
 Not a static-asset change, no `asset_version` bump needed. 86/86 tests
 passing (84 + 2 new). Deployed, committed (`9a4fcc3`) and pushed.
+
+
+## 2026-10-27 - Opt-in masses, runner/anti roles, baked-in server
+
+Owner-requested before the in-game test pass and Hub submission.
+
+- Server: `event_participants` table + migration `a7c3e91d5b24`;
+  `POST /api/v1/event/respond`; `/status.participants`; ingest opt-in gate and
+  anti filtering (laps, DD, running-loadout); observer reports about
+  antis/No-answerers dropped; dashboard "Start mass" wording and a Role column.
+  Tests: `tests/test_participation.py`, existing ingest tests now opt in via
+  `tests/helpers.py`. 94 passing.
+- Plugin: `mass/MassParticipation` (popup, restore-from-server, gating),
+  `MassRole` config dropdown, `api/ServerConfig` (URL + token compiled in; API
+  URL/token settings removed), status poll 10s, observer skips antis/No,
+  runner-only laps/DD/gear warnings, panel shows mass state + "Attend this
+  mass" button. Pure decision logic unit-tested (`MassParticipationTest`).
+- Token rotated (old one invalidated) and baked into `ServerConfig`.
+- Decisions: non-plugin FC members = runners; antis skip laps + DD only
+  (deaths kept); a closed-without-answer popup sends nothing.

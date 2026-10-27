@@ -8,6 +8,27 @@ log. Update this file's "Where things stand" / "Open items" sections at the
 end of any session that changes them — treat it like a handoff note, not an
 append-only log (that's what BUILD_LOG.md is for).
 
+## Update 2026-10-27 — opt-in masses, roles, baked-in server
+
+Built and deployed (migration `a7c3e91d5b24` applied; pre-deploy backup taken):
+
+- **Opt-in per mass.** Dashboard "Start mass" → every plugin polls `/status`
+  (now every 10s), shows a "Mass started" popup (Yes/No + Runner/Anti) and
+  does nothing until Yes. Answer stored via `POST /api/v1/event/respond`
+  (table `event_participants`); `/status` lists `participants`. Ingest from
+  anyone not ATTENDING in the active mass is dropped server-side too.
+- **Roles.** Anti = attendance time only (no laps/DD/loadout); observers skip
+  antis and No-answerers; FC members with no plugin answer count as runners.
+  Deaths are still recorded for antis (judgement call - easy to drop).
+- **Baked-in server.** URL + token compiled into `api/ServerConfig.java`, no
+  in-game setting. The token was **rotated 2026-10-27** for this and is now
+  committed in source (effectively public - protection is the opt-in rule).
+  Dev override: `-Dagilitycc.apiUrl` / `-Dagilitycc.apiToken`.
+- Also: dropped the unused account-hash upload; uvicorn trusts forwarded
+  headers only from 192.168.1.130; Hub warning text updated.
+- 94 server tests + plugin tests pass. Manual checklist in `DEV_SETUP.md` §5
+  extended (nothing ticked yet). README rewrite still pending (do last).
+
 ## Where things stand (2026-10-06)
 
 Phase 7 (deploy + hand back to owner) completed 2026-09-25. The system is

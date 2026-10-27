@@ -8,6 +8,7 @@ from fastapi.staticfiles import StaticFiles
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.api.v1.ingest import router as ingest_router
+from app.api.v1.participation import router as participation_router
 from app.api.v1.status import router as status_router
 from app.config import settings
 from app.models.user import User
@@ -69,6 +70,7 @@ async def handle_requires_login(request: Request, exc: RequiresLogin) -> Redirec
 
 app.include_router(status_router, prefix="/api/v1")
 app.include_router(ingest_router, prefix="/api/v1")
+app.include_router(participation_router, prefix="/api/v1")
 app.include_router(auth_router)
 app.include_router(events_router)
 app.include_router(dd_router)

@@ -1,7 +1,8 @@
 package com.agilitycctracker.api;
 
-import com.agilitycctracker.AgilityCCTrackerConfig;
+import com.agilitycctracker.MassRole;
 import com.agilitycctracker.model.IngestBatch;
+import com.agilitycctracker.model.RespondRequest;
 import com.agilitycctracker.model.StatusResponse;
 import com.google.gson.FieldNamingPolicy;
 import com.google.gson.Gson;
@@ -30,6 +31,7 @@ public class ApiClient
 {
 	private static final MediaType JSON = MediaType.parse("application/json; charset=utf-8");
 	private static final String PLUGIN_VERSION = "0.1.0";
+	private static final long TOKEN_RETRY_MS = 10 * 60_000;
 
 	@Inject
 	private OkHttpClient okHttpClient;
@@ -37,12 +39,10 @@ public class ApiClient
 	@Inject
 	private Gson baseGson;
 
-	@Inject
-	private AgilityCCTrackerConfig config;
-
 	private Gson gson;
 	private final AtomicInteger skipRemaining = new AtomicInteger();
 	private volatile boolean tokenInvalid;
+	private volatile long tokenInvalidAt;
 	private volatile long rateLimitedUntil;
 
 	private Gson gson()
@@ -54,7 +54,7 @@ public class ApiClient
 		return gson;
 	}
 
-	/** Call when apiUrl/apiToken change, to clear the "invalid token" latch and any backoff. */
+	/** Call when a plugin setting changes, to clear the "invalid token" latch and any backoff. */
 	public void onConfigChanged()
 	{
 		tokenInvalid = false;
@@ -100,6 +100,32 @@ public class ApiClient
 		}
 	}
 
+	/** Records the player's answer to the "mass started - attending?" prompt. */
+	public boolean postRespond(String rsn, long eventId, boolean attending, MassRole role)
+	{
+		if (!canAttempt())
+		{
+			return false;
+		}
+		String base = baseUrl();
+		if (base == null)
+		{
+			return false;
+		}
+		RequestBody body = RequestBody.create(JSON, gson().toJson(new RespondRequest(rsn, eventId, attending, role)));
+		Request request = requestBuilder(base, "/api/v1/event/respond").post(body).build();
+		try (Response response = okHttpClient.newCall(request).execute())
+		{
+			return checkCommonErrors(response) && response.isSuccessful();
+		}
+		catch (IOException e)
+		{
+			log.debug("respond request failed", e);
+			triggerBackoff();
+			return false;
+		}
+	}
+
 	public boolean postIngest(IngestBatch batch)
 	{
 		if (!canAttempt())
@@ -129,7 +155,14 @@ public class ApiClient
 	{
 		if (tokenInvalid)
 		{
-			return false;
+			// The token is compiled in, so there's nothing for the user to
+			// fix and no settings change to clear this latch - retry now and
+			// then in case the server side was just fixed or rotated back.
+			if (System.currentTimeMillis() - tokenInvalidAt < TOKEN_RETRY_MS)
+			{
+				return false;
+			}
+			tokenInvalid = false;
 		}
 		if (System.currentTimeMillis() < rateLimitedUntil)
 		{
@@ -157,6 +190,7 @@ public class ApiClient
 		if (code == 401 || code == 403)
 		{
 			tokenInvalid = true;
+			tokenInvalidAt = System.currentTimeMillis();
 			return false;
 		}
 		if (code == 429)
@@ -174,7 +208,7 @@ public class ApiClient
 
 	private String baseUrl()
 	{
-		String url = config.apiUrl();
+		String url = ServerConfig.baseUrl();
 		if (url == null)
 		{
 			return null;
@@ -201,7 +235,7 @@ public class ApiClient
 	{
 		return new Request.Builder()
 			.url(base + path)
-			.header("Authorization", "Bearer " + config.apiToken())
+			.header("Authorization", "Bearer " + ServerConfig.token())
 			.header("User-Agent", "AgilityCCTracker/" + PLUGIN_VERSION + " RuneLite/" + RuneLiteProperties.getVersion())
 			.header("Accept", "application/json")
 			.header("Content-Type", "application/json");

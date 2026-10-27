@@ -14,7 +14,7 @@ from app.db import get_session
 from app.deps import get_current_fc_group
 from app.models.dd import DdCall, DdPresence
 from app.models.death import Death
-from app.models.event import Attendance, Event
+from app.models.event import Attendance, Event, EventParticipant
 from app.models.fc_group import FcGroup
 from app.models.lap import Lap
 from app.models.loadout import Loadout, LoadoutCheck, LoadoutCheckSource, LoadoutContext
@@ -27,6 +27,12 @@ from app.schemas.ingest import (
     SelfStateIn,
 )
 from app.services.dd import PresenceMerge, find_matching_call, merge_broken_at, merge_presence
+from app.services.participation import (
+    excluded_from_gear_and_dd,
+    is_anti,
+    is_attending,
+    participants_by_rsn,
+)
 from app.services.roster import OpenSession, diff_roster
 from app.util.time import from_epoch_ms
 
@@ -41,28 +47,42 @@ async def post_ingest(
 ) -> dict:
     now = dt.datetime.utcnow()
 
+    # Step 0: opt-in gate. Nothing from a reporter is stored unless they
+    # answered "attending" for the currently active mass - no active mass,
+    # no answer, or "no" all mean the whole batch is dropped untouched.
+    active_event = await _active_event(session, fc_group.id)
+    if active_event is None:
+        return _ignored(now)
+    participants = await participants_by_rsn(session, active_event.id)
+    me = participants.get(batch.rsn)
+    if not is_attending(me):
+        return _ignored(now)
+    is_anti_reporter = is_anti(me)
+
     # Step 1: upsert reporter.
     reporter = await _get_or_create_player(session, batch.rsn, now)
     reporter.is_plugin_user = True
     reporter.last_seen = now
 
-    active_event = await _active_event(session, fc_group.id)
-
     # Step 2: self state -> player_snapshots (+ self-reported loadout_failed).
+    # Antis are attendance-time only: no running-loadout checks.
     if batch.self_state is not None:
+        if is_anti_reporter:
+            batch.self_state.loadout_failed = None
         await _process_self(session, reporter, active_event, batch.self_state, now)
 
-    # Step 3: laps.
-    for lap in batch.laps:
-        await _process_lap(
-            session,
-            reporter,
-            fc_group.id,
-            lap.lap_count,
-            lap.completed_at,
-            lap.lap_time_ms,
-            lap.tickets_gained,
-        )
+    # Step 3: laps (antis: skipped).
+    if not is_anti_reporter:
+        for lap in batch.laps:
+            await _process_lap(
+                session,
+                reporter,
+                fc_group.id,
+                lap.lap_count,
+                lap.completed_at,
+                lap.lap_time_ms,
+                lap.tickets_gained,
+            )
 
     # Step 4: deaths.
     for death in batch.deaths:
@@ -71,24 +91,32 @@ async def post_ingest(
         )
 
     # Step 5: roster.
-    if active_event is not None and batch.roster is not None:
+    if batch.roster is not None:
         reporter_world = batch.self_state.world if batch.self_state is not None else None
         await _process_roster(session, fc_group.id, active_event, reporter_world, batch.roster, now)
 
     # Step 5b: course sightings keep an open attendance session alive.
-    if active_event is not None and batch.course_sightings:
+    if batch.course_sightings:
         await _process_course_sightings(session, active_event, batch.course_sightings, now)
 
     # Step 6: observer-reported loadout checks.
-    if active_event is not None and fc_group.observer_enabled and batch.loadout_checks:
-        await _process_loadout_checks(session, active_event, batch.loadout_checks)
+    if fc_group.observer_enabled and batch.loadout_checks:
+        await _process_loadout_checks(session, active_event, batch.loadout_checks, participants)
 
     # Step 7 + 8: DD merge, then laps-during-dd.
-    if active_event is not None and batch.dd is not None:
-        await _process_dd(session, active_event, batch.dd, reporter.rsn)
+    if batch.dd is not None:
+        await _process_dd(session, active_event, batch.dd, reporter.rsn, participants)
 
     await session.commit()
     return {"ok": True, "server_time": int(now.replace(tzinfo=dt.UTC).timestamp() * 1000)}
+
+
+def _ignored(now: dt.datetime) -> dict:
+    return {
+        "ok": True,
+        "ignored": True,
+        "server_time": int(now.replace(tzinfo=dt.UTC).timestamp() * 1000),
+    }
 
 
 async def _get_or_create_player(session: AsyncSession, rsn: str, now: dt.datetime) -> Player:
@@ -353,9 +381,15 @@ async def _process_course_sightings(
 
 
 async def _process_loadout_checks(
-    session: AsyncSession, event: Event, checks: list[LoadoutCheckIn]
+    session: AsyncSession,
+    event: Event,
+    checks: list[LoadoutCheckIn],
+    participants: dict[str, EventParticipant],
 ) -> None:
     for check in checks:
+        # Antis (and plugin users who declined) are never gear-checked.
+        if excluded_from_gear_and_dd(participants.get(check.rsn)):
+            continue
         player_result = await session.execute(select(Player).where(Player.rsn == check.rsn))
         player = player_result.scalar_one_or_none()
         if player is None:
@@ -387,7 +421,11 @@ async def _process_loadout_checks(
 
 
 async def _process_dd(
-    session: AsyncSession, event: Event, dd: DdSectionIn, reporter_rsn: str
+    session: AsyncSession,
+    event: Event,
+    dd: DdSectionIn,
+    reporter_rsn: str,
+    participants: dict[str, EventParticipant],
 ) -> None:
     existing_calls_result = await session.execute(select(DdCall).where(DdCall.event_id == event.id))
     existing_calls = existing_calls_result.scalars().all()
@@ -418,6 +456,8 @@ async def _process_dd(
             dd_call.broken_at = from_epoch_ms(dd.broken_at)
 
     for presence in dd.presence:
+        if excluded_from_gear_and_dd(participants.get(presence.rsn)):
+            continue
         player = await _get_or_create_player(session, presence.rsn, dt.datetime.utcnow())
 
         existing_result = await session.execute(

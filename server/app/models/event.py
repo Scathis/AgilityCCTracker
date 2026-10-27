@@ -1,6 +1,7 @@
 import datetime as dt
+import enum
 
-from sqlalchemy import DateTime, ForeignKey, Index, Integer, String, Text
+from sqlalchemy import DateTime, Enum, ForeignKey, Index, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base
@@ -34,3 +35,31 @@ class Attendance(Base):
     # plugin user) - distinct from joined_at/left_at, which track FC-channel
     # membership. Drives the auto-timeout close in workers/attendance_timeout_worker.py.
     last_sighted_at: Mapped[dt.datetime] = mapped_column(DateTime())
+
+
+class ParticipantStatus(enum.StrEnum):
+    ATTENDING = "attending"
+    DECLINED = "declined"
+
+
+class ParticipantRole(enum.StrEnum):
+    RUNNER = "runner"
+    ANTI = "anti"
+
+
+class EventParticipant(Base):
+    """A plugin user's own answer to "mass started - attending?" for one
+    event. Absence of a row means the player never answered (or has no
+    plugin at all), which for FC members the plugin observes is treated as
+    an ordinary runner. Ingest from a reporter without an ATTENDING row for
+    the active event is ignored entirely - see api/v1/ingest.py."""
+
+    __tablename__ = "event_participants"
+    __table_args__ = (UniqueConstraint("event_id", "player_id", name="uq_event_participant"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    event_id: Mapped[int] = mapped_column(ForeignKey("events.id"), index=True)
+    player_id: Mapped[int] = mapped_column(ForeignKey("players.id"), index=True)
+    status: Mapped[ParticipantStatus] = mapped_column(Enum(ParticipantStatus, native_enum=True))
+    role: Mapped[ParticipantRole] = mapped_column(Enum(ParticipantRole, native_enum=True))
+    responded_at: Mapped[dt.datetime] = mapped_column(DateTime())

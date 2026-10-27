@@ -38,12 +38,22 @@ this build).
    ```
    repository=https://github.com/Scathis/AgilityCCTracker.git
    commit=<full 40-char commit sha to submit>
-   warning=This plugin sends your RSN, stats, world, combat level, wilderness level and skull status, worn equipment, wilderness agility laps and deaths, the names, ranks and worlds of members of the configured friends chat, the names of friends chat members seen at the Wilderness Agility Course, whether nearby friends chat members meet the chat's required loadout and whether they are on the chat's DD tiles during a DD call, and your IP address to a server not controlled or verified by the RuneLite developers.
+   warning=This plugin sends your RSN, stats, world, combat level, wilderness level and skull status, worn equipment, wilderness agility laps and deaths, the names, ranks and worlds of members of the configured friends chat, the names of friends chat members seen at the Wilderness Agility Course, whether nearby friends chat members meet the chat's required loadout and whether they are on the chat's DD tiles during a DD call, and your IP address to a server not controlled or verified by the RuneLite developers. Nothing is sent until you answer yes to a "mass started" prompt, and only for that mass.
    ```
 
 ## 4. PR description
 
 Should cover, explicitly:
+
+- **Opt-in per mass.** The plugin does nothing (beyond polling the server for
+  whether a mass is running) until the player answers Yes to a popup that
+  appears when the FC's organisers start a mass. The server also ignores
+  everything from a player who hasn't opted in. Antis (a player-chosen role)
+  are attendance-time only: no laps, no DD, no gear checks, and observers
+  never report on antis or on players who answered No.
+- **Fixed server address.** The server URL and token are compiled in (this FC
+  tool has exactly one backend); the token is not a secret and is not relied
+  on for security - the opt-in rule above is.
 
 - The **gaps-only loadout design** — other players' loadout compliance is
   reported as which named slots they failed (e.g. `"WEAPON"`), never

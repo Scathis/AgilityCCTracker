@@ -7,6 +7,14 @@ class ActiveEventOut(BaseModel):
     started_at: int
 
 
+class ParticipantOut(BaseModel):
+    rsn: str
+    # Uppercase on the wire ("ATTENDING"/"DECLINED", "RUNNER"/"ANTI") for the
+    # same reason as LoadoutOut.context: Gson maps an enum by constant name.
+    status: str
+    role: str
+
+
 class RequirementOut(BaseModel):
     slot: str
     required: bool
@@ -48,5 +56,8 @@ class StatusOut(BaseModel):
     server_time: int
     observer_enabled: bool
     active_event: ActiveEventOut | None
+    # Plugin users who answered the active mass's "attending?" prompt. A
+    # roster member who's absent here is a non-plugin user, treated as a runner.
+    participants: list[ParticipantOut]
     loadouts: list[LoadoutOut]
     dd: DdConfigOut

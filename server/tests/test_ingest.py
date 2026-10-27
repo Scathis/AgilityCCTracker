@@ -1,11 +1,14 @@
 import datetime as dt
-import secrets
 
+from helpers import _attend, _get_player, _headers, _rsn, _start_event
 from sqlalchemy import select
 
 from app.models.dd import DdPresence
 from app.models.death import Death
-from app.models.event import Attendance, Event
+from app.models.event import (
+    Attendance,
+    Event,
+)
 from app.models.lap import Lap
 from app.models.loadout import LoadoutCheck
 from app.models.player import Player
@@ -13,22 +16,10 @@ from app.seed import seed_default_loadouts
 from app.util.time import to_epoch_ms
 
 
-def _rsn() -> str:
-    return "T" + secrets.token_hex(4)
-
-
-def _headers(token: str) -> dict:
-    return {"Authorization": f"Bearer {token}"}
-
-
-async def _get_player(db_session, rsn: str) -> Player | None:
-    result = await db_session.execute(select(Player).where(Player.rsn == rsn))
-    return result.scalar_one_or_none()
-
-
 async def test_lap_ingest_is_idempotent(client, fc_group, db_session):
     group, token = fc_group
     rsn = _rsn()
+    await _attend(db_session, await _start_event(db_session, group), rsn)
     payload = {"rsn": rsn, "laps": [{"lap_count": 1, "completed_at": 1_700_000_000_000}]}
 
     assert (
@@ -46,6 +37,7 @@ async def test_lap_ingest_is_idempotent(client, fc_group, db_session):
 async def test_death_ingest_is_idempotent(client, fc_group, db_session):
     group, token = fc_group
     rsn = _rsn()
+    await _attend(db_session, await _start_event(db_session, group), rsn)
     payload = {
         "rsn": rsn,
         "deaths": [{"died_at": 1_700_000_000_000, "world": 330, "wildy_level": 12}],
@@ -78,6 +70,7 @@ async def test_lap_resolves_to_the_event_whose_window_contains_it(client, fc_gro
     await db_session.refresh(event_b)
 
     rsn = _rsn()
+    await _attend(db_session, event_b, rsn)
     in_a = to_epoch_ms(t0 + dt.timedelta(minutes=30))
     in_b = to_epoch_ms(t0 + dt.timedelta(hours=3))
     in_gap = to_epoch_ms(t0 + dt.timedelta(hours=1, minutes=30))
@@ -112,6 +105,7 @@ async def test_self_loadout_check_only_stores_on_change(client, fc_group, db_ses
     await db_session.commit()
 
     rsn = _rsn()
+    await _attend(db_session, event, rsn)
     payload = {"rsn": rsn, "self": {"loadout_failed": ["run-helm"]}}
     assert (
         await client.post("/api/v1/ingest", json=payload, headers=_headers(token))
@@ -145,8 +139,10 @@ async def test_fc_scan_loadout_check_needs_an_attendance_row(client, fc_group, d
     await db_session.refresh(event)
 
     rsn = _rsn()
+    reporter_rsn = _rsn()
+    await _attend(db_session, event, reporter_rsn)
     payload = {
-        "rsn": _rsn(),
+        "rsn": reporter_rsn,
         "loadout_checks": [
             {"rsn": rsn, "loadout_id": running.id, "failed": ["run-helm"], "ts": 1_700_000_000_000}
         ],
@@ -222,6 +218,7 @@ async def test_observer_disabled_drops_fc_scan_but_not_self(client, fc_group, db
     await db_session.commit()
 
     self_rsn = _rsn()
+    await _attend(db_session, event, self_rsn)
     payload = {
         "rsn": self_rsn,
         "self": {"loadout_failed": ["run-helm"]},
@@ -267,6 +264,8 @@ async def test_dd_presence_merges_multiple_reporters_without_duplicating(
     watched_rsn = _rsn()
     reporter_a = _rsn()
     reporter_b = _rsn()
+    await _attend(db_session, event, reporter_a)
+    await _attend(db_session, event, reporter_b)
     called_at = to_epoch_ms(dt.datetime.utcnow())
 
     payload_a = {
@@ -354,6 +353,7 @@ async def test_course_sighting_keeps_open_attendance_alive(client, fc_group, db_
     await db_session.commit()
 
     reporter_rsn = _rsn()
+    await _attend(db_session, event, reporter_rsn)
     payload = {"rsn": reporter_rsn, "course_sightings": [watched_rsn]}
     assert (
         await client.post("/api/v1/ingest", json=payload, headers=_headers(token))
@@ -376,7 +376,9 @@ async def test_course_sighting_does_not_open_a_new_attendance_record(client, fc_
     await db_session.commit()
 
     never_attended_rsn = _rsn()
-    payload = {"rsn": _rsn(), "course_sightings": [never_attended_rsn]}
+    reporter_rsn = _rsn()
+    await _attend(db_session, event, reporter_rsn)
+    payload = {"rsn": reporter_rsn, "course_sightings": [never_attended_rsn]}
     assert (
         await client.post("/api/v1/ingest", json=payload, headers=_headers(token))
     ).status_code == 200
@@ -402,14 +404,19 @@ async def test_implausibly_fast_lap_time_rejected_with_422(client, fc_group):
     assert response.status_code == 422
 
 
-async def test_a_real_lap_time_is_accepted(client, fc_group):
-    _, token = fc_group
+async def test_a_real_lap_time_is_accepted(client, fc_group, db_session):
+    group, token = fc_group
+    rsn = _rsn()
+    await _attend(db_session, await _start_event(db_session, group), rsn)
     payload = {
-        "rsn": _rsn(),
+        "rsn": rsn,
         "laps": [{"lap_count": 1, "completed_at": 1_700_000_000_000, "lap_time_ms": 45_000}],
     }
     response = await client.post("/api/v1/ingest", json=payload, headers=_headers(token))
     assert response.status_code == 200
+    player = await _get_player(db_session, rsn)
+    result = await db_session.execute(select(Lap).where(Lap.player_id == player.id))
+    assert len(result.scalars().all()) == 1
 
 
 async def test_more_than_one_ticket_per_lap_rejected_with_422(client, fc_group):

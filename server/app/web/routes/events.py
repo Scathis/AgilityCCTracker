@@ -15,6 +15,7 @@ from app.models.loadout import Loadout, LoadoutCheck, LoadoutCheckSource, Loadou
 from app.models.player import Player
 from app.models.ragger import RaggerSighting
 from app.models.user import User, UserRole
+from app.services.participation import participants_by_rsn
 from app.web.deps import (
     get_default_fc_group,
     require_role,
@@ -145,6 +146,7 @@ async def _attendance_tab(session: AsyncSession, group: FcGroup, event: Event) -
     ).scalar_one_or_none()
 
     now = dt.datetime.utcnow()
+    participants = await participants_by_rsn(session, event.id)
     by_player: dict[int, dict] = {}
     for attendance, player in rows:
         entry = by_player.setdefault(
@@ -160,6 +162,8 @@ async def _attendance_tab(session: AsyncSession, group: FcGroup, event: Event) -
                 # be read off seconds_present - tracked separately here.
                 "currently_present": False,
                 "last_left_at": None,
+                # None = no plugin answer (non-plugin FC members are treated as runners).
+                "participation": participants.get(player.rsn),
             },
         )
         left = attendance.left_at or now

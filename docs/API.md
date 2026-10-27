@@ -64,7 +64,32 @@ every 60s (and once on startup / config change) and caches it.
 `active_event` is `null` when no event is running. Regexes are matched
 case-insensitively.
 
+## `POST /api/v1/event/respond`
+
+A plugin user's answer to the "mass started - attending?" popup.
+
+```json
+{"rsn": "Player Name", "event_id": 7, "attending": true, "role": "RUNNER"}
+```
+
+`role` is `RUNNER` or `ANTI` (case-insensitive). Idempotent upsert; answering
+again while the mass is active changes the role. `409` if `event_id` isn't
+the FC's currently active mass, `422` for a bad role.
+
+`/status` lists every answer for the active mass as `participants`
+(`[{"rsn", "status": "ATTENDING"|"DECLINED", "role": "RUNNER"|"ANTI"}]`).
+Someone not listed has no plugin answer (e.g. mobile) and is treated as a
+runner by observers.
+
 ## `POST /api/v1/ingest`
+
+**Opt-in gate.** The whole batch is dropped (`200`, `{"ignored": true}`,
+nothing stored, no player row created) unless the reporter has an
+`ATTENDING` answer for the currently active mass. For `ANTI` reporters the
+server also drops `laps`, `dd` and `self.loadout_failed` (attendance time,
+roster, sightings, stats and deaths are still kept). Observer-reported
+`loadout_checks` and DD presence about an anti, or about a plugin user who
+declined, are dropped too.
 
 The plugin sends one of these every 2 seconds (fields omitted when nothing
 in that section has changed — if only `rsn` would remain, the plugin skips
@@ -125,6 +150,7 @@ see `BUILD_PLAN.md` §1.1–1.2 and `scan/FcMemberScanner`.
 
 ### Processing (one DB transaction per request)
 
+0. Opt-in gate (above).
 1. Upsert the reporter's `players` row by RSN; mark `is_plugin_user = true`,
    bump `last_seen`.
 2. `self`: stored as a new `player_snapshots` row only if it changed since

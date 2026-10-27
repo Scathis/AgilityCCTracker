@@ -1,12 +1,12 @@
 package com.agilitycctracker.ui;
 
-import com.agilitycctracker.AgilityCCTrackerConfig;
 import com.agilitycctracker.api.ApiClient;
 import com.agilitycctracker.api.StatusHolder;
 import com.agilitycctracker.collect.LapTracker;
 import com.agilitycctracker.collect.SelfStateCollector;
 import com.agilitycctracker.dd.DdTracker;
 import com.agilitycctracker.loadout.SelfLoadoutCheck;
+import com.agilitycctracker.mass.MassParticipation;
 import com.agilitycctracker.model.ActiveEvent;
 import com.agilitycctracker.model.StatusResponse;
 import com.agilitycctracker.scan.FcMemberScanner;
@@ -48,9 +48,6 @@ public class TrackerPanel extends PluginPanel
 	private ClientThread clientThread;
 
 	@Inject
-	private AgilityCCTrackerConfig config;
-
-	@Inject
 	private ApiClient apiClient;
 
 	@Inject
@@ -71,8 +68,13 @@ public class TrackerPanel extends PluginPanel
 	@Inject
 	private FcMemberScanner fcMemberScanner;
 
+	@Inject
+	private MassParticipation massParticipation;
+
 	private final JLabel connectionLabel = new JLabel();
 	private final JLabel fcLabel = new JLabel();
+	private final JLabel massLabel = new JLabel();
+	private final JButton attendButton = new JButton("Attend this mass");
 	private final JLabel courseLabel = new JLabel();
 	private final JLabel lapsLabel = new JLabel();
 	private final JLabel loadoutLabel = new JLabel();
@@ -90,7 +92,7 @@ public class TrackerPanel extends PluginPanel
 		removeAll();
 		setLayout(new BorderLayout());
 
-		for (JLabel label : new JLabel[] {connectionLabel, fcLabel, courseLabel, lapsLabel, loadoutLabel, ddLabel})
+		for (JLabel label : new JLabel[] {connectionLabel, fcLabel, massLabel, courseLabel, lapsLabel, loadoutLabel, ddLabel})
 		{
 			label.setForeground(ColorScheme.TEXT_COLOR);
 		}
@@ -101,6 +103,12 @@ public class TrackerPanel extends PluginPanel
 
 		content.add(connectionLabel);
 		content.add(fcLabel);
+		content.add(massLabel);
+		attendButton.addActionListener(e -> massParticipation.promptNow(statusHolder.get()));
+		JPanel attendRow = new JPanel(new FlowLayout(FlowLayout.LEFT));
+		attendRow.setBackground(ColorScheme.DARK_GRAY_COLOR);
+		attendRow.add(attendButton);
+		content.add(attendRow);
 		content.add(courseLabel);
 		content.add(lapsLabel);
 		content.add(loadoutLabel);
@@ -147,6 +155,9 @@ public class TrackerPanel extends PluginPanel
 			fcLabel.setText("FC: " + status.getFcName() + " - " + eventText);
 		}
 
+		massLabel.setText("Mass: " + massParticipation.describe(status));
+		attendButton.setVisible(status != null && status.getActiveEvent() != null && !massParticipation.isAttending());
+
 		boolean onCourse = selfStateCollector.isOnCourse();
 		courseLabel.setText(onCourse ? "In course area: yes" : "In course area: no");
 		courseLabel.setForeground(onCourse ? ColorScheme.PROGRESS_COMPLETE_COLOR : ColorScheme.TEXT_COLOR);
@@ -175,10 +186,6 @@ public class TrackerPanel extends PluginPanel
 
 	private String connectionStatus()
 	{
-		if (config.apiUrl() == null || config.apiUrl().trim().isEmpty())
-		{
-			return "no URL set";
-		}
 		if (apiClient.isTokenInvalid())
 		{
 			return "invalid token";

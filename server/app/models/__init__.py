@@ -5,7 +5,7 @@ be imported first elsewhere."""
 from app.models.base import Base
 from app.models.dd import DdCall, DdPresence
 from app.models.death import Death
-from app.models.event import Attendance, Event
+from app.models.event import Attendance, Event, EventParticipant
 from app.models.fc_group import FcGroup
 from app.models.item import Item
 from app.models.lap import Lap
@@ -21,6 +21,7 @@ __all__ = [
     "PlayerSnapshot",
     "Event",
     "Attendance",
+    "EventParticipant",
     "Lap",
     "Death",
     "Loadout",

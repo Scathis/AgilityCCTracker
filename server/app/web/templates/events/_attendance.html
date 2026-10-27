@@ -1,5 +1,5 @@
 <table>
-  <thead><tr><th>RSN</th><th>Rank</th><th>Status</th><th>Time present</th><th>Plugin?</th><th>Laps</th><th>Loadout</th></tr></thead>
+  <thead><tr><th>RSN</th><th>Rank</th><th>Status</th><th>Time present</th><th>Plugin?</th><th>Role</th><th>Laps</th><th>Loadout</th></tr></thead>
   <tbody>
     {% for a in attendees %}
     <tr>
@@ -12,9 +12,16 @@
       </td>
       <td>{{ (a.seconds_present // 60) }}m</td>
       <td>{{ "✅" if a.player.is_plugin_user else "—" }}</td>
+      <td>
+        {% if a.participation is none %}Runner <small>(no plugin answer)</small>
+        {% elif a.participation.status.value == "declined" %}Declined
+        {% else %}{{ a.participation.role.value|capitalize }}
+        {% endif %}
+      </td>
       <td>{{ a.laps }}</td>
       <td>
-        {% if a.loadout_gaps is none %}not checked
+        {% if a.participation is not none and a.participation.status.value == "attending" and a.participation.role.value == "anti" %}n/a (anti)
+        {% elif a.loadout_gaps is none %}not checked
         {% elif a.loadout_gaps|length == 0 %}✅ compliant
         {% else %}❌ {{ a.loadout_gaps|join(", ") }}
         {% endif %}

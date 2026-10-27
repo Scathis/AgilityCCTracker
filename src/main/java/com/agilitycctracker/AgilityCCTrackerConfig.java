@@ -9,11 +9,11 @@ import net.runelite.client.config.ConfigSection;
 public interface AgilityCCTrackerConfig extends Config
 {
 	@ConfigSection(
-		name = "Connection",
-		description = "Self-hosted server connection settings",
+		name = "Mass",
+		description = "Your role in the mass",
 		position = 0
 	)
-	String connectionSection = "connection";
+	String massSection = "mass";
 
 	@ConfigSection(
 		name = "Sharing",
@@ -37,28 +37,15 @@ public interface AgilityCCTrackerConfig extends Config
 	String displaySection = "display";
 
 	@ConfigItem(
-		keyName = "apiUrl",
-		name = "API URL",
-		description = "Base URL of the self-hosted tracker server, e.g. https://agilitycc.grestinator.com. Plugin is idle when blank.",
-		section = connectionSection,
+		keyName = "role",
+		name = "My role",
+		description = "Runner or Anti. Only runners are gear-checked and tracked for laps and DD; antis are attendance time only.",
+		section = massSection,
 		position = 0
 	)
-	default String apiUrl()
+	default MassRole role()
 	{
-		return "";
-	}
-
-	@ConfigItem(
-		keyName = "apiToken",
-		name = "API token",
-		description = "FC group token from the dashboard",
-		section = connectionSection,
-		position = 1,
-		secret = true
-	)
-	default String apiToken()
-	{
-		return "";
+		return MassRole.RUNNER;
 	}
 
 	@ConfigItem(

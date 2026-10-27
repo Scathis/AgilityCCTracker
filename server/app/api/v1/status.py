@@ -14,10 +14,12 @@ from app.schemas.status import (
     DdConfigOut,
     DdTileOut,
     LoadoutOut,
+    ParticipantOut,
     RequirementOut,
     StatusOut,
 )
 from app.services.loadouts import serialize_loadout
+from app.services.participation import participants_by_rsn
 
 router = APIRouter()
 
@@ -61,6 +63,13 @@ async def get_status(
             )
         loadout_outs.append(loadout_out)
 
+    participants: list[ParticipantOut] = []
+    if active_event is not None:
+        for rsn, participant in (await participants_by_rsn(session, active_event.id)).items():
+            participants.append(
+                ParticipantOut(rsn=rsn, status=participant.status.name, role=participant.role.name)
+            )
+
     tiles = [DdTileOut(x=t["x"], y=t["y"], plane=t["plane"]) for t in (fc_group.dd_tiles or [])]
 
     return StatusOut(
@@ -77,6 +86,7 @@ async def get_status(
             if active_event
             else None
         ),
+        participants=participants,
         loadouts=loadout_outs,
         dd=DdConfigOut(
             tiles=tiles,

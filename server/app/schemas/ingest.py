@@ -101,3 +101,10 @@ class IngestBatchIn(BaseModel):
     # sessions alive; see _process_course_sightings() and
     # workers/attendance_timeout_worker.py.
     course_sightings: list[Rsn] = Field(default_factory=list, max_length=200)
+
+
+class RespondIn(BaseModel):
+    rsn: Rsn
+    event_id: int
+    attending: bool
+    role: str = "RUNNER"

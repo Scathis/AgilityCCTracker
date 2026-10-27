@@ -15,6 +15,8 @@ public class StatusResponse
 	long serverTime;
 	boolean observerEnabled;
 	ActiveEvent activeEvent;
+	/** Plugin users who answered the active mass's prompt; null from an older server. Anyone not listed is a non-plugin FC member, treated as a runner. */
+	List<Participant> participants;
 	List<Loadout> loadouts;
 	DdConfig dd;
 }

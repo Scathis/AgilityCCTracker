@@ -38,22 +38,25 @@ Jagex accounts (legacy accounts can just log in directly, skip this):
 
 ## 4. Configure the plugin
 
-Open the plugin's config panel in RuneLite and set:
+There is nothing to configure for the connection: the server address and
+token are compiled into the plugin (`api/ServerConfig.java`), and there is no
+in-game setting for either. To point a locally-run dev client at a test
+server instead, add `-Dagilitycc.apiUrl=http://localhost:8090
+-Dagilitycc.apiToken=<token>` to the run configuration's VM options.
 
-- **API URL:** `https://agilitycc.grestinator.com`
-- **API token:** the token you were given when the FC group was created
-  (printed once at `create-group` time — ask whoever ran that command if you
-  don't have it; it is never written into this repo or any committed file,
-  and there's no way to retrieve it after the fact — only rotate it via
-  `python -m app.cli rotate-token <group_id>`, which invalidates the old one).
+In the plugin's config panel, set **My role** (Runner or Anti). Nothing is
+collected or uploaded until you answer "Yes" to the *Mass started* popup that
+appears when a mass is started from the dashboard (or press "Attend this
+mass" in the sidebar panel).
 
 ## 5. Manual test checklist
 
 Work through this in-game against the live server to confirm everything's
 wired up end-to-end:
 
-- [ ] Join the FC. Start an event on the dashboard → your account shows up
-      in that event's attendance.
+- [ ] Join the FC. Start a mass on the dashboard → a "Mass started" popup
+      appears (and a red game-chat line) within ~10s; answer Yes → your account
+      shows up in that mass's attendance.
 - [ ] Run a lap on the Wilderness Agility course → a lap row appears on the
       dashboard, with tickets and a snapshot.
 - [ ] Unequip your boots → you get a chat warning, and the dashboard shows
@@ -70,6 +73,78 @@ wired up end-to-end:
       dashboard shows arrival time, time on tile, and correctly flags the
       one that kept running. The leaderboard updates.
 - [ ] Stop the event.
+
+### Opt-in and roles (new 2026-10-27)
+
+- [ ] Before answering the popup (or after answering No): lap, die and move
+      about → nothing reaches the dashboard, the panel says "waiting for your
+      answer" / "not attending", and nothing is scanned.
+- [ ] Close the popup with the X → nothing is sent; the sidebar's "Attend this
+      mass" button re-opens it.
+- [ ] Answer Yes as **Runner** → laps, DD and own-gear warnings all work as in
+      the checks above.
+- [ ] Answer Yes as **Anti** → attendance time shows (Role column says Anti),
+      but no laps, no DD presence, no loadout warnings, and the dashboard
+      Loadout column says "n/a (anti)".
+- [ ] Change **My role** in the plugin config mid-mass → dashboard Role column
+      updates within a few seconds; runner-only behaviour switches on/off.
+- [ ] Log out and back in mid-mass → no popup; you're restored as attending
+      with the same role.
+- [ ] Stop the mass, start another → popup appears again; the old answer does
+      not carry over.
+- [ ] An observer standing next to an **anti** and a **No**-answerer doesn't
+      report either of them for gear/DD; a friend without the plugin is still
+      gear-checked as a runner.
+- [ ] No API URL / token is visible or editable anywhere in the plugin config.
+
+### Plugin, additional in-game checks
+
+- [ ] Die in the Wilderness → a death appears on the event's Deaths tab with
+      the world and wilderness level.
+- [ ] Sidebar panel: status and the "FC members in view" list show, and
+      "Copy my tile" works.
+- [ ] Config toggles: turn off Share stats / Share gear / Share roster in
+      turn (matching data stops reaching the dashboard); turn off FC observer
+      (other members stop being scanned); turn off Loadout chat warnings
+      (boots warning disappears); turn off Show sidebar panel (panel goes away).
+- [ ] Blank API URL, or a wrong token → plugin sits idle without spamming
+      errors; a wrong token shows as invalid in the panel.
+- [ ] Stand outside the course region with the observer on → no other players
+      are scanned or reported.
+- [ ] Ranked members are excluded from DD presence.
+- [ ] Switch accounts / log out and back in → state resets cleanly, nothing
+      carries over from the previous account.
+- [ ] At the course with no event running → nothing is scanned; during an
+      active event, attendance doesn't time out while you're still sighted at
+      the course.
+
+### Dashboard
+
+- [ ] Login/logout works; 5 wrong passwords gets rate-limited.
+- [ ] Event Attendance tab shows rank, time present, plugin user, loadout
+      status and laps; Laps tab shows the leaderboard and chart.
+- [ ] DD tab: staff can edit call/break times; leaderboard top-3 card and CSV
+      export work.
+- [ ] Manual gap form logs a staff-entered gap for an attendee.
+- [ ] Loadouts: edit a slot's required items, search an item by name, add
+      one, delete it.
+- [ ] Players: search works; a profile shows stats, gear (plugin users), lap
+      history and DD totals.
+- [ ] Raggers: add one, change status, log a sighting, refresh hiscores.
+- [ ] Settings: save DD tiles, regexes, min rank, grace periods, max minutes,
+      crossbow-counts-as-bow and the observer kill switch; turning the kill
+      switch off stops plugin scanning on its next status poll with no plugin
+      update.
+- [ ] Admin: create a user, reset a password, rotate the token (shown once,
+      old token stops working).
+- [ ] Roles: viewer sees only Events + DD Leaderboard; staff sees everything
+      except Admin.
+- [ ] Phone-width rendering is usable.
+
+### Server (checked by Claude)
+
+- [ ] Hiscores and item-price workers running.
+- [ ] Nightly 04:00 backup has run.
 
 ## 6. Testing without an IDE (beta testers)
 

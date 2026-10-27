@@ -6,7 +6,7 @@
 {% if user.role.value in ("staff", "admin") %}
   {% if not active_event %}
   <details>
-    <summary role="button" class="secondary">Start event</summary>
+    <summary role="button" class="secondary">Start mass</summary>
     <form method="post" action="/events">
       <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
       <label for="name">Name<input type="text" id="name" name="name" required></label>
@@ -16,10 +16,10 @@
   </details>
   {% else %}
   <p>
-    Active event: <strong>{{ active_event.name }}</strong>
+    Active mass: <strong>{{ active_event.name }}</strong>
     <form method="post" action="/events/{{ active_event.id }}/stop" style="display:inline">
       <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-      <button type="submit" class="secondary">Stop event</button>
+      <button type="submit" class="secondary">Stop mass</button>
     </form>
   </p>
   {% endif %}

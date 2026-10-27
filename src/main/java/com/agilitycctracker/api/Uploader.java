@@ -1,11 +1,11 @@
 package com.agilitycctracker.api;
 
-import com.agilitycctracker.AgilityCCTrackerConfig;
 import com.agilitycctracker.collect.DeathTracker;
 import com.agilitycctracker.collect.LapTracker;
 import com.agilitycctracker.collect.RosterTracker;
 import com.agilitycctracker.collect.SelfStateCollector;
 import com.agilitycctracker.dd.DdTracker;
+import com.agilitycctracker.mass.MassParticipation;
 import com.agilitycctracker.model.DdSection;
 import com.agilitycctracker.model.DeathEvent;
 import com.agilitycctracker.model.IngestBatch;
@@ -22,27 +22,22 @@ import java.util.Set;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import lombok.extern.slf4j.Slf4j;
-import net.runelite.api.Client;
-import net.runelite.api.Player;
 
 /**
  * Builds and sends one {@link IngestBatch} per upload tick, and separately
  * polls {@code /status} on its own slower cadence (BUILD_PLAN.md §5.6).
  * Both entry points ({@link #upload()}, {@link #pollStatus()}) are called
  * from the plugin's {@code @Schedule} methods, which already run off the
- * client thread — nothing here calls {@code client.*} except cheap reads of
- * already-current fields ({@code getLocalPlayer()}), matching how RuneLite
- * documents it as safe from any thread.
+ * client thread — nothing here calls {@code client.*} at all (the local
+ * player's name comes from MassParticipation, which the plugin refreshes
+ * each game tick).
  */
 @Slf4j
 @Singleton
 public class Uploader
 {
 	@Inject
-	private Client client;
-
-	@Inject
-	private AgilityCCTrackerConfig config;
+	private MassParticipation massParticipation;
 
 	@Inject
 	private ApiClient apiClient;
@@ -70,34 +65,26 @@ public class Uploader
 
 	private Long lastDdSentAt;
 
-	private boolean hasApiUrl()
-	{
-		String url = config.apiUrl();
-		return url != null && !url.trim().isEmpty();
-	}
-
 	public void pollStatus()
 	{
-		if (!hasApiUrl())
-		{
-			return;
-		}
 		StatusResponse status = apiClient.getStatus();
 		if (status != null)
 		{
 			statusHolder.set(status);
+			massParticipation.onStatus(status);
 		}
 	}
 
 	public void upload()
 	{
-		if (!hasApiUrl())
+		// Nothing leaves the client until the player has said they're
+		// attending the active mass (see MassParticipation).
+		if (!massParticipation.isAttending())
 		{
 			return;
 		}
 
-		Player local = client.getLocalPlayer();
-		String rsn = local != null ? local.getName() : null;
+		String rsn = massParticipation.getLocalRsn();
 		if (rsn == null)
 		{
 			return;

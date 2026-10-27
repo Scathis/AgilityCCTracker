@@ -11,6 +11,7 @@ import com.agilitycctracker.dd.DdCallDetector;
 import com.agilitycctracker.dd.DdTracker;
 import com.agilitycctracker.dd.SelfDdSampler;
 import com.agilitycctracker.loadout.SelfLoadoutCheck;
+import com.agilitycctracker.mass.MassParticipation;
 import com.agilitycctracker.model.DdConfig;
 import com.agilitycctracker.model.StatusResponse;
 import com.agilitycctracker.scan.FcMemberScanner;
@@ -21,6 +22,7 @@ import java.io.IOException;
 import java.time.temporal.ChronoUnit;
 import java.util.EnumSet;
 import java.util.Set;
+import java.util.concurrent.ScheduledExecutorService;
 import javax.imageio.ImageIO;
 import javax.inject.Inject;
 import javax.swing.SwingUtilities;
@@ -49,6 +51,7 @@ import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.task.Schedule;
 import net.runelite.client.ui.ClientToolbar;
 import net.runelite.client.ui.NavigationButton;
+import net.runelite.client.util.Text;
 
 /**
  * Ties everything together: holds the {@code @Subscribe}/{@code @Schedule}
@@ -120,6 +123,9 @@ public class AgilityCCTrackerPlugin extends Plugin
 	private SelfDdSampler selfDdSampler;
 
 	@Inject
+	private MassParticipation massParticipation;
+
+	@Inject
 	private TrackerPanel trackerPanel;
 
 	@Inject
@@ -127,6 +133,9 @@ public class AgilityCCTrackerPlugin extends Plugin
 
 	@Inject
 	private ClientThread clientThread;
+
+	@Inject
+	private ScheduledExecutorService executor;
 
 	private NavigationButton navigationButton;
 	private long lastAccountHash = -1;
@@ -142,6 +151,10 @@ public class AgilityCCTrackerPlugin extends Plugin
 	{
 		log.info("Wildy Agility FC Tracker started");
 		lastAccountHash = client.getAccountHash();
+
+		massParticipation.setCallbacks(
+			() -> clientThread.invoke(this::onMassActivated),
+			() -> clientThread.invoke(this::clearCollected));
 
 		trackerPanel.init();
 		if (config.showPanel())
@@ -214,6 +227,29 @@ public class AgilityCCTrackerPlugin extends Plugin
 		return false;
 	}
 
+	/** The player just became an attendee (or changed role): start from a clean slate and push a fresh picture. */
+	private void onMassActivated()
+	{
+		clearCollected();
+		rosterTracker.onFriendsChatJoined();
+		if (massParticipation.isRunner())
+		{
+			selfLoadoutCheck.refresh();
+		}
+	}
+
+	/** Drops everything gathered so far, without touching the cached /status. */
+	private void clearCollected()
+	{
+		selfStateCollector.reset();
+		lapTracker.reset();
+		deathTracker.reset();
+		rosterTracker.reset();
+		selfLoadoutCheck.reset();
+		fcMemberScanner.reset();
+		ddTracker.reset();
+	}
+
 	private void resetState()
 	{
 		selfStateCollector.reset();
@@ -233,6 +269,12 @@ public class AgilityCCTrackerPlugin extends Plugin
 		if (state == GameState.LOGIN_SCREEN || state == GameState.HOPPING)
 		{
 			resetState();
+			if (state == GameState.LOGIN_SCREEN)
+			{
+				// Logged out: the answer is restored from the server on the next login.
+				massParticipation.setLocalRsn(null);
+				massParticipation.reset();
+			}
 		}
 		else if (state == GameState.LOGGED_IN)
 		{
@@ -247,26 +289,33 @@ public class AgilityCCTrackerPlugin extends Plugin
 
 	private void pollStatusImmediately()
 	{
-		new Thread(uploader::pollStatus, "AgilityCCTracker-status-poll").start();
+		executor.submit(uploader::pollStatus);
 	}
 
 	@Subscribe
 	public void onGameTick(GameTick event)
 	{
 		long hash = client.getAccountHash();
+		Player local = client.getLocalPlayer();
+		massParticipation.setLocalRsn(local != null && local.getName() != null ? Text.toJagexName(local.getName()) : null);
+
 		if (hash != lastAccountHash)
 		{
 			resetState();
+			massParticipation.reset();
 			lastAccountHash = hash;
 		}
 
-		if (unsupportedWorld())
+		if (unsupportedWorld() || !massParticipation.isAttending())
 		{
 			return;
 		}
 
 		fcMemberScanner.onTick();
-		selfDdSampler.onTick();
+		if (massParticipation.isRunner())
+		{
+			selfDdSampler.onTick();
+		}
 
 		StatusResponse status = statusHolder.get();
 		DdConfig dd = status != null ? status.getDd() : null;
@@ -279,7 +328,7 @@ public class AgilityCCTrackerPlugin extends Plugin
 	@Subscribe
 	public void onStatChanged(StatChanged event)
 	{
-		if (unsupportedWorld())
+		if (unsupportedWorld() || !massParticipation.isAttending())
 		{
 			return;
 		}
@@ -289,12 +338,12 @@ public class AgilityCCTrackerPlugin extends Plugin
 	@Subscribe
 	public void onItemContainerChanged(ItemContainerChanged event)
 	{
-		if (unsupportedWorld())
+		if (unsupportedWorld() || !massParticipation.isAttending())
 		{
 			return;
 		}
 		selfStateCollector.onItemContainerChanged(event);
-		if (event.getContainerId() == InventoryID.WORN)
+		if (event.getContainerId() == InventoryID.WORN && massParticipation.isRunner())
 		{
 			selfLoadoutCheck.refresh();
 		}
@@ -303,7 +352,8 @@ public class AgilityCCTrackerPlugin extends Plugin
 	@Subscribe
 	public void onChatMessage(ChatMessage event)
 	{
-		if (unsupportedWorld())
+		// Laps and DD calls are runner-only; antis are attendance time only.
+		if (unsupportedWorld() || !massParticipation.isRunner())
 		{
 			return;
 		}
@@ -314,7 +364,7 @@ public class AgilityCCTrackerPlugin extends Plugin
 	@Subscribe
 	public void onActorDeath(ActorDeath event)
 	{
-		if (unsupportedWorld())
+		if (unsupportedWorld() || !massParticipation.isAttending())
 		{
 			return;
 		}
@@ -324,12 +374,20 @@ public class AgilityCCTrackerPlugin extends Plugin
 	@Subscribe
 	public void onFriendsChatMemberJoined(FriendsChatMemberJoined event)
 	{
+		if (!massParticipation.isAttending())
+		{
+			return;
+		}
 		rosterTracker.onMemberChanged();
 	}
 
 	@Subscribe
 	public void onFriendsChatMemberLeft(FriendsChatMemberLeft event)
 	{
+		if (!massParticipation.isAttending())
+		{
+			return;
+		}
 		rosterTracker.onMemberChanged();
 	}
 
@@ -344,7 +402,10 @@ public class AgilityCCTrackerPlugin extends Plugin
 				log.info("Joined friends chat - name='{}' owner='{}' myRank={} memberCount={}",
 					fc.getName(), fc.getOwner(), fc.getMyRank(), fc.getMembers().length);
 			}
-			rosterTracker.onFriendsChatJoined();
+			if (massParticipation.isAttending())
+			{
+				rosterTracker.onFriendsChatJoined();
+			}
 		}
 	}
 
@@ -356,8 +417,18 @@ public class AgilityCCTrackerPlugin extends Plugin
 			return;
 		}
 		apiClient.onConfigChanged();
-		uploader.pollStatus();
-		selfLoadoutCheck.refresh();
+
+		if ("role".equals(event.getKey()))
+		{
+			// Antis are attendance-time only: drop anything runner-specific already gathered.
+			selfLoadoutCheck.reset();
+			selfStateCollector.reset();
+			massParticipation.onRoleChanged(statusHolder.get());
+		}
+		else if (massParticipation.isRunner())
+		{
+			selfLoadoutCheck.refresh();
+		}
 
 		if ("showPanel".equals(event.getKey()))
 		{
@@ -375,7 +446,7 @@ public class AgilityCCTrackerPlugin extends Plugin
 	@Schedule(period = 1, unit = ChronoUnit.SECONDS)
 	public void onSecondTick()
 	{
-		if (!unsupportedWorld())
+		if (!unsupportedWorld() && massParticipation.isAttending())
 		{
 			selfStateCollector.onTick();
 			rosterTracker.onTick();
@@ -393,7 +464,8 @@ public class AgilityCCTrackerPlugin extends Plugin
 		uploader.upload();
 	}
 
-	@Schedule(period = 60, unit = ChronoUnit.SECONDS, asynchronous = true)
+	// 10s so the "mass started" prompt appears promptly after the dashboard starts one.
+	@Schedule(period = 10, unit = ChronoUnit.SECONDS, asynchronous = true)
 	public void onStatusTick()
 	{
 		uploader.pollStatus();
@@ -401,6 +473,9 @@ public class AgilityCCTrackerPlugin extends Plugin
 		// container, which RuneLite requires happen on the client thread -
 		// this @Schedule method is asynchronous (needed for pollStatus()'s
 		// blocking HTTP call), so hop back for just this call.
-		clientThread.invoke(selfLoadoutCheck::refresh);
+		if (massParticipation.isRunner())
+		{
+			clientThread.invoke(selfLoadoutCheck::refresh);
+		}
 	}
 }

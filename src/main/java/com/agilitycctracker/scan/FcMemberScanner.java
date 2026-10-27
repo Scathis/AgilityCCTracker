@@ -1,6 +1,7 @@
 package com.agilitycctracker.scan;
 
 import com.agilitycctracker.AgilityCCTrackerConfig;
+import com.agilitycctracker.MassRole;
 import com.agilitycctracker.api.StatusHolder;
 import com.agilitycctracker.dd.DdTracker;
 import com.agilitycctracker.loadout.ItemNameResolver;
@@ -11,6 +12,7 @@ import com.agilitycctracker.loadout.Slot;
 import com.agilitycctracker.loadout.WornItem;
 import com.agilitycctracker.model.DdTile;
 import com.agilitycctracker.model.LoadoutCheckDto;
+import com.agilitycctracker.model.Participant;
 import com.agilitycctracker.model.StatusResponse;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -117,6 +119,20 @@ public class FcMemberScanner
 		FriendsChatManager fc = client.getFriendsChatManager();
 		long now = System.currentTimeMillis();
 
+		// Plugin users who answered "no" or are antis are never gear-checked or
+		// DD-tracked. Anyone not listed (no plugin, e.g. mobile) is a runner.
+		Set<String> excluded = new HashSet<>();
+		if (status.getParticipants() != null)
+		{
+			for (Participant participant : status.getParticipants())
+			{
+				if (!participant.isAttending() || participant.getRole() == MassRole.ANTI)
+				{
+					excluded.add(participant.getRsn().toLowerCase());
+				}
+			}
+		}
+
 		int scanned = 0;
 		for (Player p : client.getTopLevelWorldView().players())
 		{
@@ -128,9 +144,13 @@ public class FcMemberScanner
 			{
 				continue;
 			}
+			String rsn = Text.toJagexName(p.getName());
+			if (excluded.contains(rsn.toLowerCase()))
+			{
+				continue;
+			}
 			scanned++;
 
-			String rsn = Text.toJagexName(p.getName());
 			WorldPoint location = p.getWorldLocation();
 			boolean onDdTile = isOnAnyTile(location, tiles);
 			boolean inCourseArea = location.getRegionID() == WILDERNESS_AGILITY_COURSE_REGION;
