@@ -44,19 +44,22 @@ in-game setting for either. To point a locally-run dev client at a test
 server instead, add `-Dagilitycc.apiUrl=http://localhost:8090
 -Dagilitycc.apiToken=<token>` to the run configuration's VM options.
 
-In the plugin's config panel, set **My role** (Runner or Anti). Nothing is
-collected or uploaded until you answer "Yes" to the *Mass started* popup that
-appears when a mass is started from the dashboard (or press "Attend this
-mass" in the sidebar panel).
+Nothing is collected or uploaded until you pick **Runner** or **Anti** on the
+in-game *Agility mass started* prompt (top of the game view) that appears when
+a mass is started from the dashboard, or on the same buttons in the sidebar
+panel. Your choice is remembered as **My role** in the plugin config.
 
 ## 5. Manual test checklist
 
 Work through this in-game against the live server to confirm everything's
 wired up end-to-end:
 
-- [ ] Join the FC. Start a mass on the dashboard → a "Mass started" popup
-      appears (and a red game-chat line) within ~10s; answer Yes → your account
-      shows up in that mass's attendance.
+- [ ] Join the FC. Start a mass on the dashboard → within ~10s the in-game
+      "Agility mass started" prompt appears at the top of the game view (no
+      separate window, game keeps focus) plus an orange chat line; click
+      **Runner** → your account shows up in that mass's attendance.
+- [ ] Clicking the prompt's buttons never also clicks the game underneath
+      (no walking/interacting). Alt+drag moves it; it stays where you put it.
 - [ ] Run a lap on the Wilderness Agility course → a lap row appears on the
       dashboard, with tickets and a snapshot.
 - [ ] Unequip your boots → you get a chat warning ("FC gear check: No boots"),
@@ -79,14 +82,14 @@ wired up end-to-end:
 
 ### Opt-in and roles (new 2026-10-27)
 
-- [ ] Before answering the popup (or after answering No), *outside the
-      course*: die and move about → nothing reaches the dashboard, the panel says "waiting for your
-      answer" / "not attending", and nothing is scanned.
-- [ ] Close the popup with the X → nothing is sent; the sidebar's "Attend this
-      mass" button re-opens it.
-- [ ] Answer **No** (or close the popup), then walk into the course → within a
-      tick you're marked attending with your configured role, a red chat line
-      says so, and the dashboard shows you. Same if you never answered.
+- [ ] Before answering the prompt (or after **Not today**), *outside the
+      course*: die and move about → nothing reaches the dashboard, the panel
+      says "Are you attending?" / "Not attending", and nothing is scanned.
+- [ ] Close the prompt with its × → nothing is sent; the sidebar's Runner /
+      Anti buttons still answer.
+- [ ] Answer **Not today** (or close the prompt), then walk into the course →
+      within a tick you're marked attending with your configured role, a chat
+      line says so, and the dashboard shows you. Same if you never answered.
 - [ ] In the course but in a **different** friends chat → not auto-marked.
 - [ ] Answer Yes as **Runner** → laps, DD and own-gear warnings all work as in
       the checks above.
@@ -94,14 +97,21 @@ wired up end-to-end:
       but no laps, no DD presence, no loadout warnings, and the dashboard
       Loadout column says "n/a (anti)". Dying in the course as an anti still
       shows up on the dashboard's deaths.
-- [ ] Change **My role** in the plugin config mid-mass (e.g. Anti → Runner →
-      Anti) → the dashboard Attendance tab shows a separate row per role, each
+- [ ] Switch role mid-mass with the panel's "Switch to …" link (or **My
+      role** in the plugin config), e.g. Anti → Runner → Anti → the dashboard Attendance tab shows a separate row per role, each
       with its own time present and laps (never combined); runner-only
       behaviour switches on/off.
-- [ ] Log out and back in mid-mass → no popup; you're restored as attending
+- [ ] Log out and back in mid-mass → no prompt; you're restored as attending
       with the same role.
-- [ ] Stop the mass, start another → popup appears again; the old answer does
+- [ ] Stop the mass, start another → prompt appears again; the old answer does
       not carry over.
+- [ ] Sidebar panel (new look): Agility ring shows your level (fills to 99;
+      past 99 a brighter second lap + inward fill, solid at 200M - hover for
+      exact xp); your name; FC box says "Agility CC" with a green tick /
+      "Joined" in the FC and a red cross / "Not joined" + join hint outside it;
+      mass row shows "Running - Nm" or "No mass running"; connection status in
+      small print at the bottom. Nothing is cut off or causes a sideways
+      scrollbar.
 - [ ] An observer standing next to an **anti** and a **No**-answerer doesn't
       report either of them for gear/DD; a friend without the plugin is still
       gear-checked as a runner.

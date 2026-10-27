@@ -45,7 +45,8 @@ this build).
 Should cover, explicitly:
 
 - **Opt-in per mass.** The plugin does nothing (beyond polling the server for
-  whether a mass is running) until the player answers Yes to a popup that
+  whether a mass is running) until the player picks Runner or Anti on an
+  in-game prompt (drawn inside the game view, never a separate window) that
   appears when the FC's organisers start a mass - or walks into the Wilderness
   Agility Course while in that friends chat during the mass, which counts as
   attending (they're told so in chat). The server also ignores

@@ -8,7 +8,24 @@ log. Update this file's "Where things stand" / "Open items" sections at the
 end of any session that changes them — treat it like a handoff note, not an
 append-only log (that's what BUILD_LOG.md is for).
 
-## Latest (2026-10-27, end of day)
+## Latest (2026-10-27, evening — owner test notes, round 1)
+
+- The Swing "Mass started" popup is gone: it stole focus mid-game. Replaced by
+  `ui/MassPromptOverlay` - an in-game box (top centre, movable) with Runner /
+  Anti / Not today and a × to hide; clicks on it are consumed so they never
+  reach the game. `MassParticipation.answer()` / `getPendingPrompt()` drive it.
+- Sidebar redesigned in the dashboard palette + RuneScape fonts (`ui/Theme`):
+  Agility ring (`ui/AgilityRing`, fills to 99 then "overcharges" inward to
+  solid at 200M), name, diamond divider, status box (FC name only, joined
+  tick/cross + join hint, mass running/elapsed, attend buttons or "Attending
+  as X" + switch-role link), session / kit / runners-in-view cards, connection
+  in small print at the bottom.
+- Auto-joining the FC from the panel was asked for and **not built**: it would
+  mean the plugin typing into the chat-channel join box for the player, which
+  the Plugin Hub rejects as automation (and Jagex's third-party client rules
+  forbid). The panel shows a join hint instead.
+
+## Earlier (2026-10-27, end of day)
 
 Everything below plus: per-role stints, rank-gated gear flags + over-head
 overlay, in-course = attending, the loadout editor replaced by Settings gear

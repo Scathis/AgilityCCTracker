@@ -1668,3 +1668,32 @@ and the editor shows it as a locked row. That leaves 27 inventory lines for
 everything else. Coins aren't in the `items` table (the wiki price mapping
 leaves them out), hence the hard-coded id. Plugin pre-course check formats
 large quantities with thousands separators.
+
+## 2026-10-27 - In-game mass prompt + sidebar redesign (owner test notes, round 1)
+
+- **Popup → in-game prompt.** The `JOptionPane` "Mass started" dialog stole
+  focus mid-game. Replaced with `ui/MassPromptOverlay`: an `Overlay`
+  (TOP_CENTER, ABOVE_WIDGETS, movable) that's also a RuneLite `MouseListener`.
+  Buttons Runner / Anti / Not today plus a × (hide without answering). Left
+  presses/releases/clicks inside its bounds are consumed so they never reach
+  the game; alt+drag is left alone for RuneLite's own overlay moving.
+  `MassParticipation` lost all Swing: `showPrompt` now just sets
+  `pendingPrompt` + an orange chat line; new `answer(eventId, yes, role)`
+  (saves the role to config, guards double-sends via `sending`),
+  `dismissPrompt()`, `hasDeclined()`, `getLastError()`. `promptNow`/`describe`
+  removed.
+- **Sidebar redesign.** Dashboard palette (`osrs-theme.css` hexes) and the
+  RuneScape fonts via `FontManager`, collected in `ui/Theme`. New painted
+  components: `AgilityRing` (fill by level to 99; past 99 a near-white second
+  lap and an inward radial fill whose glow/brightness scale with progress to
+  200M; level number outlined for legibility), `OrnamentDivider` (diamond with
+  fading lines), `ThemedButton` (LAF-independent primary/secondary/link),
+  `StatusMark` (tick/cross). Client-thread reads moved into `PanelSnapshot`
+  (name, Agility xp, in tracked FC) built in `onSecondTick`. FC row shows only
+  the FC name (no event name). Connection status moved to small print at the
+  bottom with the host and "Copy my tile".
+- **FC auto-join: declined.** Would require the plugin to type into the
+  chat-channel join box on the player's behalf - automation the Plugin Hub
+  rejects. Join hint shown instead.
+- Tests: `ui/AgilityRingTest` (level fraction, overcharge, xp formatting).
+  Previews were rendered headless to check the ring and prompt visuals.

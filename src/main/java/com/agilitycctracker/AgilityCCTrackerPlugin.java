@@ -19,6 +19,8 @@ import com.agilitycctracker.scan.FlagAccess;
 import com.agilitycctracker.kit.KitCheck;
 import com.agilitycctracker.ui.GearFlagOverlay;
 import com.agilitycctracker.ui.KitBankOverlay;
+import com.agilitycctracker.ui.MassPromptOverlay;
+import com.agilitycctracker.ui.PanelSnapshot;
 import com.agilitycctracker.ui.TrackerPanel;
 import com.google.inject.Provides;
 import java.awt.image.BufferedImage;
@@ -34,6 +36,7 @@ import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
 import net.runelite.api.GameState;
 import net.runelite.api.Player;
+import net.runelite.api.Skill;
 import net.runelite.api.WorldType;
 import net.runelite.api.events.ActorDeath;
 import net.runelite.api.events.ChatMessage;
@@ -49,6 +52,7 @@ import net.runelite.api.gameval.InventoryID;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.events.ConfigChanged;
+import net.runelite.client.input.MouseManager;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
@@ -145,6 +149,12 @@ public class AgilityCCTrackerPlugin extends Plugin
 	private KitBankOverlay kitBankOverlay;
 
 	@Inject
+	private MassPromptOverlay massPromptOverlay;
+
+	@Inject
+	private MouseManager mouseManager;
+
+	@Inject
 	private OverlayManager overlayManager;
 
 	@Inject
@@ -178,6 +188,8 @@ public class AgilityCCTrackerPlugin extends Plugin
 		trackerPanel.init();
 		overlayManager.add(gearFlagOverlay);
 		overlayManager.add(kitBankOverlay);
+		overlayManager.add(massPromptOverlay);
+		mouseManager.registerMouseListener(massPromptOverlay);
 		if (config.showPanel())
 		{
 			addPanel();
@@ -196,6 +208,8 @@ public class AgilityCCTrackerPlugin extends Plugin
 		log.info("Wildy Agility FC Tracker stopped");
 		overlayManager.remove(gearFlagOverlay);
 		overlayManager.remove(kitBankOverlay);
+		overlayManager.remove(massPromptOverlay);
+		mouseManager.unregisterMouseListener(massPromptOverlay);
 		removePanel();
 	}
 
@@ -340,11 +354,8 @@ public class AgilityCCTrackerPlugin extends Plugin
 		{
 			// In the course during a mass = attended, whatever the popup said.
 			StatusResponse status = statusHolder.get();
-			FriendsChatManager fc = client.getFriendsChatManager();
 			boolean inCourse = local != null && local.getWorldLocation().getRegionID() == WILDERNESS_AGILITY_COURSE_REGION;
-			boolean inTrackedFc = fc != null && status != null
-				&& FlagAccess.isConfiguredFc(Text.toJagexName(fc.getOwner()), Text.toJagexName(status.getFcOwner()));
-			massParticipation.onLocation(status, inCourse, inTrackedFc);
+			massParticipation.onLocation(status, inCourse, inTrackedFc(status));
 			kitCheck.reset();
 			return;
 		}
@@ -364,6 +375,14 @@ public class AgilityCCTrackerPlugin extends Plugin
 		{
 			ddTracker.autoCloseIfExpired(System.currentTimeMillis(), dd.getMaxMinutes());
 		}
+	}
+
+	/** In the friends chat the server tracks (client thread). */
+	private boolean inTrackedFc(StatusResponse status)
+	{
+		FriendsChatManager fc = client.getFriendsChatManager();
+		return fc != null && status != null
+			&& FlagAccess.isConfiguredFc(Text.toJagexName(fc.getOwner()), Text.toJagexName(status.getFcOwner()));
 	}
 
 	@Subscribe
@@ -495,8 +514,10 @@ public class AgilityCCTrackerPlugin extends Plugin
 		// This method runs on the client thread, so read here (not inside
 		// TrackerPanel.refresh(), which runs on the EDT via invokeLater).
 		Player local = client.getLocalPlayer();
-		String localRsn = local != null ? local.getName() : null;
-		SwingUtilities.invokeLater(() -> trackerPanel.refresh(localRsn));
+		PanelSnapshot snapshot = local != null && local.getName() != null
+			? new PanelSnapshot(local.getName(), client.getSkillExperience(Skill.AGILITY), inTrackedFc(statusHolder.get()))
+			: PanelSnapshot.LOGGED_OUT;
+		SwingUtilities.invokeLater(() -> trackerPanel.refresh(snapshot));
 	}
 
 	@Schedule(period = 2, unit = ChronoUnit.SECONDS, asynchronous = true)

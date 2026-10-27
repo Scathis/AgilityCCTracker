@@ -6,16 +6,9 @@ import com.agilitycctracker.api.ApiClient;
 import com.agilitycctracker.model.ActiveEvent;
 import com.agilitycctracker.model.Participant;
 import com.agilitycctracker.model.StatusResponse;
-import java.awt.GridLayout;
 import java.util.concurrent.ScheduledExecutorService;
 import javax.inject.Inject;
 import javax.inject.Singleton;
-import javax.swing.JComboBox;
-import javax.swing.JDialog;
-import javax.swing.JLabel;
-import javax.swing.JOptionPane;
-import javax.swing.JPanel;
-import javax.swing.SwingUtilities;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
@@ -25,7 +18,8 @@ import net.runelite.client.config.ConfigManager;
 /**
  * Per-mass opt-in. Nothing is collected, scanned or uploaded until the player
  * says they're attending the currently active mass: when the dashboard starts
- * one, a popup asks "Mass started - attending?" (Yes/No plus Runner/Anti).
+ * one, an in-game prompt ({@code ui.MassPromptOverlay}) offers Runner / Anti /
+ * Not today, and the sidebar panel has the same choices.
  * The answer is recorded server-side, so logging back in mid-mass restores it
  * silently instead of asking again. Ending the mass, switching account or
  * logging out clears it. Being in the course during a mass counts as
@@ -77,6 +71,9 @@ public class MassParticipation
 	private volatile String lastError;
 	private volatile long autoAttemptEventId = NONE;
 	private volatile long autoAttemptAt;
+	/** The mass the in-game prompt is currently asking about, or null when it's hidden. */
+	private volatile ActiveEvent pendingPrompt;
+	private volatile boolean sending;
 
 	private volatile Runnable onActivated = () ->
 	{
@@ -157,22 +154,66 @@ public class MassParticipation
 		return attending && config.role() == MassRole.RUNNER;
 	}
 
-	/** Short text for the sidebar panel. */
-	public String describe(StatusResponse status)
+	/** True once the player answered "not today" for the active mass. */
+	public boolean hasDeclined(StatusResponse status)
 	{
-		if (status == null || status.getActiveEvent() == null)
+		return !attending && status != null && status.getActiveEvent() != null
+			&& answeredEventId == status.getActiveEvent().getId();
+	}
+
+	/** Why the last answer didn't go through, or null. */
+	public String getLastError()
+	{
+		return lastError;
+	}
+
+	/** An answer is on its way to the server. */
+	public boolean isSending()
+	{
+		return sending;
+	}
+
+	/** The mass the in-game prompt should be showing, or null. */
+	public ActiveEvent getPendingPrompt()
+	{
+		return pendingPrompt;
+	}
+
+	/** Hide the in-game prompt without answering - the sidebar panel can still answer. */
+	public void dismissPrompt()
+	{
+		pendingPrompt = null;
+	}
+
+	/**
+	 * Answer for the given mass, from the in-game prompt or the sidebar panel
+	 * (any thread). Saves the role to config when it changed, so the player's
+	 * choice sticks for the next mass too.
+	 */
+	public void answer(long eventId, boolean yes, MassRole role)
+	{
+		if (sending)
 		{
-			return "no mass running";
+			return;
 		}
-		if (attending)
+		final MassRole chosen = role != null ? role : config.role();
+		if (yes && chosen != config.role())
 		{
-			return "attending as " + config.role();
+			configManager.setConfiguration("agilitycctracker", "role", chosen);
 		}
-		if (answeredEventId == status.getActiveEvent().getId())
+		pendingPrompt = null;
+		sending = true;
+		executor.submit(() ->
 		{
-			return "not attending";
-		}
-		return lastError != null ? lastError : "waiting for your answer";
+			try
+			{
+				sendAnswer(eventId, yes, chosen);
+			}
+			finally
+			{
+				sending = false;
+			}
+		});
 	}
 
 	/**
@@ -244,17 +285,6 @@ public class MassParticipation
 		onActivated.run();
 	}
 
-	/** Manual "attend this mass" (sidebar button) - re-opens the prompt for the active mass. */
-	public void promptNow(StatusResponse status)
-	{
-		if (status == null || status.getActiveEvent() == null)
-		{
-			return;
-		}
-		promptedEventId = status.getActiveEvent().getId();
-		showPrompt(status.getActiveEvent());
-	}
-
 	/** Forget everything: logout, account switch, or the mass ended. */
 	public void reset()
 	{
@@ -264,6 +294,7 @@ public class MassParticipation
 		promptedEventId = NONE;
 		lastError = null;
 		autoAttemptEventId = NONE;
+		pendingPrompt = null;
 		if (wasAttending)
 		{
 			onDeactivated.run();
@@ -284,43 +315,9 @@ public class MassParticipation
 
 	private void showPrompt(ActiveEvent event)
 	{
+		pendingPrompt = event;
 		clientThread.invoke(() -> client.addChatMessage(ChatMessageType.GAMEMESSAGE, "",
-			"<col=ff0000>Mass started: " + event.getName() + " - answer the Wildy Agility FC Tracker popup (or use its sidebar panel).</col>", null));
-
-		SwingUtilities.invokeLater(() ->
-		{
-			JComboBox<MassRole> roleBox = new JComboBox<>(MassRole.values());
-			roleBox.setSelectedItem(config.role());
-			JPanel panel = new JPanel(new GridLayout(0, 1, 0, 6));
-			panel.add(new JLabel("Mass started: " + event.getName()));
-			panel.add(new JLabel("Are you attending?"));
-			panel.add(new JLabel("I am a:"));
-			panel.add(roleBox);
-
-			JOptionPane pane = new JOptionPane(panel, JOptionPane.QUESTION_MESSAGE, JOptionPane.YES_NO_OPTION);
-			JDialog dialog = pane.createDialog("Wildy Agility FC Tracker");
-			dialog.setAlwaysOnTop(true);
-			dialog.setVisible(true);
-			dialog.dispose();
-
-			Object value = pane.getValue();
-			if (!(value instanceof Integer))
-			{
-				return; // dismissed without answering: nothing is sent, the sidebar button can still be used
-			}
-			boolean yes = (Integer) value == JOptionPane.YES_OPTION;
-			MassRole role = (MassRole) roleBox.getSelectedItem();
-			if (role == null)
-			{
-				role = MassRole.RUNNER;
-			}
-			if (role != config.role())
-			{
-				configManager.setConfiguration("agilitycctracker", "role", role);
-			}
-			final MassRole chosen = role;
-			executor.submit(() -> sendAnswer(event.getId(), yes, chosen));
-		});
+			"<col=ff9040>Agility mass started - pick Runner or Anti on the prompt at the top of your screen.</col>", null));
 	}
 
 	private boolean sendAnswer(long eventId, boolean yes, MassRole role)
@@ -328,16 +325,17 @@ public class MassParticipation
 		String rsn = localRsn;
 		if (rsn == null)
 		{
-			lastError = "log in to answer";
+			lastError = "Log in to answer";
 			return false;
 		}
 		boolean ok = apiClient.postRespond(rsn, eventId, yes, role);
 		if (!ok)
 		{
-			lastError = "could not reach the server - try the button again";
+			lastError = "Couldn't reach the server - try again";
 			log.debug("respond failed");
 			return false;
 		}
+		pendingPrompt = null;
 		if (yes)
 		{
 			activate(eventId);
@@ -398,8 +396,8 @@ public class MassParticipation
 			if (sendAnswer(event.getId(), true, role))
 			{
 				clientThread.invoke(() -> client.addChatMessage(ChatMessageType.GAMEMESSAGE, "",
-					"<col=ff0000>You're in the course during " + event.getName() + ", so you've been marked as attending ("
-						+ role + "). Change your role in the Wildy Agility FC Tracker settings.</col>", null));
+					"<col=ff9040>You're in the course during the mass, so you've been marked as attending ("
+						+ role + "). You can switch role in the tracker's sidebar panel.</col>", null));
 			}
 		});
 	}
