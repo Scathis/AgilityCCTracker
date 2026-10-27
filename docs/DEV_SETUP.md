@@ -72,8 +72,6 @@ wired up end-to-end:
       Check the server logs / request body only ever contains requirement
       *keys* (e.g. `run-xbow-shield`), never raw item ids for another
       player.
-- [ ] Capture both DD tiles in-game using the panel's "Copy my tile" button,
-      then paste each into Settings on the dashboard.
 - [ ] Have a ranked account type `dd` in FC chat. One account stands on a
       DD tile, another keeps running. Type `break dd` → the DD tab on the
       dashboard shows arrival time, time on tile, and correctly flags the
@@ -109,9 +107,18 @@ wired up end-to-end:
       past 99 a brighter second lap + inward fill, solid at 200M - hover for
       exact xp); your name; FC box says "Agility CC" with a green tick /
       "Joined" in the FC and a red cross / "Not joined" + join hint outside it;
-      mass row shows "Running - Nm" or "No mass running"; connection status in
-      small print at the bottom. Nothing is cut off or causes a sideways
-      scrollbar.
+      mass row shows "Running - Nm" or "No mass running"; connection status
+      and an "Agility CC Discord" link (opens discord.gg/agility) in small
+      print at the bottom. Nothing is cut off or causes a sideways scrollbar.
+- [ ] "Switch to Anti/Runner" is a gold-edged pill that fills on hover.
+- [ ] **Previous sessions** tab: after a mass, it lists that mass with its
+      date, role(s), laps (runners) and time on course. It survives a client
+      restart and is per account (log into another account → its own list).
+- [ ] The pre-mass kit check chat line and the mass prompt chat lines are
+      red and readable.
+- [ ] Bank highlighting traces the missing items' own outline, not a box.
+- [ ] Dashboard Attendance tab: starting a mass no longer lists the whole FC
+      - only people seen at the course, who picked Runner/Anti, or ran a lap.
 - [ ] An observer standing next to an **anti** and a **No**-answerer doesn't
       report either of them for gear/DD; a friend without the plugin is still
       gear-checked as a runner.

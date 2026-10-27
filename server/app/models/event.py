@@ -1,7 +1,17 @@
 import datetime as dt
 import enum
 
-from sqlalchemy import DateTime, Enum, ForeignKey, Index, Integer, String, Text, UniqueConstraint
+from sqlalchemy import (
+    Boolean,
+    DateTime,
+    Enum,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+)
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base
@@ -35,6 +45,10 @@ class Attendance(Base):
     # plugin user) - distinct from joined_at/left_at, which track FC-channel
     # membership. Drives the auto-timeout close in workers/attendance_timeout_worker.py.
     last_sighted_at: Mapped[dt.datetime] = mapped_column(DateTime())
+    # True once anyone's plugin has seen this player at the course during this
+    # session. FC roster snapshots open a session for everyone in the chat;
+    # the dashboard only lists people who actually turned up.
+    sighted_at_course: Mapped[bool] = mapped_column(Boolean, default=False, server_default="0")
 
 
 class ParticipantStatus(enum.StrEnum):

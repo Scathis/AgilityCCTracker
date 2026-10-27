@@ -317,7 +317,7 @@ public class MassParticipation
 	{
 		pendingPrompt = event;
 		clientThread.invoke(() -> client.addChatMessage(ChatMessageType.GAMEMESSAGE, "",
-			"<col=ff9040>Agility mass started - pick Runner or Anti on the prompt at the top of your screen.</col>", null));
+			"<col=ff0000>Agility mass started - pick Runner or Anti on the prompt at the top of your screen.</col>", null));
 	}
 
 	private boolean sendAnswer(long eventId, boolean yes, MassRole role)
@@ -396,7 +396,7 @@ public class MassParticipation
 			if (sendAnswer(event.getId(), true, role))
 			{
 				clientThread.invoke(() -> client.addChatMessage(ChatMessageType.GAMEMESSAGE, "",
-					"<col=ff9040>You're in the course during the mass, so you've been marked as attending ("
+					"<col=ff0000>You're in the course during the mass, so you've been marked as attending ("
 						+ role + "). You can switch role in the tracker's sidebar panel.</col>", null));
 			}
 		});

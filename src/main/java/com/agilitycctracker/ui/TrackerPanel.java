@@ -3,11 +3,12 @@ package com.agilitycctracker.ui;
 import com.agilitycctracker.AgilityCCTrackerConfig;
 import com.agilitycctracker.MassRole;
 import com.agilitycctracker.api.ApiClient;
-import com.agilitycctracker.api.ServerConfig;
 import com.agilitycctracker.api.StatusHolder;
 import com.agilitycctracker.collect.LapTracker;
 import com.agilitycctracker.collect.SelfStateCollector;
 import com.agilitycctracker.dd.DdTracker;
+import com.agilitycctracker.history.MassSession;
+import com.agilitycctracker.history.SessionHistory;
 import com.agilitycctracker.kit.KitCheck;
 import com.agilitycctracker.loadout.SelfLoadoutCheck;
 import com.agilitycctracker.mass.MassParticipation;
@@ -17,6 +18,7 @@ import com.agilitycctracker.model.StatusResponse;
 import com.agilitycctracker.scan.FcMemberScanner;
 import com.agilitycctracker.scan.FlagAccess;
 import java.awt.BorderLayout;
+import java.awt.CardLayout;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
@@ -26,13 +28,14 @@ import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.GridLayout;
 import java.awt.Insets;
-import java.awt.Toolkit;
-import java.awt.datatransfer.StringSelection;
-import java.net.URI;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import javax.swing.BorderFactory;
@@ -44,13 +47,12 @@ import javax.swing.JList;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.SwingConstants;
-import javax.swing.SwingUtilities;
 import net.runelite.api.Client;
 import net.runelite.api.Player;
-import net.runelite.api.coords.WorldPoint;
-import net.runelite.client.callback.ClientThread;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.ui.PluginPanel;
+import net.runelite.client.util.LinkBrowser;
+import net.runelite.client.util.Text;
 
 /**
  * Sidebar panel, in the dashboard's brown-and-gold look: an Agility ring and
@@ -58,19 +60,21 @@ import net.runelite.client.ui.PluginPanel;
  * whether a mass is running, and the player's own answer or the buttons to
  * give one), then - while attending - this session's numbers, the kit check
  * and, for entitled observers, runners in view with gear gaps. Connection
- * details sit in small print at the bottom. Text only: never shows anyone's
- * coordinates or item ids except the player's own tile via "Copy my tile".
+ * details and the Agility CC Discord link sit in small print at the bottom.
+ * A second tab lists the player's own previous masses (kept locally, see
+ * SessionHistory). Never shows anyone's coordinates or item ids.
  */
 @Singleton
 public class TrackerPanel extends PluginPanel
 {
 	private static final String FALLBACK_FC_NAME = "Agility CC";
+	private static final String DISCORD_URL = "https://discord.gg/agility";
+	private static final String TAB_NOW = "now";
+	private static final String TAB_HISTORY = "history";
+	private static final DateTimeFormatter DATE = DateTimeFormatter.ofPattern("d MMM yyyy, HH:mm");
 
 	@Inject
 	private Client client;
-
-	@Inject
-	private ClientThread clientThread;
 
 	@Inject
 	private ApiClient apiClient;
@@ -105,6 +109,9 @@ public class TrackerPanel extends PluginPanel
 	@Inject
 	private AgilityCCTrackerConfig config;
 
+	@Inject
+	private SessionHistory sessionHistory;
+
 	// Header
 	private final AgilityRing ring = new AgilityRing();
 	private final JLabel nameLabel = label("", Theme.title().deriveFont(18f), Theme.GOLD_BRIGHT);
@@ -118,11 +125,22 @@ public class TrackerPanel extends PluginPanel
 	private final JLabel massValue = label("", Theme.body(), Theme.TEXT);
 	private final JPanel youRow = transparent(new BorderLayout());
 	private final JLabel youValue = label("", Theme.body(), Theme.TEXT);
-	private final ThemedButton switchRole = new ThemedButton("", ThemedButton.Style.LINK);
+	private final ThemedButton switchRole = new ThemedButton("", ThemedButton.Style.PILL);
 	private final JPanel attendButtons = transparent(new GridLayout(1, 2, 6, 0));
 	private final ThemedButton attendRunner = new ThemedButton("Runner", ThemedButton.Style.PRIMARY);
 	private final ThemedButton attendAnti = new ThemedButton("Anti", ThemedButton.Style.SECONDARY);
 	private final JLabel youError = label("", Theme.small(), Theme.BAD);
+
+	// Tabs
+	private final ThemedButton nowTab = new ThemedButton("This mass", ThemedButton.Style.TAB);
+	private final ThemedButton historyTab = new ThemedButton("Previous sessions", ThemedButton.Style.TAB);
+	private final CardLayout tabCards = new CardLayout();
+	private final JPanel tabBody = transparent(tabCards);
+	private final JPanel historyList = transparent(new GridBagLayout());
+	private final JLabel noHistory = label("", Theme.small(), Theme.MUTED);
+	private final JLabel nothingNow = label("", Theme.small(), Theme.MUTED);
+	private List<MassSession> shownHistory;
+	private String shownHistoryFor;
 
 	// Session card (runners only)
 	private final JPanel sessionCard = card();
@@ -166,9 +184,8 @@ public class TrackerPanel extends PluginPanel
 		stack.add(header(), 0);
 		stack.add(new OrnamentDivider(), 6);
 		stack.add(statusBox(), 6);
-		stack.add(sessionCard(), 10);
-		stack.add(kitCard(), 10);
-		stack.add(observersCard(), 10);
+		stack.add(tabStrip(), 10);
+		stack.add(tabBody(), 8);
 		stack.add(footer(), 14);
 		add(content, BorderLayout.NORTH);
 
@@ -258,6 +275,50 @@ public class TrackerPanel extends PluginPanel
 		return box;
 	}
 
+	private JPanel tabStrip()
+	{
+		JPanel strip = transparent(new GridLayout(1, 2, 0, 0));
+		strip.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, Theme.LINE));
+		strip.add(nowTab);
+		strip.add(historyTab);
+		nowTab.addActionListener(e -> showTab(TAB_NOW));
+		historyTab.addActionListener(e -> showTab(TAB_HISTORY));
+		return strip;
+	}
+
+	private JPanel tabBody()
+	{
+		JPanel now = transparent(new GridBagLayout());
+		Stack stack = new Stack(now);
+		stack.add(sessionCard(), 0);
+		stack.add(kitCard(), 10);
+		stack.add(observersCard(), 10);
+		stack.add(noActivity(), 0);
+
+		JPanel history = transparent(new GridBagLayout());
+		Stack historyStack = new Stack(history);
+		historyStack.add(noHistory, 0);
+		historyStack.add(historyList, 0);
+
+		tabBody.add(now, TAB_NOW);
+		tabBody.add(history, TAB_HISTORY);
+		showTab(TAB_NOW);
+		return tabBody;
+	}
+
+	private JLabel noActivity()
+	{
+		nothingNow.setText(wrap("Your laps, gear and kit check show here once you're attending a mass as a runner."));
+		return nothingNow;
+	}
+
+	private void showTab(String tab)
+	{
+		tabCards.show(tabBody, tab);
+		nowTab.setTabSelected(TAB_NOW.equals(tab));
+		historyTab.setTabSelected(TAB_HISTORY.equals(tab));
+	}
+
 	private JPanel sessionCard()
 	{
 		Stack stack = new Stack(sessionCard);
@@ -326,16 +387,12 @@ public class TrackerPanel extends PluginPanel
 		line.add(connectionLabel);
 		footer.add(line, c);
 
+		ThemedButton discord = new ThemedButton("Agility CC Discord", ThemedButton.Style.LINK);
+		discord.setToolTipText(DISCORD_URL);
+		discord.addActionListener(e -> LinkBrowser.browse(DISCORD_URL));
 		c.gridy = 1;
-		c.insets = new Insets(1, 0, 0, 0);
-		footer.add(label(host(), Theme.small(), Theme.LINE.brighter()), c);
-
-		ThemedButton copyTile = new ThemedButton("Copy my tile", ThemedButton.Style.LINK);
-		copyTile.setToolTipText("Copies your current x,y,plane - used to set up the DD tiles");
-		copyTile.addActionListener(e -> copyMyTile());
-		c.gridy = 2;
-		c.insets = new Insets(3, 0, 0, 0);
-		footer.add(copyTile, c);
+		c.insets = new Insets(2, 0, 0, 0);
+		footer.add(discord, c);
 		return footer;
 	}
 
@@ -357,6 +414,8 @@ public class TrackerPanel extends PluginPanel
 
 		refreshKits(status);
 		refreshObservers();
+		nothingNow.setVisible(!sessionCard.isVisible() && !kitCard.isVisible() && !observersCard.isVisible());
+		refreshHistory(snapshot);
 		refreshFooter();
 
 		revalidate();
@@ -514,6 +573,44 @@ public class TrackerPanel extends PluginPanel
 		}
 	}
 
+	private void refreshHistory(PanelSnapshot snapshot)
+	{
+		List<MassSession> sessions = snapshot.getName() != null
+			? sessionHistory.getSessions(Text.toJagexName(snapshot.getName()))
+			: Collections.<MassSession>emptyList();
+		if (sessions.equals(shownHistory) && Objects.equals(snapshot.getName(), shownHistoryFor))
+		{
+			return;
+		}
+		shownHistory = sessions;
+		shownHistoryFor = snapshot.getName();
+		noHistory.setText(wrap(snapshot.getName() == null
+			? "Log in to see your previous masses."
+			: "No masses yet. Each mass you attend is listed here - laps and time on the course, kept on this computer only."));
+		noHistory.setVisible(sessions.isEmpty());
+		historyList.removeAll();
+		Stack stack = new Stack(historyList);
+		for (MassSession session : sessions)
+		{
+			stack.add(historyCard(session), 8);
+		}
+	}
+
+	private static JPanel historyCard(MassSession session)
+	{
+		JPanel card = card();
+		Stack stack = new Stack(card);
+		JLabel title = label(session.getName(), Theme.title(), Theme.GOLD);
+		stack.add(title, 0);
+		String when = DATE.format(Instant.ofEpochMilli(session.getStartedAt()).atZone(ZoneId.systemDefault()));
+		stack.add(label(when + "  -  " + session.roles(), Theme.small(), Theme.MUTED), 2);
+		stack.add(row("Laps", label(session.isRunner()
+			? session.getLaps() + "  (" + session.getTickets() + " tickets)"
+			: "-", Theme.body(), Theme.TEXT)), 6);
+		stack.add(row("On course", label(duration(session.getCourseMs()), Theme.body(), Theme.TEXT)), 3);
+		return card;
+	}
+
 	private void refreshFooter()
 	{
 		String text;
@@ -548,26 +645,6 @@ public class TrackerPanel extends PluginPanel
 		}
 	}
 
-	private void copyMyTile()
-	{
-		// Button clicks fire on Swing's EDT, but reading the local player's
-		// position is a client.* call RuneLite requires happen on the
-		// client thread - hop there for the read, then back to the EDT for
-		// the actual clipboard write (an AWT/Swing operation).
-		clientThread.invoke(() ->
-		{
-			Player local = client.getLocalPlayer();
-			if (local == null)
-			{
-				return;
-			}
-			WorldPoint point = local.getWorldLocation();
-			String text = point.getX() + "," + point.getY() + "," + point.getPlane();
-			SwingUtilities.invokeLater(() ->
-				Toolkit.getDefaultToolkit().getSystemClipboard().setContents(new StringSelection(text), null));
-		});
-	}
-
 	// --- formatting ---------------------------------------------------------
 
 	private static String displayName(String name)
@@ -588,6 +665,16 @@ public class TrackerPanel extends PluginPanel
 		return String.format("%,d", Math.max(xp, 0));
 	}
 
+	static String duration(long ms)
+	{
+		long minutes = ms / 60_000;
+		if (minutes < 1)
+		{
+			return ms > 0 ? "<1m" : "0m";
+		}
+		return minutes < 60 ? minutes + "m" : (minutes / 60) + "h " + (minutes % 60) + "m";
+	}
+
 	static String elapsed(long startedAtMs)
 	{
 		long minutes = Math.max(0, (System.currentTimeMillis() - startedAtMs) / 60_000);
@@ -602,19 +689,6 @@ public class TrackerPanel extends PluginPanel
 	private static String wrap(String html)
 	{
 		return "<html><body style='width:155px'>" + html + "</body></html>";
-	}
-
-	private static String host()
-	{
-		try
-		{
-			String host = URI.create(ServerConfig.baseUrl()).getHost();
-			return host != null ? host : ServerConfig.baseUrl();
-		}
-		catch (IllegalArgumentException e)
-		{
-			return ServerConfig.baseUrl();
-		}
 	}
 
 	// --- building blocks ----------------------------------------------------

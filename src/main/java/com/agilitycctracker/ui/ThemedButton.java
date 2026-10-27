@@ -11,7 +11,9 @@ import javax.swing.JButton;
 /**
  * Flat button in the dashboard palette, painted by hand so it looks the same
  * whatever look-and-feel the client is running. PRIMARY is filled gold,
- * SECONDARY is a raised brown box, LINK is text only.
+ * SECONDARY is a raised brown box, PILL is a small gold-edged chip (for
+ * inline actions like switching role), TAB is a tab-strip label underlined
+ * while selected, LINK is text only.
  */
 public class ThemedButton extends JButton
 {
@@ -19,10 +21,13 @@ public class ThemedButton extends JButton
 	{
 		PRIMARY,
 		SECONDARY,
+		PILL,
+		TAB,
 		LINK
 	}
 
 	private final Style style;
+	private boolean tabSelected;
 
 	public ThemedButton(String text, Style style)
 	{
@@ -34,15 +39,25 @@ public class ThemedButton extends JButton
 		setOpaque(false);
 		setRolloverEnabled(true);
 		setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-		setFont(style == Style.LINK ? Theme.small() : Theme.body());
+		setFont(style == Style.LINK || style == Style.PILL ? Theme.small() : Theme.body());
+	}
+
+	/** TAB only: draw as the active tab. */
+	public void setTabSelected(boolean selected)
+	{
+		if (selected != tabSelected)
+		{
+			tabSelected = selected;
+			repaint();
+		}
 	}
 
 	@Override
 	public Dimension getPreferredSize()
 	{
 		FontMetrics metrics = getFontMetrics(getFont());
-		int w = metrics.stringWidth(getText()) + (style == Style.LINK ? 4 : 16);
-		int h = metrics.getHeight() + (style == Style.LINK ? 2 : 8);
+		int w = metrics.stringWidth(getText()) + (style == Style.LINK ? 4 : style == Style.PILL ? 22 : 16);
+		int h = metrics.getHeight() + (style == Style.LINK ? 2 : style == Style.PILL ? 6 : 8);
 		return new Dimension(w, h);
 	}
 
@@ -72,6 +87,26 @@ public class ThemedButton extends JButton
 				g.setColor(hover ? Theme.GOLD : Theme.CARD_BORDER);
 				g.drawRoundRect(0, 0, w - 1, h - 1, 4, 4);
 				text = Theme.GOLD_BRIGHT;
+				break;
+			case PILL:
+				g.setColor(hover ? Theme.GOLD_BRIGHT : Theme.RAISED);
+				g.fillRoundRect(0, 0, w - 1, h - 1, h, h);
+				g.setColor(Theme.GOLD);
+				g.drawRoundRect(0, 0, w - 1, h - 1, h, h);
+				text = hover ? Theme.BACKGROUND : Theme.GOLD_BRIGHT;
+				break;
+			case TAB:
+				if (tabSelected)
+				{
+					g.setColor(Theme.GOLD_BRIGHT);
+					g.fillRect(0, h - 2, w, 2);
+				}
+				else if (hover)
+				{
+					g.setColor(Theme.LINE);
+					g.fillRect(0, h - 2, w, 2);
+				}
+				text = tabSelected ? Theme.GOLD_BRIGHT : hover ? Theme.TEXT : Theme.MUTED;
 				break;
 			default:
 				text = hover ? Theme.GOLD_BRIGHT : Theme.MUTED;

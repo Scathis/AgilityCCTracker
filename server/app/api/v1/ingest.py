@@ -365,6 +365,7 @@ async def _process_course_sightings(
     )
     for attendance in result.scalars().all():
         attendance.last_sighted_at = now
+        attendance.sighted_at_course = True
 
 
 async def _process_loadout_checks(

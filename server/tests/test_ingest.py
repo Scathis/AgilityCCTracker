@@ -365,6 +365,7 @@ async def test_course_sighting_keeps_open_attendance_alive(client, fc_group, db_
     attendance = result.scalar_one()
     assert attendance.left_at is None
     assert attendance.last_sighted_at > stale_time
+    assert attendance.sighted_at_course is True
 
 
 async def test_course_sighting_does_not_open_a_new_attendance_record(client, fc_group, db_session):

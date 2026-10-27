@@ -10,6 +10,7 @@ import com.agilitycctracker.collect.SelfStateCollector;
 import com.agilitycctracker.dd.DdCallDetector;
 import com.agilitycctracker.dd.DdTracker;
 import com.agilitycctracker.dd.SelfDdSampler;
+import com.agilitycctracker.history.SessionHistory;
 import com.agilitycctracker.loadout.SelfLoadoutCheck;
 import com.agilitycctracker.mass.MassParticipation;
 import com.agilitycctracker.model.DdConfig;
@@ -152,6 +153,9 @@ public class AgilityCCTrackerPlugin extends Plugin
 	private MassPromptOverlay massPromptOverlay;
 
 	@Inject
+	private SessionHistory sessionHistory;
+
+	@Inject
 	private MouseManager mouseManager;
 
 	@Inject
@@ -278,6 +282,7 @@ public class AgilityCCTrackerPlugin extends Plugin
 	/** Drops everything gathered so far, without touching the cached /status. */
 	private void clearCollected()
 	{
+		sessionHistory.flush();
 		selfStateCollector.reset();
 		lapTracker.reset();
 		deathTracker.reset();
@@ -290,6 +295,7 @@ public class AgilityCCTrackerPlugin extends Plugin
 
 	private void resetState()
 	{
+		sessionHistory.flush();
 		selfStateCollector.reset();
 		lapTracker.reset();
 		deathTracker.reset();
@@ -360,8 +366,17 @@ public class AgilityCCTrackerPlugin extends Plugin
 			return;
 		}
 
+		boolean inCourse = local != null && local.getWorldLocation().getRegionID() == WILDERNESS_AGILITY_COURSE_REGION;
 		// Local-only "are you ready?" check against the chosen kit, until they reach the course.
-		kitCheck.onTick(local != null && local.getWorldLocation().getRegionID() == WILDERNESS_AGILITY_COURSE_REGION);
+		kitCheck.onTick(inCourse);
+
+		StatusResponse active = statusHolder.get();
+		if (active != null && active.getActiveEvent() != null)
+		{
+			sessionHistory.onTick(massParticipation.getLocalRsn(), active.getActiveEvent().getId(),
+				active.getActiveEvent().getName(), massParticipation.isRunner(), inCourse,
+				lapTracker.getSessionLapCount(), lapTracker.getSessionTicketsGained());
+		}
 
 		fcMemberScanner.onTick();
 		if (massParticipation.isRunner())

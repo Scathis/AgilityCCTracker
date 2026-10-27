@@ -164,7 +164,7 @@ public class KitCheck
 			String text = missing.isEmpty()
 				? "Pre-mass check (" + kit.getName() + "): you're all set."
 				: "Pre-mass check (" + kit.getName() + "): " + missing.size() + " thing(s) missing - see the tracker sidebar; they're outlined in your bank.";
-			client.addChatMessage(ChatMessageType.GAMEMESSAGE, "", "<col=ff9040>" + text + "</col>", null);
+			client.addChatMessage(ChatMessageType.GAMEMESSAGE, "", "<col=ff0000>" + text + "</col>", null);
 		}
 	}
 

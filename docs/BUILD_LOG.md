@@ -1697,3 +1697,28 @@ large quantities with thousands separators.
   rejects. Join hint shown instead.
 - Tests: `ui/AgilityRingTest` (level fraction, overcharge, xp formatting).
   Previews were rendered headless to check the ring and prompt visuals.
+
+## 2026-10-27 - Owner test notes, round 2
+
+- Chat colour: KitCheck and MassParticipation lines `ff9040` -> `ff0000`.
+- Panel: Discord link (`LinkBrowser.browse("https://discord.gg/agility")`)
+  replaces the host line; "Copy my tile" + its client-thread hop removed;
+  `ThemedButton` gains PILL (switch role) and TAB styles; CardLayout tabs
+  "This mass" / "Previous sessions" with an empty-state hint.
+- `history/SessionHistory` + `MassSession`: per-account (RS profile config,
+  Gson JSON, newest first, cap 30). Fed each game tick while attending the
+  active mass: +600ms when in region 11837, lap/ticket increases from
+  LapTracker's running totals (`increase()` treats a drop as a reset - hops
+  reset LapTracker). Saved every 30s when dirty and on clearCollected /
+  resetState. Local only by design (public plugin token).
+- `KitBankOverlay`: `itemManager.getItemOutline(id, qty, colour)` drawn at the
+  item's canvas bounds instead of `drawRect`.
+- Server: `attendance.sighted_at_course` (migration `e4b9c1d2a057`,
+  backfill `last_sighted_at <> joined_at`). `_process_course_sightings` sets
+  it. Attendance tab filters to players sighted / with a stint / with a lap;
+  manual-gap dropdown to sighted players; empty-state row in the template.
+  Deployed after `deploy/backup.sh`. Live check right after: mass 5 had 95
+  players in the FC roster, 1 sighted.
+- Tests: `SessionHistoryTest`; server `test_attendance_lists_only_people_who_turned_up`,
+  sighting test asserts the flag; fixtures that expect a listed player now
+  set `sighted_at_course=True`. 108 server tests pass.

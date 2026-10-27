@@ -46,6 +46,7 @@ async def test_full_event_lifecycle_and_every_tab_renders(
             player_id=player.id,
             joined_at=dt.datetime.utcnow(),
             last_sighted_at=dt.datetime.utcnow(),
+            sighted_at_course=True,
             rank=0,
             world=330,
         )
@@ -154,6 +155,7 @@ async def test_attendance_status_shows_present_vs_away(
             joined_at=dt.datetime.utcnow(),
             last_sighted_at=dt.datetime.utcnow(),
             left_at=None,
+            sighted_at_course=True,
             rank=0,
             world=330,
         )
@@ -166,6 +168,7 @@ async def test_attendance_status_shows_present_vs_away(
             joined_at=left_time - dt.timedelta(minutes=5),
             last_sighted_at=left_time,
             left_at=left_time,
+            sighted_at_course=True,
             rank=0,
             world=330,
         )
@@ -179,3 +182,38 @@ async def test_attendance_status_shows_present_vs_away(
     away_idx = text.index("LeftEarly")
     assert "🟢 Present" in text[present_idx:present_idx + 300]
     assert "⚪ Away" in text[away_idx:away_idx + 300]
+
+
+async def test_attendance_lists_only_people_who_turned_up(
+    client, make_user, login_as, default_group, no_active_event, db_session
+):
+    """Roster snapshots open a session for everyone in the FC - only people
+    seen at the course (or who opted in / ran a lap) are listed."""
+    staff = await make_user(UserRole.STAFF)
+    csrf = login_as(staff)
+    await client.post("/events", data={"name": "Turnout", "notes": "", "csrf_token": csrf})
+    result = await db_session.execute(
+        select(Event).where(Event.fc_group_id == default_group.id, Event.ended_at.is_(None))
+    )
+    event = result.scalar_one()
+
+    came = await _make_player(db_session, "CameAlong")
+    chat_only = await _make_player(db_session, "JustInChat")
+    now = dt.datetime.utcnow()
+    for player, sighted in ((came, True), (chat_only, False)):
+        db_session.add(
+            Attendance(
+                event_id=event.id,
+                player_id=player.id,
+                joined_at=now,
+                last_sighted_at=now,
+                sighted_at_course=sighted,
+                rank=0,
+                world=330,
+            )
+        )
+    await db_session.commit()
+
+    text = (await client.get(f"/events/{event.id}?tab=attendance")).text
+    assert "CameAlong" in text
+    assert "JustInChat" not in text

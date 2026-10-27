@@ -158,10 +158,26 @@ async def _attendance_tab(session: AsyncSession, group: FcGroup, event: Event) -
     for stint in sorted(stint_rows, key=lambda st: st.started_at):
         stints_by_player.setdefault(stint.player_id, []).append(stint)
 
+    laps_by_player: dict[int, list[dt.datetime]] = {}
+    for lap in (
+        (await session.execute(select(Lap).where(Lap.event_id == event.id))).scalars().all()
+    ):
+        laps_by_player.setdefault(lap.player_id, []).append(lap.completed_at)
+
+    # Roster snapshots open a session for everyone in the FC; only list people
+    # who turned up: seen at the course, opted in via the plugin, or ran a lap.
+    turned_up = (
+        {attendance.player_id for attendance, _ in rows if attendance.sighted_at_course}
+        | set(stints_by_player)
+        | set(laps_by_player)
+    )
+
     # Per player: every attendance session (joined/left/rejoined), plus rank
     # and whether they're currently present.
     base: dict[int, dict] = {}
     for attendance, player in rows:
+        if player.id not in turned_up:
+            continue
         info = base.setdefault(
             player.id,
             {
@@ -259,12 +275,6 @@ async def _attendance_tab(session: AsyncSession, group: FcGroup, event: Event) -
                 latest.failed_requirement_keys if latest is not None else None
             )
 
-    laps_by_player: dict[int, list[dt.datetime]] = {}
-    for lap in (
-        (await session.execute(select(Lap).where(Lap.event_id == event.id))).scalars().all()
-    ):
-        laps_by_player.setdefault(lap.player_id, []).append(lap.completed_at)
-
     for entry in entries:
         player_id = entry["player"].id
         entry["loadout_gaps"] = latest_check_by_player.get(player_id)
@@ -332,7 +342,7 @@ async def _manual_gap_tab(session: AsyncSession, group: FcGroup, event: Event) -
     attendee_result = await session.execute(
         select(Player)
         .join(Attendance, Attendance.player_id == Player.id)
-        .where(Attendance.event_id == event.id)
+        .where(Attendance.event_id == event.id, Attendance.sighted_at_course.is_(True))
         .distinct()
     )
     return {

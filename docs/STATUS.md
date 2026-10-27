@@ -8,7 +8,25 @@ log. Update this file's "Where things stand" / "Open items" sections at the
 end of any session that changes them — treat it like a handoff note, not an
 append-only log (that's what BUILD_LOG.md is for).
 
-## Latest (2026-10-27, evening — owner test notes, round 1)
+## Latest (2026-10-27, late — owner test notes, round 2)
+
+- Kit-check and mass chat lines back to red (orange was unreadable).
+- Footer host replaced by an "Agility CC Discord" link (discord.gg/agility);
+  "Copy my tile" removed (DD tiles are set). Switch-role is now a pill button.
+- "This mass" / "Previous sessions" tabs. History is **local only**
+  (`history/SessionHistory`, RS-profile config, last 30 masses): laps,
+  tickets, time in the course region, role(s). Kept off the server on
+  purpose - the plugin token is public, so a server lookup would let anyone
+  read anyone's history.
+- Bank highlighting uses `ItemManager.getItemOutline` (traces the sprite).
+- Dashboard attendance only lists people who turned up: new
+  `attendance.sighted_at_course` (migration `e4b9c1d2a057`, backfilled from
+  `last_sighted_at <> joined_at`, deployed after a backup), set by course
+  sightings; plus anyone with a stint or a lap. Manual-gap dropdown likewise.
+  Known gap to watch: an anti who stays outside the course region is only
+  listed via their Runner/Anti answer, not by sightings.
+
+## Earlier (2026-10-27, evening — owner test notes, round 1)
 
 - The Swing "Mass started" popup is gone: it stole focus mid-game. Replaced by
   `ui/MassPromptOverlay` - an in-game box (top centre, movable) with Runner /
