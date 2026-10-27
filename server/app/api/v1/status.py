@@ -8,7 +8,7 @@ from app.db import get_session
 from app.deps import get_current_fc_group
 from app.models.event import Attendance, Event
 from app.models.fc_group import FcGroup
-from app.models.kit import INVENTORY, Kit, KitItem
+from app.models.kit import COINS_ITEM_ID, COURSE_FEE_COINS, INVENTORY, Kit, KitItem
 from app.models.player import Player
 from app.schemas.status import (
     ActiveEventOut,
@@ -70,11 +70,13 @@ async def get_status(
                     for i in items
                     if i.slot != INVENTORY
                 ],
-                inventory=[
-                    KitInventoryOut(item_id=i.item_id, qty=i.qty)
-                    for i in items
-                    if i.slot == INVENTORY
-                ],
+                inventory=_with_course_fee(
+                    [
+                        KitInventoryOut(item_id=i.item_id, qty=i.qty)
+                        for i in items
+                        if i.slot == INVENTORY
+                    ]
+                ),
             )
         )
 
@@ -151,3 +153,9 @@ async def _viewer_entitled(
     )
     rank = result.scalars().first()
     return rank is not None and rank >= fc_group.flag_viewer_min_rank
+
+
+def _with_course_fee(inventory: list[KitInventoryOut]) -> list[KitInventoryOut]:
+    """Every kit carries the course entry fee (see app.models.kit)."""
+    others = [line for line in inventory if line.item_id != COINS_ITEM_ID]
+    return [KitInventoryOut(item_id=COINS_ITEM_ID, qty=COURSE_FEE_COINS), *others]

@@ -16,7 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db import get_session
 from app.models.fc_group import FcGroup
 from app.models.item import Item
-from app.models.kit import INVENTORY, Kit, KitItem
+from app.models.kit import COINS_ITEM_ID, COURSE_FEE_COINS, INVENTORY, Kit, KitItem
 from app.models.user import User, UserRole
 from app.services.gear_rules import SLOT_LABELS, SLOT_ORDER
 from app.web.deps import get_default_fc_group, require_role, template_context, verify_csrf
@@ -24,7 +24,8 @@ from app.web.templating import templates
 
 router = APIRouter()
 
-MAX_INVENTORY_LINES = 28
+# 28 slots, one of which always holds the course entry fee.
+MAX_INVENTORY_LINES = 27
 MAX_QTY = 100_000
 MAX_NAME = 64
 
@@ -83,14 +84,21 @@ async def _editor(
         for slot in SLOT_ORDER
     ]
     inventory = [
-        {"item": _item_view(r.item_id, items), "qty": r.qty} for r in rows if r.slot == INVENTORY
+        {"item": _item_view(r.item_id, items), "qty": r.qty}
+        for r in rows
+        if r.slot == INVENTORY and r.item_id != COINS_ITEM_ID
     ]
+    fee = {
+        "item": {"id": COINS_ITEM_ID, "name": "Coins", "icon": item_icon_url("Coins 10000")},
+        "qty": COURSE_FEE_COINS,
+    }
     context = template_context(
         request,
         user,
         kit=kit,
         slots=slots,
         inventory=inventory,
+        fee=fee,
         max_lines=MAX_INVENTORY_LINES,
         **extra,
     )
@@ -118,9 +126,14 @@ async def _apply_form(session: AsyncSession, request: Request, kit: Kit) -> None
             item_id, qty = int(raw_id), int(raw_qty)
         except ValueError as exc:
             raise HTTPException(status_code=422, detail="Bad inventory line") from exc
+        if item_id == COINS_ITEM_ID:
+            continue  # the entry fee is fixed and always added - see app.models.kit
         inventory[item_id] = min(inventory.get(item_id, 0) + max(1, qty), MAX_QTY)
     if len(inventory) > MAX_INVENTORY_LINES:
-        raise HTTPException(status_code=422, detail="A kit can carry at most 28 different items")
+        raise HTTPException(
+            status_code=422,
+            detail=f"A kit can carry at most {MAX_INVENTORY_LINES} items besides the entry fee",
+        )
 
     known = await _items_by_id(session, set(equipment.values()) | set(inventory))
     if any(i not in known for i in [*equipment.values(), *inventory]):

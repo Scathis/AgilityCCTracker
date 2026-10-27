@@ -126,6 +126,9 @@ wired up end-to-end:
       and the sidebar lists exactly what's missing ("Wear: …", "Bring: … x2").
 - [ ] Open your bank → the missing items are outlined; take them out / equip
       them and the outlines and sidebar lines disappear.
+- [ ] Every kit shows a locked "Coins 150,000 - course entry fee" line in the
+      editor; with fewer than 150k coins in your inventory the pre-course check
+      says "Bring: Coins x…" and outlines coins in your bank.
 - [ ] Any dose of a kit potion counts (e.g. Stamina potion (2) for a (4) in the
       kit); quantity counts potions, not doses.
 - [ ] As an **Anti**, or once you're in the course → no kit check, no outlines.

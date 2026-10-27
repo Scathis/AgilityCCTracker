@@ -161,9 +161,16 @@
 
   <section class="editor-section">
     <h3>Inventory</h3>
-    <p><small>Quantities count items, not doses: "Stamina potion &times; 2" is met by any two stamina potions of any dose. Up to {{ max_lines }} different items.</small></p>
+    <p><small>Quantities count items, not doses: "Stamina potion &times; 2" is met by any two stamina potions of any dose. Every kit always carries the 150,000 coin course entry fee in one slot, leaving {{ max_lines }} for everything else.</small></p>
     <table class="inventory-table">
       <thead><tr><th>Item</th><th>Quantity</th><th></th></tr></thead>
+      <tbody>
+        <tr class="fee-row">
+          <td><div class="item-cell"><img src="{{ fee.item.icon }}" alt="" class="item-icon-sm" loading="lazy" onerror="this.style.visibility='hidden'">{{ fee.item.name }}</div></td>
+          <td>{{ "{:,}".format(fee.qty) }}</td>
+          <td><small title="Every kit carries the course entry fee">🔒 Course entry fee</small></td>
+        </tr>
+      </tbody>
       <tbody id="inventory-rows">
         {% for line in inventory %}
         <tr data-id="{{ line.item.id }}">
@@ -175,7 +182,7 @@
         {% endfor %}
       </tbody>
     </table>
-    <p id="inventory-empty" {% if inventory %}hidden{% endif %}><small>Nothing to carry yet.</small></p>
+    <p id="inventory-empty" {% if inventory %}hidden{% endif %}><small>Nothing else to carry yet.</small></p>
     <div class="inv-add">
       <input type="number" id="inv-add-qty" value="1" min="1" max="100000" aria-label="Quantity to add">
       <input type="search" name="q" placeholder="Search items to carry..." autocomplete="off"
@@ -218,6 +225,7 @@
   }
 
   function addInventory(id, name, icon) {
+    if (String(id) === '{{ fee.item.id }}') { alert('The 150,000 coin entry fee is already in every kit.'); return; }
     const qtyInput = document.getElementById('inv-add-qty');
     const qty = Math.max(1, parseInt(qtyInput.value, 10) || 1);
     const existing = rows.querySelector('tr[data-id="' + id + '"]');
@@ -225,7 +233,7 @@
       const q = existing.querySelector('input[name="inv_qty"]');
       q.value = Math.min(100000, (parseInt(q.value, 10) || 0) + qty);
     } else {
-      if (rows.children.length >= maxLines) { alert('A kit can carry at most ' + maxLines + ' different items.'); return; }
+      if (rows.children.length >= maxLines) { alert('A kit can carry at most ' + maxLines + ' items besides the entry fee.'); return; }
       const tr = document.createElement('tr');
       tr.dataset.id = id;
       tr.innerHTML = '<td><div class="item-cell"><img src="' + esc(icon) + '" alt="" class="item-icon-sm" onerror="this.style.visibility=\'hidden\'">' + esc(name) + '</div>'

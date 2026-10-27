@@ -1657,3 +1657,14 @@ plugin tests incl. GearRuleEvaluatorTest / KitCheckTest.
   (`POST /kits` / `POST /kits/{id}`), replacing its contents; duplicate
   inventory lines merged; unsaved-changes warning. The per-action HTMX save
   routes are gone. 102 server tests passing.
+
+### 2026-10-27 - Course entry fee in every kit
+
+Owner: entering the Wilderness Agility Course costs 150,000 coins, so every
+runner kit must carry it. Not stored per kit: `/status` always puts
+`{item_id: 995, qty: 150000}` first in each kit's inventory (`app.models.kit.
+COINS_ITEM_ID` / `COURSE_FEE_COINS`), any coins line a kit has is replaced by it,
+and the editor shows it as a locked row. That leaves 27 inventory lines for
+everything else. Coins aren't in the `items` table (the wiki price mapping
+leaves them out), hence the hard-coded id. Plugin pre-course check formats
+large quantities with thousands separators.

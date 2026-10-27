@@ -150,7 +150,7 @@ public class KitCheck
 		for (Missing m : missing)
 		{
 			String name = itemManager.getItemComposition(m.getItemId()).getName();
-			lines.add(m.getSlot() != null ? "Wear: " + name : "Bring: " + name + (m.getQty() > 1 ? " x" + m.getQty() : ""));
+			lines.add(m.getSlot() != null ? "Wear: " + name : "Bring: " + name + (m.getQty() > 1 ? " x" + String.format("%,d", m.getQty()) : ""));
 			bases.add(base(m.getItemId()));
 		}
 		activeKit = kit;

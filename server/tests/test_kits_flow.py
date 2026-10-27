@@ -203,8 +203,42 @@ async def test_status_carries_gear_rules_and_kits(client, fc_group, db_session):
             "name": "Std",
             "is_default": True,
             "equipment": [{"slot": "WEAPON", "item_id": 861}],
-            "inventory": [{"item_id": 12625, "qty": 2}],
+            # The course entry fee is always first and always there.
+            "inventory": [{"item_id": 995, "qty": 150000}, {"item_id": 12625, "qty": 2}],
         }
     ]
     assert "loadouts" not in body
     assert "crossbow_counts_as_bow_at_dd" not in body["dd"]
+
+
+async def test_entry_fee_is_locked_into_every_kit(
+    client, make_user, login_as, default_group, db_session
+):
+    csrf = login_as(await make_user(UserRole.STAFF))
+    await _items(db_session, (12625, "Stamina potion(4)"))
+    # Posting coins yourself is ignored - the fee is fixed and added when served.
+    kit_id = await _create_kit(
+        client,
+        db_session,
+        csrf,
+        "Fee kit",
+        inv_item=["995", "12625"],
+        inv_qty=["5", "1"],
+    )
+    rows = await _kit_items(db_session, kit_id)
+    assert [(r.item_id, r.qty) for r in rows] == [(12625, 1)]
+
+    page = await client.get(f"/kits/{kit_id}/edit")
+    assert "Course entry fee" in page.text and "150,000" in page.text
+
+    # 27 other items is the limit (the fee takes the 28th slot).
+    many = await client.post(
+        "/kits",
+        data={
+            "name": "Too many",
+            "inv_item": [str(i) for i in range(1, 29)],
+            "inv_qty": ["1"] * 28,
+            "csrf_token": csrf,
+        },
+    )
+    assert many.status_code == 422
