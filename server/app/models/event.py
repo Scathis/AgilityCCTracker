@@ -63,3 +63,19 @@ class EventParticipant(Base):
     status: Mapped[ParticipantStatus] = mapped_column(Enum(ParticipantStatus, native_enum=True))
     role: Mapped[ParticipantRole] = mapped_column(Enum(ParticipantRole, native_enum=True))
     responded_at: Mapped[dt.datetime] = mapped_column(DateTime())
+
+
+class ParticipantStint(Base):
+    """One continuous stretch of a player attending a mass in a single role.
+    Switching Runner/Anti mid-mass closes the open stint and opens a new one,
+    so each role's time and laps are reported separately instead of combined.
+    A NULL ended_at means "still going" (or until the mass ended)."""
+
+    __tablename__ = "participant_stints"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    event_id: Mapped[int] = mapped_column(ForeignKey("events.id"), index=True)
+    player_id: Mapped[int] = mapped_column(ForeignKey("players.id"), index=True)
+    role: Mapped[ParticipantRole] = mapped_column(Enum(ParticipantRole, native_enum=True))
+    started_at: Mapped[dt.datetime] = mapped_column(DateTime())
+    ended_at: Mapped[dt.datetime | None] = mapped_column(DateTime(), nullable=True)

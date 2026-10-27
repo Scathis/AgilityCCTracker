@@ -12,15 +12,10 @@
       </td>
       <td>{{ (a.seconds_present // 60) }}m</td>
       <td>{{ "✅" if a.player.is_plugin_user else "—" }}</td>
-      <td>
-        {% if a.participation is none %}Runner <small>(no plugin answer)</small>
-        {% elif a.participation.status.value == "declined" %}Declined
-        {% else %}{{ a.participation.role.value|capitalize }}
-        {% endif %}
-      </td>
+      <td>{{ a.role_label }}{% if a.role_note %} <small>{{ a.role_note }}</small>{% endif %}</td>
       <td>{{ a.laps }}</td>
       <td>
-        {% if a.participation is not none and a.participation.status.value == "attending" and a.participation.role.value == "anti" %}n/a (anti)
+        {% if a.is_anti %}n/a (anti)
         {% elif a.loadout_gaps is none %}not checked
         {% elif a.loadout_gaps|length == 0 %}✅ compliant
         {% else %}❌ {{ a.loadout_gaps|join(", ") }}

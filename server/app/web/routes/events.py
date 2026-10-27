@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db import get_session
 from app.models.dd import DdCall, DdPresence
 from app.models.death import Death
-from app.models.event import Attendance, Event
+from app.models.event import Attendance, Event, ParticipantStint
 from app.models.fc_group import FcGroup
 from app.models.lap import Lap
 from app.models.loadout import Loadout, LoadoutCheck, LoadoutCheckSource, LoadoutContext
@@ -147,34 +147,103 @@ async def _attendance_tab(session: AsyncSession, group: FcGroup, event: Event) -
 
     now = dt.datetime.utcnow()
     participants = await participants_by_rsn(session, event.id)
-    by_player: dict[int, dict] = {}
+    event_end = event.ended_at or now
+
+    stint_result = await session.execute(
+        select(ParticipantStint).where(ParticipantStint.event_id == event.id)
+    )
+    stint_rows = stint_result.scalars().all()
+    stints_by_player: dict[int, list[ParticipantStint]] = {}
+    for stint in sorted(stint_rows, key=lambda st: st.started_at):
+        stints_by_player.setdefault(stint.player_id, []).append(stint)
+
+    # Per player: every attendance session (joined/left/rejoined), plus rank
+    # and whether they're currently present.
+    base: dict[int, dict] = {}
     for attendance, player in rows:
-        entry = by_player.setdefault(
+        info = base.setdefault(
             player.id,
             {
                 "player": player,
                 "rank": attendance.rank,
-                "seconds_present": 0,
-                "loadout_gaps": None,
-                "laps": 0,
-                # Summed across every session this player's had this event
-                # (joined/left/rejoined), so "currently present" can't just
-                # be read off seconds_present - tracked separately here.
+                "sessions": [],
                 "currently_present": False,
                 "last_left_at": None,
-                # None = no plugin answer (non-plugin FC members are treated as runners).
-                "participation": participants.get(player.rsn),
             },
         )
-        left = attendance.left_at or now
-        entry["seconds_present"] += int((left - attendance.joined_at).total_seconds())
+        info["sessions"].append((attendance.joined_at, attendance.left_at or now))
         if attendance.left_at is None:
-            entry["currently_present"] = True
-        elif entry["last_left_at"] is None or attendance.left_at > entry["last_left_at"]:
-            entry["last_left_at"] = attendance.left_at
+            info["currently_present"] = True
+        elif info["last_left_at"] is None or attendance.left_at > info["last_left_at"]:
+            info["last_left_at"] = attendance.left_at
 
+    def overlap_seconds(sessions, start, end) -> int:
+        total = 0
+        for joined, left in sessions:
+            lo, hi = max(joined, start), min(left, end)
+            if hi > lo:
+                total += int((hi - lo).total_seconds())
+        return total
+
+    # One row per (player, role): a player who was Anti for a while and then
+    # Runner (or the other way round) gets two rows with separate time/laps -
+    # never combined. Players with no plugin answer get a single plain row.
+    entries: list[dict] = []
+    for player_id, info in base.items():
+        player = info["player"]
+        common = {
+            "player": player,
+            "rank": info["rank"],
+            "currently_present": info["currently_present"],
+            "last_left_at": info["last_left_at"],
+            "loadout_gaps": None,
+            "laps": 0,
+        }
+        stints = stints_by_player.get(player_id, [])
+        if not stints:
+            participation = participants.get(player.rsn)
+            declined = participation is not None and participation.status.value == "declined"
+            entries.append(
+                {
+                    **common,
+                    "role_label": "Declined" if declined else "Runner",
+                    "role_note": "" if declined else "(no plugin answer)",
+                    "is_anti": False,
+                    "seconds_present": sum(
+                        int((left - joined).total_seconds()) for joined, left in info["sessions"]
+                    ),
+                    "windows": None,
+                }
+            )
+            continue
+
+        # Time present before their first answer belongs to the role they chose.
+        earliest_join = min(joined for joined, _ in info["sessions"])
+        by_role: dict[str, dict] = {}
+        for index, stint in enumerate(stints):
+            start = min(stint.started_at, earliest_join) if index == 0 else stint.started_at
+            end = stint.ended_at or event_end
+            role_entry = by_role.setdefault(
+                stint.role.value, {"seconds": 0, "windows": [], "role": stint.role}
+            )
+            role_entry["seconds"] += overlap_seconds(info["sessions"], start, end)
+            role_entry["windows"].append((start, end))
+        for role_entry in by_role.values():
+            is_anti = role_entry["role"].value == "anti"
+            entries.append(
+                {
+                    **common,
+                    "role_label": "Anti" if is_anti else "Runner",
+                    "role_note": "",
+                    "is_anti": is_anti,
+                    "seconds_present": role_entry["seconds"],
+                    "windows": role_entry["windows"],
+                }
+            )
+
+    latest_check_by_player: dict[int, list | None] = {}
     if running is not None:
-        for player_id, entry in by_player.items():
+        for player_id in base:
             check_result = await session.execute(
                 select(LoadoutCheck)
                 .where(
@@ -185,15 +254,28 @@ async def _attendance_tab(session: AsyncSession, group: FcGroup, event: Event) -
                 .order_by(LoadoutCheck.checked_at.desc())
             )
             latest = check_result.scalars().first()
-            entry["loadout_gaps"] = latest.failed_requirement_keys if latest is not None else None
+            latest_check_by_player[player_id] = (
+                latest.failed_requirement_keys if latest is not None else None
+            )
 
-    for player_id, entry in by_player.items():
-        lap_result = await session.execute(
-            select(Lap).where(Lap.player_id == player_id, Lap.event_id == event.id)
-        )
-        entry["laps"] = len(lap_result.scalars().all())
+    laps_by_player: dict[int, list[dt.datetime]] = {}
+    for lap in (
+        (await session.execute(select(Lap).where(Lap.event_id == event.id))).scalars().all()
+    ):
+        laps_by_player.setdefault(lap.player_id, []).append(lap.completed_at)
 
-    return {"attendees": sorted(by_player.values(), key=lambda e: e["player"].rsn)}
+    for entry in entries:
+        player_id = entry["player"].id
+        entry["loadout_gaps"] = latest_check_by_player.get(player_id)
+        laps = laps_by_player.get(player_id, [])
+        if entry["windows"] is None:
+            entry["laps"] = len(laps)
+        else:
+            entry["laps"] = sum(1 for t in laps if any(a <= t <= b for a, b in entry["windows"]))
+
+    return {
+        "attendees": sorted(entries, key=lambda e: (e["player"].rsn.lower(), e["role_label"]))
+    }
 
 
 async def _laps_tab(session: AsyncSession, event: Event) -> dict:

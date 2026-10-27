@@ -7,15 +7,18 @@ from app.models.dd import DdPresence
 from app.models.death import Death
 from app.models.event import (
     Attendance,
+    Event,
     EventParticipant,
     ParticipantRole,
     ParticipantStatus,
+    ParticipantStint,
 )
 from app.models.lap import Lap
 from app.models.loadout import LoadoutCheck
 from app.models.player import Player
 from app.seed import seed_default_loadouts
 from app.util.time import to_epoch_ms
+from app.web.routes.events import _attendance_tab
 
 DD_PRESENCE = {
     "arrived_after_ms": 1000,
@@ -212,3 +215,109 @@ async def test_observer_reports_skip_antis_and_declined_but_not_unanswered(
         ).scalars().all()
         assert len(checks) == expected
         assert len(presences) == expected
+
+
+
+async def test_switching_role_closes_the_old_stint_and_opens_a_new_one(
+    client, fc_group, db_session
+):
+    group, token = fc_group
+    event = await _start_event(db_session, group)
+    rsn = _rsn()
+
+    await _respond(client, token, rsn, event.id, role="ANTI")
+    await _respond(client, token, rsn, event.id, role="ANTI")  # same role again: no new stint
+    await _respond(client, token, rsn, event.id, role="RUNNER")
+    await _respond(client, token, rsn, event.id, role="ANTI")
+
+    player = await _get_player(db_session, rsn)
+    stints = (
+        (
+            await db_session.execute(
+                select(ParticipantStint)
+                .where(ParticipantStint.player_id == player.id)
+                .order_by(ParticipantStint.id)
+            )
+        )
+        .scalars()
+        .all()
+    )
+    assert [st.role for st in stints] == [
+        ParticipantRole.ANTI,
+        ParticipantRole.RUNNER,
+        ParticipantRole.ANTI,
+    ]
+    assert stints[0].ended_at is not None
+    assert stints[1].ended_at is not None
+    assert stints[2].ended_at is None
+
+    # Declining closes whatever is open and starts nothing.
+    await _respond(client, token, rsn, event.id, attending=False)
+    await db_session.refresh(stints[2])
+    assert stints[2].ended_at is not None
+
+
+async def test_attendance_tab_keeps_each_role_separate(db_session, default_group):
+    now = dt.datetime.utcnow()
+    event = Event(
+        fc_group_id=default_group.id,
+        name="Split",
+        started_at=now - dt.timedelta(minutes=30),
+        ended_at=None,
+    )
+    db_session.add(event)
+    await db_session.flush()
+    rsn = _rsn()
+    player = Player(rsn=rsn, first_seen=now, last_seen=now, is_plugin_user=True)
+    db_session.add(player)
+    await db_session.flush()
+    db_session.add(
+        Attendance(
+            event_id=event.id,
+            player_id=player.id,
+            joined_at=now - dt.timedelta(minutes=30),
+            last_sighted_at=now,
+            rank=0,
+            world=330,
+        )
+    )
+    switch = now - dt.timedelta(minutes=20)
+    db_session.add_all(
+        [
+            ParticipantStint(
+                event_id=event.id,
+                player_id=player.id,
+                role=ParticipantRole.ANTI,
+                started_at=now - dt.timedelta(minutes=30),
+                ended_at=switch,
+            ),
+            ParticipantStint(
+                event_id=event.id,
+                player_id=player.id,
+                role=ParticipantRole.RUNNER,
+                started_at=switch,
+            ),
+            Lap(
+                player_id=player.id,
+                event_id=event.id,
+                lap_count=1,
+                completed_at=now - dt.timedelta(minutes=5),
+            ),
+            Lap(
+                player_id=player.id,
+                event_id=event.id,
+                lap_count=2,
+                completed_at=now - dt.timedelta(minutes=4),
+            ),
+        ]
+    )
+    await db_session.commit()
+
+    rows = (await _attendance_tab(db_session, default_group, event))["attendees"]
+    mine = {r["role_label"]: r for r in rows if r["player"].id == player.id}
+    assert set(mine) == {"Anti", "Runner"}
+    assert 9 <= mine["Anti"]["seconds_present"] // 60 <= 10
+    assert 19 <= mine["Runner"]["seconds_present"] // 60 <= 20
+    assert mine["Anti"]["laps"] == 0
+    assert mine["Runner"]["laps"] == 2
+    assert mine["Anti"]["is_anti"] is True

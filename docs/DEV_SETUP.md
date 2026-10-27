@@ -86,8 +86,10 @@ wired up end-to-end:
 - [ ] Answer Yes as **Anti** → attendance time shows (Role column says Anti),
       but no laps, no DD presence, no loadout warnings, and the dashboard
       Loadout column says "n/a (anti)".
-- [ ] Change **My role** in the plugin config mid-mass → dashboard Role column
-      updates within a few seconds; runner-only behaviour switches on/off.
+- [ ] Change **My role** in the plugin config mid-mass (e.g. Anti → Runner →
+      Anti) → the dashboard Attendance tab shows a separate row per role, each
+      with its own time present and laps (never combined); runner-only
+      behaviour switches on/off.
 - [ ] Log out and back in mid-mass → no popup; you're restored as attending
       with the same role.
 - [ ] Stop the mass, start another → popup appears again; the old answer does

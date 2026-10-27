@@ -10,7 +10,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import get_session
 from app.deps import get_current_fc_group
-from app.models.event import Event, EventParticipant, ParticipantRole, ParticipantStatus
+from app.models.event import (
+    Event,
+    EventParticipant,
+    ParticipantRole,
+    ParticipantStatus,
+    ParticipantStint,
+)
 from app.models.fc_group import FcGroup
 from app.models.player import Player
 from app.schemas.ingest import RespondIn
@@ -74,6 +80,26 @@ async def respond(
         existing.status = status
         existing.role = role
         existing.responded_at = now
+
+    # Stint log: a role change (or leaving) closes the open stint; a new role opens a new one.
+    open_stint = (
+        await session.execute(
+            select(ParticipantStint).where(
+                ParticipantStint.event_id == event.id,
+                ParticipantStint.player_id == player.id,
+                ParticipantStint.ended_at.is_(None),
+            )
+        )
+    ).scalar_one_or_none()
+    if open_stint is not None and not (body.attending and open_stint.role == role):
+        open_stint.ended_at = now
+        open_stint = None
+    if body.attending and open_stint is None:
+        session.add(
+            ParticipantStint(
+                event_id=event.id, player_id=player.id, role=role, started_at=now
+            )
+        )
 
     await session.commit()
     return {"ok": True}

@@ -1575,3 +1575,14 @@ Owner-requested before the in-game test pass and Hub submission.
 - Token rotated (old one invalidated) and baked into `ServerConfig`.
 - Decisions: non-plugin FC members = runners; antis skip laps + DD only
   (deaths kept); a closed-without-answer popup sends nothing.
+
+### 2026-10-27 (later) - Per-role stints
+
+Switching Runner/Anti mid-mass now creates a new record instead of overwriting:
+new table `participant_stints` (migration `b8d4f02e6c35`, backfills current
+attendees). `respond` closes the open stint on a role change or decline and
+opens a new one. The event Attendance tab shows one row per (player, role) -
+time present is the overlap of their attendance sessions with that role's
+stints (time before their first answer counts toward their first role), laps
+are counted by completion time within the role's windows. Non-plugin members
+still get a single Runner row. 96 server tests passing.
