@@ -76,11 +76,15 @@ wired up end-to-end:
 
 ### Opt-in and roles (new 2026-10-27)
 
-- [ ] Before answering the popup (or after answering No): lap, die and move
-      about → nothing reaches the dashboard, the panel says "waiting for your
+- [ ] Before answering the popup (or after answering No), *outside the
+      course*: die and move about → nothing reaches the dashboard, the panel says "waiting for your
       answer" / "not attending", and nothing is scanned.
 - [ ] Close the popup with the X → nothing is sent; the sidebar's "Attend this
       mass" button re-opens it.
+- [ ] Answer **No** (or close the popup), then walk into the course → within a
+      tick you're marked attending with your configured role, a red chat line
+      says so, and the dashboard shows you. Same if you never answered.
+- [ ] In the course but in a **different** friends chat → not auto-marked.
 - [ ] Answer Yes as **Runner** → laps, DD and own-gear warnings all work as in
       the checks above.
 - [ ] Answer Yes as **Anti** → attendance time shows (Role column says Anti),

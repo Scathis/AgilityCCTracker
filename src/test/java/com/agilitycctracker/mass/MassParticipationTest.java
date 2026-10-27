@@ -101,4 +101,33 @@ public class MassParticipationTest
 		// The poll can race our own respond POST: answered locally, server list not caught up yet.
 		assertEquals(Action.NONE, MassParticipation.decide(status(5L, Collections.emptyList()), ME, 5, true, 5));
 	}
+
+	@Test
+	public void inTheCourseDuringAMassAutoAttendsEvenAfterSayingNo()
+	{
+		// lastAttemptEventId NONE: never tried for this mass (covers No, closed popup, no answer yet).
+		assertEquals(true, MassParticipation.shouldAutoAttend(false, true, true, 5, NONE, 0, 1_000));
+	}
+
+	@Test
+	public void autoAttendNeedsTheCourseAndTheTrackedChat()
+	{
+		assertEquals(false, MassParticipation.shouldAutoAttend(false, false, true, 5, NONE, 0, 1_000));
+		assertEquals(false, MassParticipation.shouldAutoAttend(false, true, false, 5, NONE, 0, 1_000));
+	}
+
+	@Test
+	public void alreadyAttendingNeverReSends()
+	{
+		assertEquals(false, MassParticipation.shouldAutoAttend(true, true, true, 5, NONE, 0, 1_000));
+	}
+
+	@Test
+	public void aFailedAutoAttendRetriesAfterThirtySecondsNotEveryTick()
+	{
+		assertEquals(false, MassParticipation.shouldAutoAttend(false, true, true, 5, 5, 1_000, 1_600));
+		assertEquals(true, MassParticipation.shouldAutoAttend(false, true, true, 5, 5, 1_000, 31_000));
+		// A new mass is tried straight away.
+		assertEquals(true, MassParticipation.shouldAutoAttend(false, true, true, 6, 5, 1_000, 1_600));
+	}
 }

@@ -15,6 +15,7 @@ import com.agilitycctracker.mass.MassParticipation;
 import com.agilitycctracker.model.DdConfig;
 import com.agilitycctracker.model.StatusResponse;
 import com.agilitycctracker.scan.FcMemberScanner;
+import com.agilitycctracker.scan.FlagAccess;
 import com.agilitycctracker.ui.GearFlagOverlay;
 import com.agilitycctracker.ui.TrackerPanel;
 import com.google.inject.Provides;
@@ -71,6 +72,8 @@ import net.runelite.client.util.Text;
 )
 public class AgilityCCTrackerPlugin extends Plugin
 {
+	private static final int WILDERNESS_AGILITY_COURSE_REGION = 11837;
+
 	private static final Set<WorldType> UNSUPPORTED_WORLD_TYPES = EnumSet.of(
 		WorldType.SEASONAL,
 		WorldType.DEADMAN,
@@ -316,8 +319,20 @@ public class AgilityCCTrackerPlugin extends Plugin
 			lastAccountHash = hash;
 		}
 
-		if (unsupportedWorld() || !massParticipation.isAttending())
+		if (unsupportedWorld())
 		{
+			return;
+		}
+
+		if (!massParticipation.isAttending())
+		{
+			// In the course during a mass = attended, whatever the popup said.
+			StatusResponse status = statusHolder.get();
+			FriendsChatManager fc = client.getFriendsChatManager();
+			boolean inCourse = local != null && local.getWorldLocation().getRegionID() == WILDERNESS_AGILITY_COURSE_REGION;
+			boolean inTrackedFc = fc != null && status != null
+				&& FlagAccess.isConfiguredFc(Text.toJagexName(fc.getOwner()), Text.toJagexName(status.getFcOwner()));
+			massParticipation.onLocation(status, inCourse, inTrackedFc);
 			return;
 		}
 

@@ -28,13 +28,15 @@ import net.runelite.client.config.ConfigManager;
  * one, a popup asks "Mass started - attending?" (Yes/No plus Runner/Anti).
  * The answer is recorded server-side, so logging back in mid-mass restores it
  * silently instead of asking again. Ending the mass, switching account or
- * logging out clears it.
+ * logging out clears it. Being in the course during a mass counts as
+ * attending regardless of the answer - see {@link #onLocation}.
  */
 @Slf4j
 @Singleton
 public class MassParticipation
 {
 	private static final long NONE = -1;
+	private static final long AUTO_ATTEND_RETRY_MS = 30_000;
 
 	/** What {@link #decide} wants done with a fresh /status. */
 	public enum Action
@@ -73,6 +75,8 @@ public class MassParticipation
 	private volatile boolean attending;
 	private volatile long promptedEventId = NONE;
 	private volatile String lastError;
+	private volatile long autoAttemptEventId = NONE;
+	private volatile long autoAttemptAt;
 
 	private volatile Runnable onActivated = () ->
 	{
@@ -259,6 +263,7 @@ public class MassParticipation
 		answeredEventId = NONE;
 		promptedEventId = NONE;
 		lastError = null;
+		autoAttemptEventId = NONE;
 		if (wasAttending)
 		{
 			onDeactivated.run();
@@ -318,20 +323,20 @@ public class MassParticipation
 		});
 	}
 
-	private void sendAnswer(long eventId, boolean yes, MassRole role)
+	private boolean sendAnswer(long eventId, boolean yes, MassRole role)
 	{
 		String rsn = localRsn;
 		if (rsn == null)
 		{
 			lastError = "log in to answer";
-			return;
+			return false;
 		}
 		boolean ok = apiClient.postRespond(rsn, eventId, yes, role);
 		if (!ok)
 		{
 			lastError = "could not reach the server - try the button again";
 			log.debug("respond failed");
-			return;
+			return false;
 		}
 		if (yes)
 		{
@@ -349,5 +354,53 @@ public class MassParticipation
 				onDeactivated.run();
 			}
 		}
+		return true;
+	}
+
+	/**
+	 * Owner rule: being in the course during a mass means you attended, whatever
+	 * the popup said (forgot to answer, closed it, clicked No by mistake). Pure so
+	 * the throttle is testable: retries a failed attempt at most every
+	 * {@link #AUTO_ATTEND_RETRY_MS}, and never while already attending.
+	 */
+	public static boolean shouldAutoAttend(boolean attending, boolean inCourse, boolean inTrackedFc,
+		long eventId, long lastAttemptEventId, long lastAttemptAt, long now)
+	{
+		if (attending || !inCourse || !inTrackedFc)
+		{
+			return false;
+		}
+		return lastAttemptEventId != eventId || now - lastAttemptAt >= AUTO_ATTEND_RETRY_MS;
+	}
+
+	/**
+	 * Called every game tick (client thread) while not attending. Marks the player
+	 * attending with their configured role once they're in the course during the
+	 * active mass, while in the friends chat the server tracks.
+	 */
+	public void onLocation(StatusResponse status, boolean inCourse, boolean inTrackedFc)
+	{
+		if (status == null || status.getActiveEvent() == null || localRsn == null)
+		{
+			return;
+		}
+		ActiveEvent event = status.getActiveEvent();
+		long now = System.currentTimeMillis();
+		if (!shouldAutoAttend(attending, inCourse, inTrackedFc, event.getId(), autoAttemptEventId, autoAttemptAt, now))
+		{
+			return;
+		}
+		autoAttemptEventId = event.getId();
+		autoAttemptAt = now;
+		MassRole role = config.role();
+		executor.submit(() ->
+		{
+			if (sendAnswer(event.getId(), true, role))
+			{
+				clientThread.invoke(() -> client.addChatMessage(ChatMessageType.GAMEMESSAGE, "",
+					"<col=ff0000>You're in the course during " + event.getName() + ", so you've been marked as attending ("
+						+ role + "). Change your role in the Wildy Agility FC Tracker settings.</col>", null));
+			}
+		});
 	}
 }

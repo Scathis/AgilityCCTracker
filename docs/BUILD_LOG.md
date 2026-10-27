@@ -1604,3 +1604,12 @@ in-game, so the aim is to stop handing the convenience to strangers, not secrecy
   roster-reported rank meets the threshold; others get just their own answer.
   The plugin now passes its name and matches the answer against that same name.
 - 98 server tests, plugin tests incl. `FlagAccessTest`.
+
+### 2026-10-27 - In the course = attending
+
+Owner rule: a plugin user who is in the Wilderness Agility Course region during
+an active mass, while in the tracked friends chat, has attended - even if they
+answered No, closed the popup or never answered. The plugin now sends an
+"attending" answer with their configured role (`MassParticipation.onLocation`,
+throttled to one retry per 30s on failure) and posts a chat line saying so.
+Hub warning text and PR notes updated to match.
