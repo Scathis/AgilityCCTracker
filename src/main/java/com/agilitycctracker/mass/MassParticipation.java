@@ -171,20 +171,28 @@ public class MassParticipation
 		return lastError != null ? lastError : "waiting for your answer";
 	}
 
-	/** Called with every fresh /status (any thread). */
-	public void onStatus(StatusResponse status)
+	/**
+	 * Called with every fresh /status (any thread). {@code fetchedFor} is the name the status
+	 * was requested for; if the player has since logged out or switched account the
+	 * response describes someone else and is ignored.
+	 */
+	public void onStatus(StatusResponse status, String fetchedFor)
 	{
-		Action action = decide(status, localRsn, answeredEventId, attending, promptedEventId);
+		if (fetchedFor == null || !fetchedFor.equalsIgnoreCase(localRsn))
+		{
+			return;
+		}
+		Action action = decide(status, fetchedFor, answeredEventId, attending, promptedEventId);
 		if (action == Action.RESET)
 		{
 			reset();
-			action = decide(status, localRsn, answeredEventId, attending, promptedEventId);
+			action = decide(status, fetchedFor, answeredEventId, attending, promptedEventId);
 		}
 		switch (action)
 		{
 			case RESTORE_ATTENDING:
 			{
-				MassRole serverRole = roleOnServer(status);
+				MassRole serverRole = roleOnServer(status, fetchedFor);
 				activate(status.getActiveEvent().getId());
 				if (serverRole != config.role())
 				{
@@ -207,11 +215,11 @@ public class MassParticipation
 		}
 	}
 
-	private MassRole roleOnServer(StatusResponse status)
+	private MassRole roleOnServer(StatusResponse status, String rsn)
 	{
 		for (Participant participant : status.getParticipants())
 		{
-			if (localRsn != null && localRsn.equalsIgnoreCase(participant.getRsn()))
+			if (rsn.equalsIgnoreCase(participant.getRsn()))
 			{
 				return participant.getRole();
 			}

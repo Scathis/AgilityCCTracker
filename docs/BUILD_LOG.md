@@ -1586,3 +1586,21 @@ time present is the overlap of their attendance sessions with that role's
 stints (time before their first answer counts toward their first role), laps
 are counted by completion time within the role's windows. Non-plugin members
 still get a single Runner row. 96 server tests passing.
+
+### 2026-10-27 (later still) - Rank-gated gear flags + in-game overlay
+
+Concern: anyone who installs the plugin and opts in could see the "FC members
+in view" gap list, i.e. a ready-made list of players with no gear. Gear is public
+in-game, so the aim is to stop handing the convenience to strangers, not secrecy.
+
+- `fc_groups.flag_viewer_min_rank` (migration `c9e5a13f7d46`, default 0 = any
+  ranked member), editable on the dashboard Settings page; sent in `/status`.
+- Plugin: the scanner only runs in the FC the server tracks; the sidebar list
+  and the new over-head labels (`ui/GearFlagOverlay`, config "Show gear
+  flags") are shown only if the viewer's own FC rank >= the threshold
+  (`scan/FlagAccess`). Scanning/uploading for the dashboard is unchanged for
+  everyone. Antis/No-answerers never get a label.
+- `/status?rsn=` : the full attending/anti list is returned only to viewers whose
+  roster-reported rank meets the threshold; others get just their own answer.
+  The plugin now passes its name and matches the answer against that same name.
+- 98 server tests, plugin tests incl. `FlagAccessTest`.

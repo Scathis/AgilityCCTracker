@@ -16,6 +16,9 @@ class FcGroup(Base):
     created_at: Mapped[dt.datetime] = mapped_column(DateTime())
 
     observer_enabled: Mapped[bool] = mapped_column(Boolean, default=True)
+    # Lowest FC rank (RuneLite FriendsChatRank value: -1 unranked, 0 friend, 1 recruit, ...)
+    # that the plugin shows other players' gear gaps to (sidebar list + over-head flags).
+    flag_viewer_min_rank: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
     dd_tiles: Mapped[list | None] = mapped_column(JSON, nullable=True)
     dd_call_regex: Mapped[str | None] = mapped_column(String(255), nullable=True)
     dd_break_regex: Mapped[str | None] = mapped_column(String(255), nullable=True)

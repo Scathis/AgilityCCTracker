@@ -95,28 +95,53 @@ public class FcMemberScanner
 	// a live heartbeat, not a durable event that needs restore-on-failure.
 	private final Set<String> currentlyInCourse = ConcurrentHashMap.newKeySet();
 
+	// Whether the local player may be shown other players' gear gaps (sidebar
+	// list + over-head flags): in the tracked FC, at or above the server's
+	// configured rank. Refreshed every scanning tick; false whenever not scanning.
+	private volatile boolean viewerMaySeeFlags;
+	private volatile List<FlaggedPlayer> flagged = Collections.emptyList();
+
+	private void clearLive()
+	{
+		currentlyInCourse.clear();
+		viewerMaySeeFlags = false;
+		flagged = Collections.emptyList();
+	}
+
 	public void onTick()
 	{
 		StatusResponse status = statusHolder.get();
 		if (!config.fcObserver() || status == null || !status.isObserverEnabled() || status.getActiveEvent() == null)
 		{
-			currentlyInCourse.clear();
+			clearLive();
 			return;
 		}
 
 		Player local = client.getLocalPlayer();
 		if (local == null || local.getWorldLocation().getRegionID() != WILDERNESS_AGILITY_COURSE_REGION)
 		{
-			currentlyInCourse.clear();
+			clearLive();
+			return;
+		}
+
+		// Only ever scan the friends chat this server tracks - not whichever
+		// chat the player happens to be sitting in.
+		FriendsChatManager fc = client.getFriendsChatManager();
+		if (fc == null || !FlagAccess.isConfiguredFc(Text.toJagexName(fc.getOwner()), Text.toJagexName(status.getFcOwner())))
+		{
+			clearLive();
 			return;
 		}
 
 		currentlyInCourse.clear();
+		boolean maySeeFlags = fc.getMyRank() != null
+			&& FlagAccess.canViewFlags(true, fc.getMyRank().getValue(), status.getFlagViewerMinRank());
+		viewerMaySeeFlags = maySeeFlags;
+		List<FlaggedPlayer> flaggedNow = new ArrayList<>();
 
 		Loadout runningLoadout = Loadout.find(status.getLoadouts(), LoadoutContext.RUNNING);
 		Loadout ddLoadout = Loadout.find(status.getLoadouts(), LoadoutContext.DD);
 		List<DdTile> tiles = status.getDd() != null ? status.getDd().getTiles() : Collections.emptyList();
-		FriendsChatManager fc = client.getFriendsChatManager();
 		long now = System.currentTimeMillis();
 
 		// Plugin users who answered "no" or are antis are never gear-checked or
@@ -164,6 +189,10 @@ public class FcMemberScanner
 			{
 				List<String> failed = evaluator.evaluate(runningLoadout, worn, VISIBLE_SLOTS);
 				queueIfChanged(rsn, runningLoadout.getId(), failed);
+				if (maySeeFlags && config.showGearFlags() && inCourseArea && !failed.isEmpty())
+				{
+					flaggedNow.add(new FlaggedPlayer(p, FlagAccess.describe(failed)));
+				}
 			}
 
 			// Owner request: ranked members are usually busy with other FC
@@ -182,6 +211,13 @@ public class FcMemberScanner
 
 			// worn/location/rsn all go out of scope here - never stored past this iteration.
 		}
+		flagged = flaggedNow;
+	}
+
+	/** Runners to draw a flag over (empty unless the viewer is entitled to see them). Replaced every tick. */
+	public List<FlaggedPlayer> getFlagged()
+	{
+		return flagged;
 	}
 
 	private Map<Slot, WornItem> readVisibleGear(Player p)
@@ -249,6 +285,11 @@ public class FcMemberScanner
 	/** For TrackerPanel's "FC members in view" list - labels (rsn + failed requirement ids) only. */
 	public Map<String, List<String>> getLastResults()
 	{
+		// Viewers below the FC-rank threshold get no list at all; their scans still feed the dashboard.
+		if (!viewerMaySeeFlags)
+		{
+			return Collections.emptyMap();
+		}
 		synchronized (lastLoadoutResult)
 		{
 			return new HashMap<>(lastLoadoutResult);
@@ -300,5 +341,6 @@ public class FcMemberScanner
 		{
 			queue.clear();
 		}
+		clearLive();
 	}
 }

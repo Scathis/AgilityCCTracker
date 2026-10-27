@@ -32,6 +32,12 @@
       <input type="checkbox" name="observer_enabled" {% if group.observer_enabled %}checked{% endif %}>
       Enable FC observer (loadout/DD scanning of other members)
     </label>
+    <label>Lowest FC rank that sees other players' gear flags in-game
+      <input type="number" name="flag_viewer_min_rank" min="-1" max="127" value="{{ group.flag_viewer_min_rank }}" required>
+    </label>
+    <small>-1 = anyone in the chat, 0 = any ranked member (friend and up), 1 = recruit, 2 = corporal, 3 = sergeant, ...
+      Players below this rank still get their own gear warning and still feed the dashboard,
+      but the plugin shows them no list and no over-head flags for other players.</small>
   </fieldset>
 
   <button type="submit">Save</button>

@@ -1,14 +1,15 @@
 import time
 
-from fastapi import APIRouter, Depends
-from sqlalchemy import select
+from fastapi import APIRouter, Depends, Query
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import get_session
 from app.deps import get_current_fc_group
-from app.models.event import Event
+from app.models.event import Attendance, Event
 from app.models.fc_group import FcGroup
 from app.models.loadout import Loadout, LoadoutRequirement
+from app.models.player import Player
 from app.schemas.status import (
     ActiveEventOut,
     DdConfigOut,
@@ -26,6 +27,7 @@ router = APIRouter()
 
 @router.get("/status", response_model=StatusOut)
 async def get_status(
+    rsn: str | None = Query(default=None, max_length=12),
     fc_group: FcGroup = Depends(get_current_fc_group),
     session: AsyncSession = Depends(get_session),
 ) -> StatusOut:
@@ -63,12 +65,24 @@ async def get_status(
             )
         loadout_outs.append(loadout_out)
 
+    # Who's attending as what is only handed to viewers entitled to see gear
+    # flags (their FC rank, as last reported by roster snapshots from *other*
+    # plugin users, is at or above the group's threshold). Everyone else gets
+    # just their own entry, which the plugin needs to restore its own answer.
     participants: list[ParticipantOut] = []
     if active_event is not None:
-        for rsn, participant in (await participants_by_rsn(session, active_event.id)).items():
-            participants.append(
-                ParticipantOut(rsn=rsn, status=participant.status.name, role=participant.role.name)
-            )
+        entitled = await _viewer_entitled(session, active_event.id, rsn, fc_group)
+        for participant_rsn, participant in (
+            await participants_by_rsn(session, active_event.id)
+        ).items():
+            if entitled or (rsn is not None and participant_rsn.lower() == rsn.lower()):
+                participants.append(
+                    ParticipantOut(
+                        rsn=participant_rsn,
+                        status=participant.status.name,
+                        role=participant.role.name,
+                    )
+                )
 
     tiles = [DdTileOut(x=t["x"], y=t["y"], plane=t["plane"]) for t in (fc_group.dd_tiles or [])]
 
@@ -77,6 +91,7 @@ async def get_status(
         fc_name=fc_group.name,
         server_time=int(time.time() * 1000),
         observer_enabled=fc_group.observer_enabled,
+        flag_viewer_min_rank=fc_group.flag_viewer_min_rank,
         active_event=(
             ActiveEventOut(
                 id=active_event.id,
@@ -99,3 +114,24 @@ async def get_status(
             crossbow_counts_as_bow_at_dd=fc_group.dd_crossbow_counts_as_bow,
         ),
     )
+
+
+async def _viewer_entitled(
+    session: AsyncSession, event_id: int, rsn: str | None, fc_group: FcGroup
+) -> bool:
+    """True if `rsn`'s currently-open attendance row (rank reported by
+    *roster snapshots*, not by the asker) meets the group's flag threshold."""
+    if rsn is None:
+        return False
+    result = await session.execute(
+        select(Attendance.rank)
+        .join(Player, Attendance.player_id == Player.id)
+        .where(
+            Attendance.event_id == event_id,
+            Attendance.left_at.is_(None),
+            func.lower(Player.rsn) == rsn.lower(),
+        )
+        .order_by(Attendance.joined_at.desc())
+    )
+    rank = result.scalars().first()
+    return rank is not None and rank >= fc_group.flag_viewer_min_rank

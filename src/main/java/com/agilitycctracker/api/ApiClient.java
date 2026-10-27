@@ -7,6 +7,8 @@ import com.agilitycctracker.model.StatusResponse;
 import com.google.gson.FieldNamingPolicy;
 import com.google.gson.Gson;
 import java.io.IOException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.concurrent.atomic.AtomicInteger;
 import javax.inject.Inject;
 import javax.inject.Singleton;
@@ -72,7 +74,12 @@ public class ApiClient
 		return !tokenInvalid && (System.currentTimeMillis() < rateLimitedUntil || skipRemaining.get() > 0);
 	}
 
-	public StatusResponse getStatus()
+	/**
+	 * @param rsn the local player's name, sent so the server can tell whether this viewer is
+	 *            entitled to the full list of who's attending as what; null (not logged in yet)
+	 *            gets the public view only.
+	 */
+	public StatusResponse getStatus(String rsn)
 	{
 		if (!canAttempt())
 		{
@@ -83,7 +90,12 @@ public class ApiClient
 		{
 			return null;
 		}
-		Request request = requestBuilder(base, "/api/v1/status").get().build();
+		String path = "/api/v1/status";
+		if (rsn != null && !rsn.isEmpty())
+		{
+			path += "?rsn=" + URLEncoder.encode(rsn, StandardCharsets.UTF_8);
+		}
+		Request request = requestBuilder(base, path).get().build();
 		try (Response response = okHttpClient.newCall(request).execute())
 		{
 			if (!checkCommonErrors(response) || response.body() == null)

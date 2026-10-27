@@ -15,6 +15,7 @@ import com.agilitycctracker.mass.MassParticipation;
 import com.agilitycctracker.model.DdConfig;
 import com.agilitycctracker.model.StatusResponse;
 import com.agilitycctracker.scan.FcMemberScanner;
+import com.agilitycctracker.ui.GearFlagOverlay;
 import com.agilitycctracker.ui.TrackerPanel;
 import com.google.inject.Provides;
 import java.awt.image.BufferedImage;
@@ -51,6 +52,7 @@ import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.task.Schedule;
 import net.runelite.client.ui.ClientToolbar;
 import net.runelite.client.ui.NavigationButton;
+import net.runelite.client.ui.overlay.OverlayManager;
 import net.runelite.client.util.Text;
 
 /**
@@ -129,6 +131,12 @@ public class AgilityCCTrackerPlugin extends Plugin
 	private TrackerPanel trackerPanel;
 
 	@Inject
+	private GearFlagOverlay gearFlagOverlay;
+
+	@Inject
+	private OverlayManager overlayManager;
+
+	@Inject
 	private ClientToolbar clientToolbar;
 
 	@Inject
@@ -157,6 +165,7 @@ public class AgilityCCTrackerPlugin extends Plugin
 			() -> clientThread.invoke(this::clearCollected));
 
 		trackerPanel.init();
+		overlayManager.add(gearFlagOverlay);
 		if (config.showPanel())
 		{
 			addPanel();
@@ -173,6 +182,7 @@ public class AgilityCCTrackerPlugin extends Plugin
 	protected void shutDown()
 	{
 		log.info("Wildy Agility FC Tracker stopped");
+		overlayManager.remove(gearFlagOverlay);
 		removePanel();
 	}
 

@@ -51,6 +51,13 @@ Should cover, explicitly:
   everything from a player who hasn't opted in. Antis (a player-chosen role)
   are attendance-time only: no laps, no DD, no gear checks, and observers
   never report on antis or on players who answered No.
+- **Gear flags are rank-gated.** What a player wears is public in-game, but
+  the plugin only shows a ready-made list / over-head labels of other players'
+  gaps to friends chat members at or above an FC rank the organisers set
+  (default: any ranked member), so a stranger who installs the plugin gets no
+  target list. The scan itself only runs inside the tracked friends chat, and
+  the over-head overlay is passed only the flagged players by
+  `FcMemberScanner`; it reads nothing from them.
 - **Fixed server address.** The server URL and token are compiled in (this FC
   tool has exactly one backend); the token is not a secret and is not relied
   on for security - the opt-in rule above is.

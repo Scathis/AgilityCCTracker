@@ -32,6 +32,7 @@ async def update_settings(
     max_minutes: int = Form(...),
     crossbow_counts_as_bow: bool = Form(False),
     observer_enabled: bool = Form(False),
+    flag_viewer_min_rank: int = Form(0),
     session: AsyncSession = Depends(get_session),
     group: FcGroup = Depends(get_default_fc_group),
     user: User = Depends(require_role(UserRole.ADMIN)),
@@ -46,5 +47,6 @@ async def update_settings(
     group.dd_max_minutes = max_minutes
     group.dd_crossbow_counts_as_bow = crossbow_counts_as_bow
     group.observer_enabled = observer_enabled
+    group.flag_viewer_min_rank = max(-1, min(flag_viewer_min_rank, 127))
     await session.commit()
     return RedirectResponse(url="/settings", status_code=303)

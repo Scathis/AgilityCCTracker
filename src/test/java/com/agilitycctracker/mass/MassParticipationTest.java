@@ -20,7 +20,7 @@ public class MassParticipationTest
 	private static StatusResponse status(Long eventId, List<Participant> participants)
 	{
 		ActiveEvent event = eventId != null ? new ActiveEvent(eventId, "Mass", 0) : null;
-		return new StatusResponse("Owner", "FC", 0, true, event, participants, Collections.emptyList(), null);
+		return new StatusResponse("Owner", "FC", 0, true, 0, event, participants, Collections.emptyList(), null);
 	}
 
 	private static Participant participant(String rsn, String status, MassRole role)

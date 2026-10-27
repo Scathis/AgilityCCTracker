@@ -76,7 +76,9 @@ A plugin user's answer to the "mass started - attending?" popup.
 again while the mass is active changes the role. `409` if `event_id` isn't
 the FC's currently active mass, `422` for a bad role.
 
-`/status` lists every answer for the active mass as `participants`
+`GET /status?rsn=<viewer>` (the plugin passes the local player's name) also returns `flag_viewer_min_rank`: the lowest FC rank (`-1` unranked, `0` friend, `1` recruit, …) that the plugin shows other players' gear gaps to, set on the dashboard Settings page.
+
+`/status` lists the answers for the active mass as `participants`, but **only to an entitled viewer** — one whose currently-open attendance row (rank taken from roster snapshots reported by other plugin users, never from the asker) is at or above `flag_viewer_min_rank`. Everyone else gets just their own entry (enough to restore their own answer). The `rsn` is self-reported, so this stops the stock plugin, not a modified client
 (`[{"rsn", "status": "ATTENDING"|"DECLINED", "role": "RUNNER"|"ANTI"}]`).
 Someone not listed has no plugin answer (e.g. mobile) and is treated as a
 runner by observers.

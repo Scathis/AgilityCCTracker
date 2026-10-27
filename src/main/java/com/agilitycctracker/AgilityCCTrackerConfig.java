@@ -119,4 +119,16 @@ public interface AgilityCCTrackerConfig extends Config
 	{
 		return true;
 	}
+
+	@ConfigItem(
+		keyName = "showGearFlags",
+		name = "Show gear flags",
+		description = "Show a short label over runners with missing gear. Only shown to friends chat members at or above the rank the organisers set; ignored for everyone else.",
+		section = displaySection,
+		position = 2
+	)
+	default boolean showGearFlags()
+	{
+		return true;
+	}
 }

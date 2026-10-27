@@ -14,6 +14,8 @@ public class StatusResponse
 	String fcName;
 	long serverTime;
 	boolean observerEnabled;
+	/** Lowest FC rank allowed to see other players' gear gaps in-game (see FlagAccess). */
+	int flagViewerMinRank;
 	ActiveEvent activeEvent;
 	/** Plugin users who answered the active mass's prompt; null from an older server. Anyone not listed is a non-plugin FC member, treated as a runner. */
 	List<Participant> participants;

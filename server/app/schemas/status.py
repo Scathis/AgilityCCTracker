@@ -55,6 +55,8 @@ class StatusOut(BaseModel):
     fc_name: str
     server_time: int
     observer_enabled: bool
+    # Lowest FC rank the plugin shows other players' gear gaps to (see FcGroup).
+    flag_viewer_min_rank: int
     active_event: ActiveEventOut | None
     # Plugin users who answered the active mass's "attending?" prompt. A
     # roster member who's absent here is a non-plugin user, treated as a runner.

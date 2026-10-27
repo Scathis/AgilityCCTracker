@@ -67,11 +67,19 @@ public class Uploader
 
 	public void pollStatus()
 	{
-		StatusResponse status = apiClient.getStatus();
+		// The status shows this player's own answer plus, for ranked viewers,
+		// everyone else's - so it's fetched *for* a specific name, and that
+		// same name is what the answer is matched against (never a name that
+		// changed while the request was in flight).
+		String rsn = massParticipation.getLocalRsn();
+		StatusResponse status = apiClient.getStatus(rsn);
 		if (status != null)
 		{
 			statusHolder.set(status);
-			massParticipation.onStatus(status);
+			if (rsn != null)
+			{
+				massParticipation.onStatus(status, rsn);
+			}
 		}
 	}
 

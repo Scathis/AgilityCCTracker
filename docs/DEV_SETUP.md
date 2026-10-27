@@ -99,6 +99,23 @@ wired up end-to-end:
       gear-checked as a runner.
 - [ ] No API URL / token is visible or editable anywhere in the plugin config.
 
+### Gear flags and who can see them (new 2026-10-27)
+
+- [ ] As a **ranked** member (rank ≥ the threshold on dashboard Settings) at
+      the course during a mass: a red label ("No helm, boots") appears over
+      each runner with missing gear, and the sidebar's "FC members in view"
+      list fills in.
+- [ ] Runners with full gear show no label; antis and members who answered No
+      never get a label.
+- [ ] As an **unranked** member (or with the threshold raised above your
+      rank): no labels, an empty "FC members in view" list - but you still get
+      your own gear warning, and the dashboard still shows your scan results.
+- [ ] Turn off **Show gear flags** in the plugin config → labels disappear.
+- [ ] Standing in a different friends chat (not Agility CC) → nothing is
+      scanned and no flags show.
+- [ ] Change **Lowest FC rank that sees gear flags** on the dashboard Settings
+      page → takes effect within ~10 seconds, no plugin restart.
+
 ### Plugin, additional in-game checks
 
 - [ ] Die in the Wilderness → a death appears on the event's Deaths tab with

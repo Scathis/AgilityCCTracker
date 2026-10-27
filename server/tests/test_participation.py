@@ -78,22 +78,85 @@ async def test_respond_requires_token(client, fc_group, db_session):
     assert response.status_code == 401
 
 
-async def test_status_lists_participants_for_active_mass_only(client, fc_group, db_session):
+async def _open_attendance(db_session, event, rsn, rank):
+    now = dt.datetime.utcnow()
+    player = await _get_player(db_session, rsn)
+    if player is None:
+        player = Player(rsn=rsn, first_seen=now, last_seen=now)
+        db_session.add(player)
+        await db_session.flush()
+    db_session.add(
+        Attendance(
+            event_id=event.id,
+            player_id=player.id,
+            joined_at=now,
+            last_sighted_at=now,
+            rank=rank,
+            world=330,
+        )
+    )
+    await db_session.commit()
+
+
+async def _status(client, token, rsn=None):
+    params = {"rsn": rsn} if rsn is not None else {}
+    return (await client.get("/api/v1/status", params=params, headers=_headers(token))).json()
+
+
+async def test_status_lists_participants_to_ranked_viewers_for_active_mass_only(
+    client, fc_group, db_session
+):
     group, token = fc_group
     event = await _start_event(db_session, group)
-    yes, no = _rsn(), _rsn()
+    yes, no, viewer = _rsn(), _rsn(), _rsn()
     await _respond(client, token, yes, event.id, role="ANTI")
     await _respond(client, token, no, event.id, attending=False)
+    await _respond(client, token, viewer, event.id)
+    await _open_attendance(db_session, event, viewer, rank=2)
 
-    body = (await client.get("/api/v1/status", headers=_headers(token))).json()
+    body = await _status(client, token, viewer)
     by_rsn = {p["rsn"]: p for p in body["participants"]}
     assert by_rsn[yes] == {"rsn": yes, "status": "ATTENDING", "role": "ANTI"}
     assert by_rsn[no]["status"] == "DECLINED"
+    assert body["flag_viewer_min_rank"] == 0
 
     event.ended_at = dt.datetime.utcnow()
     await db_session.commit()
-    body = (await client.get("/api/v1/status", headers=_headers(token))).json()
-    assert body["participants"] == []
+    assert (await _status(client, token, viewer))["participants"] == []
+
+
+async def test_status_gives_unranked_or_unknown_viewers_only_their_own_answer(
+    client, fc_group, db_session
+):
+    group, token = fc_group
+    event = await _start_event(db_session, group)
+    anti, guest, stranger = _rsn(), _rsn(), _rsn()
+    await _respond(client, token, anti, event.id, role="ANTI")
+    await _respond(client, token, guest, event.id)
+    await _open_attendance(db_session, event, guest, rank=-1)
+
+    # Unranked in the chat: sees only their own entry.
+    guest_view = await _status(client, token, guest)
+    assert [p["rsn"] for p in guest_view["participants"]] == [guest]
+    # Never seen in a roster (or no rsn given at all): sees nobody else's answer.
+    assert (await _status(client, token, stranger))["participants"] == []
+    assert (await _status(client, token))["participants"] == []
+
+
+async def test_raising_the_threshold_locks_out_lower_ranks(client, fc_group, db_session):
+    group, token = fc_group
+    event = await _start_event(db_session, group)
+    corporal, recruit, other = _rsn(), _rsn(), _rsn()
+    for rsn in (corporal, recruit, other):
+        await _respond(client, token, rsn, event.id)
+    await _open_attendance(db_session, event, corporal, rank=2)
+    await _open_attendance(db_session, event, recruit, rank=1)
+
+    group.flag_viewer_min_rank = 2
+    await db_session.commit()
+
+    assert len((await _status(client, token, corporal))["participants"]) == 3
+    assert [p["rsn"] for p in (await _status(client, token, recruit))["participants"]] == [recruit]
 
 
 async def test_ingest_ignored_without_active_mass(client, fc_group, db_session):
