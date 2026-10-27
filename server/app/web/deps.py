@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import get_session
 from app.models.fc_group import FcGroup
-from app.models.user import User, UserRole
+from app.models.user import User, UserRole, UserStatus
 from app.web.security import SESSION_COOKIE_NAME, read_session
 
 ROLE_RANK = {UserRole.VIEWER: 0, UserRole.STAFF: 1, UserRole.ADMIN: 2}
@@ -35,7 +35,12 @@ async def get_current_user(
     if payload is None:
         return None
     result = await session.execute(select(User).where(User.id == payload["user_id"]))
-    return result.scalar_one_or_none()
+    user = result.scalar_one_or_none()
+    # A removed or not-yet-approved account has no access, even with a
+    # session cookie from before.
+    if user is None or user.status != UserStatus.ACTIVE:
+        return None
+    return user
 
 
 async def require_user(user: User | None = Depends(get_current_user)) -> User:

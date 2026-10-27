@@ -115,7 +115,9 @@ panel is read locally and never sent.
 
 ## For organisers
 
-The dashboard is at the address above; ask in the Discord for an account.
+The dashboard is at the address above. Use **Request one** on the login page
+to ask for an account; an admin approves it and chooses what you can do
+(Viewer, Staff or Admin).
 From it you can:
 
 - start and stop a mass (this is what triggers everyone's prompt);

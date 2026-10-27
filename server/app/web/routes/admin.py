@@ -1,15 +1,18 @@
-import datetime as dt
 import secrets
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import RedirectResponse
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import get_session
+from app.models.dd import DdCall
+from app.models.event import Event
 from app.models.fc_group import FcGroup
-from app.models.user import User, UserRole
+from app.models.loadout import LoadoutCheck
+from app.models.user import User, UserRole, UserStatus
 from app.security import generate_token, hash_token
+from app.web.accounts import admin_change_error, parse_role
 from app.web.deps import require_role, template_context, verify_csrf
 from app.web.security import FLASH_COOKIE_NAME, hash_password, read_flash, sign_flash
 from app.web.templating import templates
@@ -36,36 +39,112 @@ async def list_users(
 ):
     result = await session.execute(select(User).order_by(User.username))
     users = result.scalars().all()
-    context = template_context(request, user, users=users, flash=_read_flash(request))
+    pending = sorted(
+        (u for u in users if u.status == UserStatus.PENDING), key=lambda u: u.created_at
+    )
+    active = [u for u in users if u.status == UserStatus.ACTIVE]
+    context = template_context(
+        request,
+        user,
+        pending=pending,
+        active=active,
+        roles=list(UserRole),
+        flash=_read_flash(request),
+    )
     response = templates.TemplateResponse(request, "admin/users.html", context)
     response.delete_cookie(FLASH_COOKIE_NAME)
     return response
 
 
-@router.post("/admin/users")
-async def create_user(
-    username: str = Form(...),
+async def _target(session: AsyncSession, user_id: int) -> User:
+    target = await session.get(User, user_id)
+    if target is None:
+        raise HTTPException(status_code=404, detail="User not found")
+    return target
+
+
+@router.post("/admin/users/{user_id}/approve")
+async def approve_user(
+    user_id: int,
     role: str = Form(...),
     session: AsyncSession = Depends(get_session),
     user: User = Depends(require_role(UserRole.ADMIN)),
     _csrf: User = Depends(verify_csrf),
 ):
-    existing = await session.execute(select(User).where(User.username == username))
-    if existing.scalar_one_or_none() is not None:
-        raise HTTPException(status_code=400, detail="Username taken")
-    password = secrets.token_urlsafe(12)
-    session.add(
-        User(
-            username=username,
-            password_hash=hash_password(password),
-            role=UserRole(role),
-            created_at=dt.datetime.utcnow(),
-        )
-    )
+    target = await _target(session, user_id)
+    new_role = parse_role(role)
+    if target.status != UserStatus.PENDING or new_role is None:
+        return _flash_and_redirect("/admin/users", "That request can't be approved.")
+    target.status = UserStatus.ACTIVE
+    target.role = new_role
     await session.commit()
     return _flash_and_redirect(
-        "/admin/users", f"Password for '{username}' (shown once): {password}"
+        "/admin/users", f"Approved '{target.username}' as {new_role.value}."
     )
+
+
+@router.post("/admin/users/{user_id}/reject")
+async def reject_user(
+    user_id: int,
+    session: AsyncSession = Depends(get_session),
+    user: User = Depends(require_role(UserRole.ADMIN)),
+    _csrf: User = Depends(verify_csrf),
+):
+    target = await _target(session, user_id)
+    if target.status != UserStatus.PENDING:
+        return _flash_and_redirect("/admin/users", "Only pending requests can be rejected.")
+    await session.delete(target)
+    await session.commit()
+    return _flash_and_redirect("/admin/users", f"Rejected '{target.username}'.")
+
+
+@router.post("/admin/users/{user_id}/role")
+async def change_role(
+    user_id: int,
+    role: str = Form(...),
+    session: AsyncSession = Depends(get_session),
+    user: User = Depends(require_role(UserRole.ADMIN)),
+    _csrf: User = Depends(verify_csrf),
+):
+    target = await _target(session, user_id)
+    new_role = parse_role(role)
+    error = admin_change_error(user, target) or (None if new_role else "Unknown role.")
+    if error:
+        return _flash_and_redirect("/admin/users", error)
+    target.role = new_role
+    await session.commit()
+    return _flash_and_redirect(
+        "/admin/users", f"'{target.username}' is now {new_role.value}."
+    )
+
+
+@router.post("/admin/users/{user_id}/delete")
+async def delete_user(
+    user_id: int,
+    session: AsyncSession = Depends(get_session),
+    user: User = Depends(require_role(UserRole.ADMIN)),
+    _csrf: User = Depends(verify_csrf),
+):
+    target = await _target(session, user_id)
+    error = admin_change_error(user, target)
+    if error:
+        return _flash_and_redirect("/admin/users", error)
+    # Keep the records they touched (events started, DD edits, manual gear
+    # notes) - just forget who did it.
+    await session.execute(
+        update(Event).where(Event.started_by_user_id == target.id).values(started_by_user_id=None)
+    )
+    await session.execute(
+        update(DdCall).where(DdCall.edited_by_user_id == target.id).values(edited_by_user_id=None)
+    )
+    await session.execute(
+        update(LoadoutCheck)
+        .where(LoadoutCheck.reported_by_user_id == target.id)
+        .values(reported_by_user_id=None)
+    )
+    await session.delete(target)
+    await session.commit()
+    return _flash_and_redirect("/admin/users", f"Removed '{target.username}'.")
 
 
 @router.post("/admin/users/{user_id}/reset-password")
@@ -75,15 +154,19 @@ async def reset_password(
     user: User = Depends(require_role(UserRole.ADMIN)),
     _csrf: User = Depends(verify_csrf),
 ):
-    result = await session.execute(select(User).where(User.id == user_id))
-    target = result.scalar_one_or_none()
-    if target is None:
-        raise HTTPException(status_code=404, detail="User not found")
+    """For someone who's forgotten theirs: a one-time password to pass on,
+    which they then change on their Account page."""
+    target = await _target(session, user_id)
+    error = admin_change_error(user, target)
+    if error:
+        return _flash_and_redirect("/admin/users", error)
     password = secrets.token_urlsafe(12)
     target.password_hash = hash_password(password)
     await session.commit()
     return _flash_and_redirect(
-        "/admin/users", f"New password for '{target.username}' (shown once): {password}"
+        "/admin/users",
+        f"Temporary password for '{target.username}' (shown once): {password} - "
+        "ask them to change it on their Account page.",
     )
 
 

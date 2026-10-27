@@ -64,3 +64,7 @@ auth_rate_limiter = RateLimiter(max_failures=5, window_seconds=300.0)
 # attack surfaces, different callers, should tune/trip independently even
 # though they currently share the same 5-per-5-minutes shape.
 dashboard_login_rate_limiter = RateLimiter(max_failures=5, window_seconds=300.0)
+
+# Self-registration on the dashboard: at most 3 sign-ups per IP per hour
+# (in memory only, like the other limiters - IPs are never stored).
+registration_rate_limiter = RateLimiter(max_failures=3, window_seconds=3600.0)

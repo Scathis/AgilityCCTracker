@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}Register - Wildy Agility FC Tracker{% endblock %}
+{% block content %}
+<article style="max-width: 26rem; margin: 3rem auto;">
+  {% if done %}
+  <h2>Request sent</h2>
+  <p>An admin needs to approve your account before you can log in. Once they have, log in with the username and password you just chose.</p>
+  <p><a href="/login">Back to log in</a></p>
+  {% else %}
+  <h2>Request an account</h2>
+  <p><small>For Agility CC organisers. An admin approves each request and decides what you can see.</small></p>
+  {% if error %}<p style="color: var(--pico-del-color);">{{ error }}</p>{% endif %}
+  <form method="post" action="/register">
+    <label for="username">Username
+      <input type="text" id="username" name="username" value="{{ form.username or '' }}"
+             minlength="3" maxlength="20" pattern="[A-Za-z0-9 _\-]{3,20}" required autofocus>
+      <small>3-20 characters: letters, numbers, spaces, _ or -. Your RSN is easiest.</small>
+    </label>
+    <label for="password">Password
+      <input type="password" id="password" name="password" minlength="10" maxlength="128" autocomplete="new-password" required>
+      <small>At least 10 characters.</small>
+    </label>
+    <label for="confirm">Confirm password
+      <input type="password" id="confirm" name="confirm" minlength="10" maxlength="128" autocomplete="new-password" required>
+    </label>
+    <button type="submit">Send request</button>
+  </form>
+  <p><small>Already have an account? <a href="/login">Log in</a></small></p>
+  {% endif %}
+</article>
+{% endblock %}

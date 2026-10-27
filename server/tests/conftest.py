@@ -11,7 +11,12 @@ from app.main import app
 from app.models.fc_group import FcGroup
 from app.models.loadout import Loadout
 from app.models.user import User, UserRole
-from app.security import auth_rate_limiter, dashboard_login_rate_limiter, hash_token
+from app.security import (
+    auth_rate_limiter,
+    dashboard_login_rate_limiter,
+    hash_token,
+    registration_rate_limiter,
+)
 from app.seed import seed_default_loadouts
 from app.web.security import SESSION_COOKIE_NAME, hash_password, new_session_payload, sign_session
 
@@ -20,9 +25,11 @@ from app.web.security import SESSION_COOKIE_NAME, hash_password, new_session_pay
 async def reset_rate_limiter():
     auth_rate_limiter.clear_all()
     dashboard_login_rate_limiter.clear_all()
+    registration_rate_limiter.clear_all()
     yield
     auth_rate_limiter.clear_all()
     dashboard_login_rate_limiter.clear_all()
+    registration_rate_limiter.clear_all()
 
 
 @pytest_asyncio.fixture

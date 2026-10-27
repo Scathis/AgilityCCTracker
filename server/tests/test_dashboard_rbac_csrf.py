@@ -136,11 +136,14 @@ async def test_staff_cannot_manage_users_or_groups(
     user = await make_user(UserRole.STAFF)
     csrf = login_as(user)
 
-    create = await client.post(
-        "/admin/users",
-        data={"username": "shouldfail", "role": "viewer", "csrf_token": csrf},
-    )
-    assert create.status_code == 403
+    for path, data in (
+        ("/admin/users/1/approve", {"role": "admin"}),
+        ("/admin/users/1/reject", {}),
+        ("/admin/users/1/role", {"role": "admin"}),
+        ("/admin/users/1/delete", {}),
+    ):
+        response = await client.post(path, data={**data, "csrf_token": csrf})
+        assert response.status_code == 403, path
 
     reset = await client.post("/admin/users/1/reset-password", data={"csrf_token": csrf})
     assert reset.status_code == 403

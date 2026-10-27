@@ -224,8 +224,14 @@ wired up end-to-end:
       crossbow-counts-as-bow and the observer kill switch; turning the kill
       switch off stops plugin scanning on its next status poll with no plugin
       update.
-- [ ] Admin: create a user, reset a password, rotate the token (shown once,
-      old token stops working).
+- [ ] Accounts: "Request one" on the login page creates a request; logging
+      in with it says it's waiting for approval. On Admin → Users, approve it
+      as Viewer/Staff/Admin (then it can log in) or reject it. Change an
+      account's role; remove an account (it's logged out straight away);
+      reset a password (temporary one shown once) and change it again on
+      Account. The grestinator row says it can't be changed or removed and
+      has no buttons; your own row can't be demoted or removed.
+- [ ] Admin: rotate the token (shown once, old token stops working).
 - [ ] Roles: viewer sees only Events + DD Leaderboard; staff sees everything
       except Admin.
 - [ ] Phone-width rendering is usable.

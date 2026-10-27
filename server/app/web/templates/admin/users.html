@@ -1,37 +1,101 @@
 {% extends "base.html" %}
 {% block title %}Admin - Users{% endblock %}
 {% block content %}
+<style>
+  .user-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
+  .user-actions form { display: flex; gap: 0.5rem; align-items: center; margin: 0; }
+  .user-actions select, .user-actions button { width: auto; margin: 0; padding-block: 0.35rem; }
+  .muted { opacity: 0.75; }
+</style>
 <h2>Users</h2>
 {% if flash %}<p><mark>{{ flash }}</mark></p>{% endif %}
 
-<table>
-  <thead><tr><th>Username</th><th>Role</th><th>Last login</th><th></th></tr></thead>
-  <tbody>
-    {% for u in users %}
-    <tr>
-      <td>{{ u.username }}</td><td>{{ u.role.value }}</td><td>{{ u.last_login_at or "never" }}</td>
-      <td>
-        <form method="post" action="/admin/users/{{ u.id }}/reset-password" style="display:inline">
-          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-          <button type="submit" class="secondary">Reset password</button>
-        </form>
-      </td>
-    </tr>
-    {% endfor %}
-  </tbody>
-</table>
+<article>
+  <header>
+    <strong>Waiting for approval</strong>
+    <small class="muted"> - people who used "Request one" on the login page. Pick what they can do, then approve.</small>
+  </header>
+  {% if pending %}
+  <table>
+    <thead><tr><th>Username</th><th>Requested</th><th></th></tr></thead>
+    <tbody>
+      {% for u in pending %}
+      <tr>
+        <td>{{ u.username }}</td>
+        <td>{{ u.created_at.strftime("%d %b %Y, %H:%M") }}</td>
+        <td>
+          <div class="user-actions">
+            <form method="post" action="/admin/users/{{ u.id }}/approve">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+              <select name="role" aria-label="Role for {{ u.username }}">
+                {% for r in roles %}<option value="{{ r.value }}" {% if r.value == "viewer" %}selected{% endif %}>{{ r.value|capitalize }}</option>{% endfor %}
+              </select>
+              <button type="submit">Approve</button>
+            </form>
+            <form method="post" action="/admin/users/{{ u.id }}/reject"
+                  onsubmit="return confirm('Reject the request from {{ u.username }}?');">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+              <button type="submit" class="secondary">Reject</button>
+            </form>
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="muted">No requests waiting.</p>
+  {% endif %}
+</article>
 
-<h3>Add user</h3>
-<form method="post" action="/admin/users">
-  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-  <label>Username<input type="text" name="username" required></label>
-  <label>Role
-    <select name="role" required>
-      <option value="viewer">Viewer</option>
-      <option value="staff">Staff</option>
-      <option value="admin">Admin</option>
-    </select>
-  </label>
-  <button type="submit">Create</button>
-</form>
+<article>
+  <header>
+    <strong>Accounts</strong>
+    <small class="muted"> - Viewer: events and the DD leaderboard. Staff: also start/stop masses and edit kits. Admin: everything, including this page.</small>
+  </header>
+  <table>
+    <thead><tr><th>Username</th><th>Role</th><th>Last login</th><th></th></tr></thead>
+    <tbody>
+      {% for u in active %}
+      <tr>
+        <td>{{ u.username }}{% if u.protected %} <small class="muted">(owner)</small>{% elif u.id == user.id %} <small class="muted">(you)</small>{% endif %}</td>
+        <td>
+          {% if u.protected or u.id == user.id %}
+          {{ u.role.value|capitalize }}
+          {% else %}
+          <form method="post" action="/admin/users/{{ u.id }}/role" class="user-actions">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <select name="role" aria-label="Role for {{ u.username }}">
+              {% for r in roles %}<option value="{{ r.value }}" {% if r == u.role %}selected{% endif %}>{{ r.value|capitalize }}</option>{% endfor %}
+            </select>
+            <button type="submit" class="secondary">Save</button>
+          </form>
+          {% endif %}
+        </td>
+        <td>{{ u.last_login_at.strftime("%d %b %Y, %H:%M") if u.last_login_at else "never" }}</td>
+        <td>
+          {% if u.protected %}
+          <small class="muted">Can't be changed or removed</small>
+          {% elif u.id == user.id %}
+          <small class="muted"><a href="/account">Change your password</a></small>
+          {% else %}
+          <div class="user-actions">
+            <form method="post" action="/admin/users/{{ u.id }}/reset-password"
+                  onsubmit="return confirm('Give {{ u.username }} a new temporary password?');">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+              <button type="submit" class="secondary">Reset password</button>
+            </form>
+            <form method="post" action="/admin/users/{{ u.id }}/delete"
+                  onsubmit="return confirm('Remove {{ u.username }}? They lose access straight away.');">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+              <button type="submit" class="secondary">Remove</button>
+            </form>
+          </div>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</article>
 {% endblock %}

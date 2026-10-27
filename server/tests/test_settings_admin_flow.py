@@ -98,28 +98,25 @@ async def test_settings_checkbox_unchecked_persists_false(
     assert default_group.observer_enabled is False
 
 
-async def test_admin_create_user_sets_a_flash_cookie_with_the_password(client, make_user, login_as):
+async def test_admin_reset_password_sets_a_flash_cookie_with_the_password(
+    client, make_user, login_as
+):
     # Verifies the server-side one-time-reveal mechanism directly (sign ->
-    # Set-Cookie -> correct content when decoded), rather than relying on the
-    # test client reusing that Set-Cookie across separate requests - that
-    # part proved genuinely inconsistent in this harness (two structurally
-    # identical tests, one passed and one didn't, under both automatic
-    # follow_redirects and an explicit client.cookies.set() workaround - see
-    # docs/BUILD_LOG.md). A real browser follows Set-Cookie-on-redirect
-    # correctly per HTTP spec; that part isn't this project's code to prove.
+    # Set-Cookie -> correct content when decoded) - see docs/BUILD_LOG.md for
+    # why this doesn't follow the redirect in this harness.
     admin = await make_user(UserRole.ADMIN)
+    target = await make_user(UserRole.VIEWER)
     csrf = login_as(admin)
 
     response = await client.post(
-        "/admin/users",
-        data={"username": "newlycreated", "role": "staff", "csrf_token": csrf},
+        f"/admin/users/{target.id}/reset-password",
+        data={"csrf_token": csrf},
         follow_redirects=False,
     )
     assert response.status_code == 303
-    assert "flash" in response.cookies
     message = read_flash(response.cookies["flash"])
     assert message is not None
-    assert "Password for 'newlycreated'" in message
+    assert f"Temporary password for '{target.username}'" in message
 
 
 async def test_admin_rotate_group_token_sets_a_flash_cookie_with_the_token(

@@ -1831,3 +1831,26 @@ large quantities with thousands separators.
 Owner: "Best ever" now sits under the Agility xp line at the top
 ("Fastest lap - 0:58.4", hidden until there is one, visible whether or not a
 mass is running); "Fastest lap" for the current mass stays in This session.
+
+## 2026-10-28 - Dashboard account self-registration and management
+
+- Owner: creating accounts and handing out passwords wasn't secure; no way to
+  remove accounts or change roles; protect the owner account.
+- `users.status` (PENDING/ACTIVE, existing rows ACTIVE) and `users.protected`
+  (set for `grestinator` by migration `c3f8a6b9e402`).
+- `/register` (public): username 3-20 `[A-Za-z0-9 _-]`, password 10-128 and
+  not the username, confirm must match; `registration_rate_limiter` 3 per IP
+  per hour (counts successful sign-ups; in memory) and `MAX_PENDING` 25.
+  Creates a PENDING viewer. `/login` refuses PENDING with "waiting for an
+  admin" (only after a correct password). `get_current_user` returns None for
+  anything not ACTIVE, so removal/un-approval also kills existing sessions.
+- `/account` + `/account/password` (CSRF, current password checked against
+  the login limiter).
+- Admin: `/admin/users/{id}/approve|reject|role|delete|reset-password`;
+  `web/accounts.admin_change_error` blocks protected targets and the acting
+  admin's own account. Delete nulls `events.started_by_user_id`,
+  `dd_calls.edited_by_user_id`, `loadout_checks.reported_by_user_id` first.
+  POST `/admin/users` (admin-creates-with-password) removed; CLI
+  `create-admin` stays for bootstrapping.
+- Tests: `tests/test_accounts_flow.py` (10), RBAC test covers the new admin
+  POSTs, flash test now uses reset-password. 107 pass.

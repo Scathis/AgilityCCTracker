@@ -8,7 +8,19 @@ log. Update this file's "Where things stand" / "Open items" sections at the
 end of any session that changes them — treat it like a handoff note, not an
 append-only log (that's what BUILD_LOG.md is for).
 
-## Latest (2026-10-27, night — pre-submission clean-up)
+## Latest (2026-10-28) — dashboard accounts
+
+- Self-registration: **Request one** on /login -> PENDING account (no
+  access; login says it's awaiting approval). Admin → Users: approve with a
+  role / reject, change roles, remove accounts (records they touched are kept,
+  with the user link nulled), reset passwords (temporary, shown once).
+  Everyone can change their own password on /account. Admin "create user"
+  form removed. Owner account `grestinator` is `protected` (can't be
+  removed, re-roled or password-reset from the dashboard); admins can't
+  demote/remove themselves. Sign-ups limited to 3/hour/IP (in memory) and
+  25 pending. Migration `c3f8a6b9e402`.
+
+## Earlier (2026-10-27, night — pre-submission clean-up)
 
 - **Data minimisation round 3.** No FC member list upload any more:
   attendance is opened by course sightings (now `{name, rank}`), including
