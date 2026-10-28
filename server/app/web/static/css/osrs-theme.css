@@ -213,3 +213,10 @@ mark {
   gap: 0.35rem;
   margin: 0;
 }
+
+/* Delete-masses confirm (events/delete.html). */
+button.delete-confirm {
+  --pico-background-color: #8b1e1e;
+  --pico-border-color: #5e1212;
+  --pico-color: #f3e3c3;
+}

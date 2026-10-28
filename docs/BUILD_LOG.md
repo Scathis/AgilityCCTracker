@@ -2121,3 +2121,17 @@ pickers with icons ("Anyone in the chat", "<rank> and up", "Owner only")
 instead of number boxes. Form values are unchanged; `dd_min_rank` is now
 clamped to -1..127 like the flag rank. ASSET_VERSION 7. Server only - the
 plugin and the Hub PR commit are untouched. 120 server tests.
+
+## 2026-10-28 - Dashboard: delete masses
+
+Admins can permanently delete ended masses (mainly to clear test runs):
+tick masses on Events -> **Delete selected masses...**, or **Delete this
+mass...** on a mass's page. A confirm page lists every mass with counts of
+what goes (attendance sessions, attending/declined answers, role stints,
+laps, deaths, gear checks, DD calls, DD tile timings); nothing is deleted
+until **Delete permanently** (POST, CSRF). `services/event_cleanup.py`
+deletes children then the event in one transaction. Running masses are
+refused (stop first); players, kits and settings are never touched.
+Staff/viewers get 403. 5 tests (`tests/test_event_delete.py`), 125 server
+tests. Backup taken before deploy:
+`server/backups/agilitycc-2026-10-28_224404.sql.gz`.

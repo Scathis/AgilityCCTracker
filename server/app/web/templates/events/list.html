@@ -34,11 +34,18 @@
   {% endif %}
 {% endif %}
 
+{% if flash %}<p><mark>{{ flash }}</mark></p>{% endif %}
+
+{% set can_delete = user.role.value == "admin" %}
+{% if can_delete %}<form method="get" action="/events/delete">{% endif %}
 <table>
-  <thead><tr><th>Name</th><th>Started</th><th>Ended</th><th></th></tr></thead>
+  <thead><tr>{% if can_delete %}<th></th>{% endif %}<th>Name</th><th>Started</th><th>Ended</th><th></th></tr></thead>
   <tbody>
     {% for event in events %}
     <tr>
+      {% if can_delete %}
+      <td>{% if event.ended_at %}<input type="checkbox" name="ids" value="{{ event.id }}" aria-label="Select {{ event.name }}">{% endif %}</td>
+      {% endif %}
       <td>{{ event.name }}</td>
       <td>{{ event.started_at }}</td>
       <td>{{ event.ended_at or "(active)" }}</td>
@@ -47,4 +54,11 @@
     {% endfor %}
   </tbody>
 </table>
+{% if can_delete %}
+  {% if events %}
+  <button type="submit" class="secondary">Delete selected masses&hellip;</button>
+  <small>You'll see what will be removed before anything is deleted. A running mass can't be deleted - stop it first.</small>
+  {% endif %}
+</form>
+{% endif %}
 {% endblock %}

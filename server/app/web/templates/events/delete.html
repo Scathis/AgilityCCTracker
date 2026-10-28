@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}Delete masses{% endblock %}
+{% block content %}
+<h2>Delete {{ summaries|length }} mass{% if summaries|length != 1 %}es{% endif %}?</h2>
+<p>This permanently removes each mass below and <strong>everything recorded against it</strong>.
+  It can't be undone from the dashboard. Players, kits and settings are kept.</p>
+
+{% for s in summaries %}
+<article>
+  <header>
+    <strong>{{ s.event.name }}</strong>
+    <small>{{ s.event.started_at.strftime("%Y-%m-%d %H:%M") }} &ndash; {{ s.event.ended_at.strftime("%H:%M") }}</small>
+  </header>
+  {% set nonzero = s.counts.items()|selectattr(1)|list %}
+  {% if nonzero %}
+  <ul>
+    {% for label, count in nonzero %}<li>{{ label }}: {{ count }}</li>{% endfor %}
+  </ul>
+  {% else %}
+  <small>No data recorded - just the mass itself.</small>
+  {% endif %}
+</article>
+{% endfor %}
+
+<form method="post" action="/events/delete">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  {% for s in summaries %}<input type="hidden" name="ids" value="{{ s.event.id }}">{% endfor %}
+  <button type="submit" class="delete-confirm">Delete permanently</button>
+  <a href="/events" role="button" class="secondary">Cancel</a>
+</form>
+{% endblock %}

@@ -1,7 +1,7 @@
 import datetime as dt
 from urllib.parse import urlparse
 
-from fastapi import APIRouter, Depends, Form, HTTPException, Request
+from fastapi import APIRouter, Depends, Form, HTTPException, Query, Request
 from fastapi.responses import RedirectResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -15,6 +15,7 @@ from app.models.lap import Lap
 from app.models.loadout import Loadout, LoadoutCheck, LoadoutCheckSource, LoadoutContext
 from app.models.player import Player
 from app.models.user import User, UserRole
+from app.services.event_cleanup import deletable_events, delete_events, summarise
 from app.services.gear_rules import SLOT_LABELS, SLOT_ORDER, running_anchor
 from app.services.participation import participants_by_rsn
 from app.web.deps import (
@@ -24,6 +25,7 @@ from app.web.deps import (
     template_context,
     verify_csrf,
 )
+from app.web.security import FLASH_COOKIE_NAME, read_flash, sign_flash
 from app.web.templating import templates
 
 router = APIRouter()
@@ -41,8 +43,54 @@ async def list_events(
     )
     events = result.scalars().all()
     active_event = next((e for e in events if e.ended_at is None), None)
-    context = template_context(request, user, events=events, active_event=active_event)
+    flash_cookie = request.cookies.get(FLASH_COOKIE_NAME)
+    context = template_context(
+        request,
+        user,
+        events=events,
+        active_event=active_event,
+        flash=read_flash(flash_cookie) if flash_cookie else None,
+    )
     return templates.TemplateResponse(request, "events/list.html", context)
+
+
+# Registered before /events/{event_id} so "delete" isn't read as an id.
+@router.get("/events/delete")
+async def confirm_delete_events(
+    request: Request,
+    ids: list[int] = Query(default=[]),
+    group: FcGroup = Depends(get_default_fc_group),
+    session: AsyncSession = Depends(get_session),
+    user: User = Depends(require_role(UserRole.ADMIN)),
+):
+    """Shows exactly what would be removed before anything is deleted."""
+    events = await deletable_events(session, group.id, ids)
+    if not events:
+        return RedirectResponse(url="/events", status_code=303)
+    summaries = await summarise(session, events)
+    context = template_context(request, user, summaries=summaries)
+    return templates.TemplateResponse(request, "events/delete.html", context)
+
+
+@router.post("/events/delete")
+async def delete_selected_events(
+    ids: list[int] = Form(default=[]),
+    group: FcGroup = Depends(get_default_fc_group),
+    session: AsyncSession = Depends(get_session),
+    user: User = Depends(require_role(UserRole.ADMIN)),
+    _csrf: User = Depends(verify_csrf),
+):
+    events = await deletable_events(session, group.id, ids)
+    deleted = await delete_events(session, events)
+    noun = "mass" if deleted == 1 else "masses"
+    response = RedirectResponse(url="/events", status_code=303)
+    response.set_cookie(
+        FLASH_COOKIE_NAME,
+        sign_flash(f"Deleted {deleted} {noun} and their data."),
+        httponly=True,
+        max_age=60,
+    )
+    return response
 
 
 @router.post("/events")
