@@ -5,6 +5,9 @@ class ActiveEventOut(BaseModel):
     id: int
     name: str
     started_at: int
+    # Epoch ms of the latest mass bank call during this mass, or null. The
+    # plugin compares it with server_time to alert runners for a short window.
+    mass_bank_at: int | None = None
 
 
 class ParticipantOut(BaseModel):

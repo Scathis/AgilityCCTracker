@@ -1,4 +1,5 @@
 import datetime as dt
+from urllib.parse import urlparse
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import RedirectResponse
@@ -87,6 +88,29 @@ async def stop_event(
         event.ended_at = dt.datetime.utcnow()
         await session.commit()
     return RedirectResponse(url="/events", status_code=303)
+
+
+@router.post("/events/{event_id}/mass-bank")
+async def call_mass_bank(
+    event_id: int,
+    request: Request,
+    session: AsyncSession = Depends(get_session),
+    user: User = Depends(require_role(UserRole.STAFF)),
+    _csrf: User = Depends(verify_csrf),
+):
+    """Flags a mass bank: for the next minute, plugins show runners in the
+    course a "mass bank starting" alert. Only during a running mass."""
+    event = await session.get(Event, event_id)
+    if event is None:
+        raise HTTPException(status_code=404, detail="Event not found")
+    if event.ended_at is not None:
+        raise HTTPException(status_code=409, detail="That mass has ended")
+    event.mass_bank_called_at = dt.datetime.utcnow()
+    await session.commit()
+    # Back to whichever page the button was on (the events list or this mass).
+    detail = f"/events/{event.id}"
+    came_from = urlparse(request.headers.get("referer") or "").path
+    return RedirectResponse(url=detail if came_from == detail else "/events", status_code=303)
 
 
 @router.get("/events/{event_id}")

@@ -265,6 +265,23 @@ on the dashboard. Pull and rebuild the plugin first.
       the token is built into the plugin, so it would break every install
       until a new plugin version ships.
 
+### O. Mass over and mass bank alerts
+
+- [ ] **Stop mass** (now asks to confirm) while you're attending and in the
+      course → an "Agility mass over" box (same look as the attending
+      prompt) and a red chat line within ~10s. OK or × closes it; left alone
+      it goes after 2 minutes. Someone attending but outside the course, or
+      not attending, gets nothing.
+- [ ] **Call mass bank** (Events page next to Stop mass, and on the mass's own
+      page; staff+, asks to confirm) → runners attending and in the course get
+      "Mass bank starting" + a red chat line within ~10s. Antis, people not
+      attending and runners outside the course don't. Walk into the course
+      within the minute → you get it then. It disappears when the minute is
+      up, or on OK / ×. The page shows when the last bank was called.
+- [ ] No Call mass bank button when no mass is running; a viewer never sees it.
+- [ ] Both boxes and the attending prompt can be Alt+dragged; clicks on them
+      don't reach the game.
+
 ### N. Server (checked by Claude)
 
 - [ ] `/docs`, `/redoc`, `/openapi.json` return 404.

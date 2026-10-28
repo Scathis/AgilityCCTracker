@@ -112,6 +112,11 @@ async def get_status(
                 id=active_event.id,
                 name=active_event.name,
                 started_at=int(active_event.started_at.timestamp() * 1000),
+                mass_bank_at=(
+                    int(active_event.mass_bank_called_at.timestamp() * 1000)
+                    if active_event.mass_bank_called_at
+                    else None
+                ),
             )
             if active_event
             else None

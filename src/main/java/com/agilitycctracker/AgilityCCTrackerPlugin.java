@@ -11,6 +11,7 @@ import com.agilitycctracker.dd.DdTracker;
 import com.agilitycctracker.dd.SelfDdSampler;
 import com.agilitycctracker.history.SessionHistory;
 import com.agilitycctracker.loadout.SelfLoadoutCheck;
+import com.agilitycctracker.mass.MassNotices;
 import com.agilitycctracker.mass.MassParticipation;
 import com.agilitycctracker.model.DdConfig;
 import com.agilitycctracker.model.StatusResponse;
@@ -19,6 +20,7 @@ import com.agilitycctracker.scan.FlagAccess;
 import com.agilitycctracker.kit.KitCheck;
 import com.agilitycctracker.ui.GearFlagOverlay;
 import com.agilitycctracker.ui.KitBankOverlay;
+import com.agilitycctracker.ui.MassNoticeOverlay;
 import com.agilitycctracker.ui.MassPromptOverlay;
 import com.agilitycctracker.ui.PanelSnapshot;
 import com.agilitycctracker.ui.TrackerPanel;
@@ -148,6 +150,12 @@ public class AgilityCCTrackerPlugin extends Plugin
 	private MassPromptOverlay massPromptOverlay;
 
 	@Inject
+	private MassNotices massNotices;
+
+	@Inject
+	private MassNoticeOverlay massNoticeOverlay;
+
+	@Inject
 	private SessionHistory sessionHistory;
 
 	@Inject
@@ -202,6 +210,8 @@ public class AgilityCCTrackerPlugin extends Plugin
 		overlayManager.add(kitBankOverlay);
 		overlayManager.add(massPromptOverlay);
 		mouseManager.registerMouseListener(massPromptOverlay);
+		overlayManager.add(massNoticeOverlay);
+		mouseManager.registerMouseListener(massNoticeOverlay);
 		if (config.showPanel())
 		{
 			addPanel();
@@ -222,6 +232,8 @@ public class AgilityCCTrackerPlugin extends Plugin
 		overlayManager.remove(kitBankOverlay);
 		overlayManager.remove(massPromptOverlay);
 		mouseManager.unregisterMouseListener(massPromptOverlay);
+		overlayManager.remove(massNoticeOverlay);
+		mouseManager.unregisterMouseListener(massNoticeOverlay);
 		removePanel();
 	}
 
@@ -325,6 +337,7 @@ public class AgilityCCTrackerPlugin extends Plugin
 				// Logged out: the answer is restored from the server on the next login.
 				massParticipation.setLocalRsn(null);
 				massParticipation.reset();
+				massNotices.reset();
 			}
 		}
 		else if (state == GameState.LOGGED_IN)
@@ -354,6 +367,7 @@ public class AgilityCCTrackerPlugin extends Plugin
 		{
 			resetState();
 			massParticipation.reset();
+			massNotices.reset();
 			lastAccountHash = hash;
 		}
 
@@ -362,17 +376,19 @@ public class AgilityCCTrackerPlugin extends Plugin
 			return;
 		}
 
+		boolean inCourse = local != null && local.getWorldLocation().getRegionID() == WILDERNESS_AGILITY_COURSE_REGION;
+		// Mass over / mass bank alerts need to know where the player is.
+		massNotices.onTick(inCourse, massParticipation.isRunner());
+
 		if (!massParticipation.isAttending())
 		{
 			// In the course during a mass = attended, whatever the popup said.
 			StatusResponse status = statusHolder.get();
-			boolean inCourse = local != null && local.getWorldLocation().getRegionID() == WILDERNESS_AGILITY_COURSE_REGION;
 			massParticipation.onLocation(status, inCourse, inTrackedFc(status));
 			kitCheck.reset();
 			return;
 		}
 
-		boolean inCourse = local != null && local.getWorldLocation().getRegionID() == WILDERNESS_AGILITY_COURSE_REGION;
 		// Local-only "are you ready?" check against the chosen kit, until they reach the course.
 		kitCheck.onTick(inCourse);
 		announceChecks();

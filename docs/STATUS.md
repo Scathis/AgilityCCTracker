@@ -47,6 +47,9 @@ tests pass; CI green. 2026-10-27/28 was one long session of owner test notes
   at/above the dashboard's flag rank.
 - **Chat lines** (gear + kit) once on joining/logging in mid-mass, and on
   opening a bank only if something's missing.
+- **Alerts** (same in-game box style, dismissable): "Agility mass over" when
+  staff stop the mass (attending + in the course, 2 min); "Mass bank
+  starting" when staff press Call mass bank (runners in the course, 60s).
 - **Settings:** Mass (My role), FC observer, Display (panel, "Pre-mass check
   messages", gear flags). No Share options any more.
 - **Panel** in the dashboard palette + RuneScape fonts: ring, name, all-time

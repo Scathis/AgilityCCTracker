@@ -4,6 +4,7 @@ import com.agilitycctracker.collect.DeathTracker;
 import com.agilitycctracker.collect.LapTracker;
 import com.agilitycctracker.collect.SelfStateCollector;
 import com.agilitycctracker.dd.DdTracker;
+import com.agilitycctracker.mass.MassNotices;
 import com.agilitycctracker.mass.MassParticipation;
 import com.agilitycctracker.model.DdSection;
 import com.agilitycctracker.model.DeathEvent;
@@ -41,6 +42,9 @@ public class Uploader
 	private MassParticipation massParticipation;
 
 	@Inject
+	private MassNotices massNotices;
+
+	@Inject
 	private ApiClient apiClient;
 
 	@Inject
@@ -76,6 +80,8 @@ public class Uploader
 			statusHolder.set(status);
 			if (rsn != null)
 			{
+				// Before MassParticipation, which forgets the answer when the mass ends.
+				massNotices.onStatus(status, massParticipation.isAttending());
 				massParticipation.onStatus(status, rsn);
 			}
 		}

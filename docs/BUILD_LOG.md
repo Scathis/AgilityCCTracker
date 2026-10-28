@@ -1929,3 +1929,22 @@ grey and white. The 1024x1536 original stays out of git.
 artwork: the runner only (the connected blob containing the head, so the
 spikes drop out; rope trimmed above the head), box-downscaled to 15x16 on a
 transparent 16x16. Checked at 1x/8x on the toolbar grey and panel brown.
+
+## 2026-10-28 - Mass over and mass bank alerts
+
+- Server: `events.mass_bank_called_at` (migration `f6c1d9e2b735`);
+  `POST /events/{id}/mass-bank` (staff+, CSRF, 409 once the mass has ended,
+  redirects back to the page it was pressed on); `/status`
+  `active_event.mass_bank_at` (epoch ms). Buttons on the Events list (next to
+  Stop mass, which now also asks to confirm) and on the mass's own page, with
+  "last called at". Tests: route (staff only, active only), status field.
+- Plugin: `mass/MassNotices` - mass over (the watched event disappears or
+  changes, the player was attending - checked before MassParticipation resets
+  - and is in the course region; shown 2 minutes) and mass bank (status
+  carries `massBankAt`; window measured on the server clock,
+  `bankWindowLeft()`, 60s; shown once per call, the first tick a runner is in
+  the course during the window, until the window ends). Red chat line with
+  each. `ui/MassNoticeOverlay` (OK + ×, clicks consumed, movable) shares
+  drawing with the attending prompt via the new `ui/PromptPainter`.
+  `MassNoticesTest` covers the pure timing helpers. Rendered offscreen to
+  check the look.

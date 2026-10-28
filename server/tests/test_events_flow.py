@@ -212,3 +212,33 @@ async def test_attendance_lists_only_people_who_turned_up(
     text = (await client.get(f"/events/{event.id}?tab=attendance")).text
     assert "CameAlong" in text
     assert "JustInChat" not in text
+
+
+async def test_mass_bank_is_flagged_to_plugins_only_during_a_running_mass(
+    client, make_user, login_as, default_group, no_active_event, db_session
+):
+    staff = await make_user(UserRole.STAFF)
+    csrf = login_as(staff)
+    await client.post("/events", data={"name": "Bank test", "notes": "", "csrf_token": csrf})
+    event = (
+        await db_session.execute(
+            select(Event).where(Event.fc_group_id == default_group.id, Event.ended_at.is_(None))
+        )
+    ).scalar_one()
+
+    called = await client.post(
+        f"/events/{event.id}/mass-bank", data={"csrf_token": csrf}, follow_redirects=False
+    )
+    assert called.status_code == 303
+    await db_session.refresh(event)
+    assert event.mass_bank_called_at is not None
+
+    await client.post(f"/events/{event.id}/stop", data={"csrf_token": csrf})
+    after_stop = await client.post(f"/events/{event.id}/mass-bank", data={"csrf_token": csrf})
+    assert after_stop.status_code == 409
+
+
+async def test_viewer_cannot_call_a_mass_bank(client, make_user, login_as, default_group):
+    csrf = login_as(await make_user(UserRole.VIEWER))
+    response = await client.post("/events/1/mass-bank", data={"csrf_token": csrf})
+    assert response.status_code == 403

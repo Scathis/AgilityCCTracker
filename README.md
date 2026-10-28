@@ -25,6 +25,11 @@ If you close the prompt, the same buttons are in the sidebar panel. If you
 forget to answer and just walk into the course during the mass, you're
 counted as attending with your saved role, and told so in chat.
 
+When the organisers end the mass, anyone still in the course gets a short
+"Agility mass over" box; if they call a **mass bank**, runners in the course
+get a "Mass bank starting" box for the next minute. Both can be closed with
+OK or ×.
+
 ### Runner or Anti
 
 - **Runner** - your laps, time at the course and DD calls are tracked, and
@@ -120,7 +125,10 @@ to ask for an account; an admin approves it and chooses what you can do
 (Viewer, Staff or Admin).
 From it you can:
 
-- start and stop a mass (this is what triggers everyone's prompt);
+- start and stop a mass (starting triggers everyone's prompt; stopping tells
+  runners still in the course that it's over);
+- **Call mass bank** during a mass - runners in the course get an in-game
+  alert for the next minute;
 - watch attendance (only people who actually turned up), laps, DD calls and
   deaths live, with separate rows for runner and anti time;
 - set the runner gear rules, the rank that sees gear flags, and the DD call

@@ -38,7 +38,7 @@ every 10s (and once on startup / login) and caches it.
   "server_time": 1727190000000,
   "observer_enabled": true,
   "flag_viewer_min_rank": 0,
-  "active_event": {"id": 12, "name": "Tuesday mass", "started_at": 1727190000000},
+  "active_event": {"id": 12, "name": "Tuesday mass", "started_at": 1727190000000, "mass_bank_at": null},
   "participants": [{"rsn": "A", "status": "ATTENDING", "role": "RUNNER"}],
   "gear_rules": {"required_slots": ["HEAD", "AMULET", "TORSO", "LEGS", "BOOTS"], "ranged_weapon": true},
   "kits": [
@@ -61,6 +61,12 @@ every 10s (and once on startup / login) and caches it.
   }
 }
 ```
+
+`active_event.mass_bank_at` is the epoch ms of the latest mass bank staff
+called from the dashboard during this mass (`POST /events/{id}/mass-bank`,
+staff+, only while the mass is running), or null. Plugins alert runners in
+the course while `server_time - mass_bank_at` is under 60 seconds.
+
 
 `active_event` is `null` when no event is running. Regexes are matched
 case-insensitively.

@@ -3,14 +3,10 @@ package com.agilitycctracker.ui;
 import com.agilitycctracker.MassRole;
 import com.agilitycctracker.mass.MassParticipation;
 import com.agilitycctracker.model.ActiveEvent;
-import java.awt.BasicStroke;
-import java.awt.Color;
 import java.awt.Dimension;
-import java.awt.FontMetrics;
 import java.awt.Graphics2D;
 import java.awt.Point;
 import java.awt.Rectangle;
-import java.awt.RenderingHints;
 import java.awt.event.MouseEvent;
 import javax.inject.Inject;
 import javax.inject.Singleton;
@@ -35,7 +31,7 @@ public class MassPromptOverlay extends Overlay implements MouseListener
 	private static final int PAD = 10;
 	private static final int BUTTON_H = 24;
 	private static final int BUTTON_GAP = 6;
-	private static final int CLOSE = 10;
+	private static final int CLOSE = PromptPainter.CLOSE;
 
 	private enum Target
 	{
@@ -83,67 +79,20 @@ public class MassPromptOverlay extends Overlay implements MouseListener
 		{
 			return null;
 		}
-		g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-
-		// Box with a slow gold pulse on the border, so it's noticed without being loud.
-		double pulse = (Math.sin(System.currentTimeMillis() / 400.0) + 1) / 2;
-		g.setColor(new Color(Theme.BACKGROUND.getRed(), Theme.BACKGROUND.getGreen(), Theme.BACKGROUND.getBlue(), 238));
-		g.fillRoundRect(0, 0, WIDTH, HEIGHT, 6, 6);
-		g.setColor(Theme.SHADOW);
-		g.setStroke(new BasicStroke(3f));
-		g.drawRoundRect(1, 1, WIDTH - 3, HEIGHT - 3, 6, 6);
-		Color edge = Theme.GOLD_BRIGHT;
-		g.setColor(new Color(edge.getRed(), edge.getGreen(), edge.getBlue(), (int) (110 + 145 * pulse)));
-		g.setStroke(new BasicStroke(1.2f));
-		g.drawRoundRect(2, 2, WIDTH - 5, HEIGHT - 5, 5, 5);
-
+		PromptPainter.box(g, WIDTH, HEIGHT);
 		g.setFont(Theme.title());
-		centred(g, "Agility mass started", 22, Theme.GOLD_BRIGHT);
+		PromptPainter.centred(g, "Agility mass started", WIDTH, 22, Theme.GOLD_BRIGHT);
 		g.setFont(Theme.body());
-		centred(g, "Are you attending?", 40, Theme.TEXT);
+		PromptPainter.centred(g, "Are you attending?", WIDTH, 40, Theme.TEXT);
 
 		Target current = hover;
 		for (int i = 0; i < 3; i++)
 		{
 			Target target = Target.values()[i];
-			drawButton(g, buttons[i], target.label, i < 2, current == target);
+			PromptPainter.button(g, buttons[i], target.label, i < 2, current == target);
 		}
-
-		g.setColor(current == Target.CLOSE ? Theme.GOLD_BRIGHT : Theme.MUTED);
-		g.setStroke(new BasicStroke(1.6f, BasicStroke.CAP_ROUND, BasicStroke.CAP_ROUND));
-		g.drawLine(close.x, close.y, close.x + CLOSE - 2, close.y + CLOSE - 2);
-		g.drawLine(close.x + CLOSE - 2, close.y, close.x, close.y + CLOSE - 2);
-
+		PromptPainter.closeCross(g, close, current == Target.CLOSE);
 		return new Dimension(WIDTH, HEIGHT);
-	}
-
-	private static void centred(Graphics2D g, String text, int baseline, Color color)
-	{
-		FontMetrics metrics = g.getFontMetrics();
-		int x = (WIDTH - metrics.stringWidth(text)) / 2;
-		g.setColor(Color.BLACK);
-		g.drawString(text, x + 1, baseline + 1);
-		g.setColor(color);
-		g.drawString(text, x, baseline);
-	}
-
-	private static void drawButton(Graphics2D g, Rectangle r, String label, boolean primary, boolean hovered)
-	{
-		Color fill = primary
-			? (hovered ? Theme.GOLD_PALE : Theme.GOLD_BRIGHT)
-			: (hovered ? Theme.RAISED_HOVER : Theme.RAISED);
-		g.setColor(fill);
-		g.fillRoundRect(r.x, r.y, r.width, r.height, 4, 4);
-		g.setStroke(new BasicStroke(1f));
-		g.setColor(hovered && !primary ? Theme.GOLD : Theme.CARD_BORDER);
-		g.drawRoundRect(r.x, r.y, r.width, r.height, 4, 4);
-
-		g.setFont(Theme.body());
-		FontMetrics metrics = g.getFontMetrics();
-		int x = r.x + (r.width - metrics.stringWidth(label)) / 2;
-		int y = r.y + (r.height - metrics.getHeight()) / 2 + metrics.getAscent();
-		g.setColor(primary ? Theme.BACKGROUND : Theme.GOLD_BRIGHT);
-		g.drawString(label, x, y);
 	}
 
 	/** Which part of the prompt is under the mouse, or null when it's hidden or the mouse is elsewhere. */
@@ -166,8 +115,7 @@ public class MassPromptOverlay extends Overlay implements MouseListener
 				return Target.values()[i];
 			}
 		}
-		Rectangle closeHit = new Rectangle(close.x - 4, close.y - 4, CLOSE + 8, CLOSE + 8);
-		return closeHit.contains(local) ? Target.CLOSE : null;
+		return PromptPainter.closeHitArea(close).contains(local) ? Target.CLOSE : null;
 	}
 
 	private boolean insidePrompt(Point canvasPoint)

@@ -17,11 +17,20 @@
   {% else %}
   <p>
     Active mass: <strong>{{ active_event.name }}</strong>
-    <form method="post" action="/events/{{ active_event.id }}/stop" style="display:inline">
+    <form method="post" action="/events/{{ active_event.id }}/mass-bank" style="display:inline"
+          onsubmit="return confirm('Call a mass bank? Runners in the course get an alert for the next minute.');">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <button type="submit">Call mass bank</button>
+    </form>
+    <form method="post" action="/events/{{ active_event.id }}/stop" style="display:inline"
+          onsubmit="return confirm('Stop this mass? Runners in the course are told it is over.');">
       <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
       <button type="submit" class="secondary">Stop mass</button>
     </form>
   </p>
+  {% if active_event.mass_bank_called_at %}
+  <p><small>Last mass bank called at {{ active_event.mass_bank_called_at.strftime("%H:%M") }} (server time).</small></p>
+  {% endif %}
   {% endif %}
 {% endif %}
 

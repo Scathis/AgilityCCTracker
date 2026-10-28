@@ -27,6 +27,9 @@ class Event(Base):
     ended_at: Mapped[dt.datetime | None] = mapped_column(DateTime(), nullable=True)
     started_by_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
     notes: Mapped[str | None] = mapped_column(Text(), nullable=True)
+    # When staff last called a mass bank during this mass (dashboard button);
+    # plugins alert runners in the course for a short while after it.
+    mass_bank_called_at: Mapped[dt.datetime | None] = mapped_column(DateTime(), nullable=True)
 
 
 class Attendance(Base):

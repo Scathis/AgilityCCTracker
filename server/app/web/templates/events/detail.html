@@ -3,6 +3,16 @@
 {% block content %}
 <h2>{{ event.name }}</h2>
 <p><a href="/events">&larr; Back to events</a></p>
+{% if event.ended_at is none and user.role.value in ("staff", "admin") %}
+<p>
+  <form method="post" action="/events/{{ event.id }}/mass-bank" style="display:inline"
+        onsubmit="return confirm('Call a mass bank? Runners in the course get an alert for the next minute.');">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <button type="submit">Call mass bank</button>
+  </form>
+  {% if event.mass_bank_called_at %}<small>Last called at {{ event.mass_bank_called_at.strftime("%H:%M") }} (server time).</small>{% endif %}
+</p>
+{% endif %}
 
 <nav>
   <ul>

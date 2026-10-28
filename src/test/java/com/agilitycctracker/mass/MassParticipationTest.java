@@ -19,7 +19,7 @@ public class MassParticipationTest
 
 	private static StatusResponse status(Long eventId, List<Participant> participants)
 	{
-		ActiveEvent event = eventId != null ? new ActiveEvent(eventId, "Mass", 0) : null;
+		ActiveEvent event = eventId != null ? new ActiveEvent(eventId, "Mass", 0, null) : null;
 		return new StatusResponse("Owner", "FC", 0, true, 0, event, participants, null, null, null);
 	}
 

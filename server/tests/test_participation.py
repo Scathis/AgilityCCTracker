@@ -380,3 +380,16 @@ async def test_attendance_tab_keeps_each_role_separate(db_session, default_group
     assert mine["Anti"]["laps"] == 0
     assert mine["Runner"]["laps"] == 2
     assert mine["Anti"]["is_anti"] is True
+
+
+async def test_status_carries_the_mass_bank_time(client, fc_group, db_session):
+    group, token = fc_group
+    event = await _start_event(db_session, group)
+    status = (await client.get("/api/v1/status", headers=_headers(token))).json()
+    assert status["active_event"]["mass_bank_at"] is None
+
+    event.mass_bank_called_at = dt.datetime.utcnow()
+    await db_session.commit()
+    status = (await client.get("/api/v1/status", headers=_headers(token))).json()
+    assert status["active_event"]["mass_bank_at"] is not None
+    assert abs(status["server_time"] - status["active_event"]["mass_bank_at"]) < 60_000
