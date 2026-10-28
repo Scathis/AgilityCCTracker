@@ -180,3 +180,20 @@ async def test_admin_rotate_group_token_sets_a_flash_cookie_with_the_token(
     message = read_flash(response.cookies["flash"])
     assert message is not None
     assert "New token for" in message
+
+
+async def test_rank_settings_are_icon_pickers(
+    client, make_user, login_as, default_group, db_session
+):
+    default_group.flag_viewer_min_rank = 2
+    default_group.dd_min_rank = 5
+    await db_session.commit()
+    admin = await make_user(UserRole.ADMIN)
+    login_as(admin)
+
+    text = (await client.get("/settings")).text
+    assert 'type="number" name="min_rank"' not in text
+    assert 'type="number" name="flag_viewer_min_rank"' not in text
+    assert re.search(r'name="flag_viewer_min_rank" value="2"\s+checked', text)
+    assert re.search(r'name="min_rank" value="5"\s+checked', text)
+    assert "ranks/corporal.png" in text and "Anyone in the chat" in text

@@ -166,7 +166,7 @@ async def test_attendance_status_shows_present_vs_away(
             last_sighted_at=left_time,
             left_at=left_time,
             sighted_at_course=True,
-            rank=0,
+            rank=3,
         )
     )
     await db_session.commit()
@@ -178,6 +178,9 @@ async def test_attendance_status_shows_present_vs_away(
     away_idx = text.index("LeftEarly")
     assert "🟢 Present" in text[present_idx:present_idx + 300]
     assert "⚪ Away" in text[away_idx:away_idx + 300]
+    # Ranks show the in-game chat icon and name, not the raw number.
+    assert 'ranks/friend.png" alt="Friend"' in text[present_idx:present_idx + 300]
+    assert 'ranks/sergeant.png" alt="Sergeant"' in text[away_idx:away_idx + 300]
 
 
 async def test_attendance_lists_only_people_who_turned_up(

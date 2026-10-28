@@ -2108,3 +2108,16 @@ from `upstream/master` adding `plugins/wildy-agility-mass` (repository,
 PR https://github.com/runelite/plugin-hub/pull/19618 with the §4 body.
 Hub "build" check passed in 38s (packager log clean apart from GitHub
 tooling deprecation notices); awaiting maintainer review.
+
+## 2026-10-28 - Dashboard: FC rank icons
+
+The dashboard showed FC ranks as raw numbers (RuneLite `FriendsChatRank`
+values). New `server/app/web/ranks.py` maps value -> name + icon; the
+in-game chat icons (Friend ... Owner, JMod) are copied from the OSRS Wiki's
+Chat-channel page into `static/img/ranks/` (3-9px sprites, drawn 2x with
+`image-rendering: pixelated`). The attendance table shows icon + name; the
+two Settings rank fields (gear-flag viewers, DD callers) are now radio
+pickers with icons ("Anyone in the chat", "<rank> and up", "Owner only")
+instead of number boxes. Form values are unchanged; `dd_min_rank` is now
+clamped to -1..127 like the flag rank. ASSET_VERSION 7. Server only - the
+plugin and the Hub PR commit are untouched. 120 server tests.

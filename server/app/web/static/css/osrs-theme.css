@@ -179,3 +179,37 @@ mark {
   background: #ffb833;
   color: #2b2316;
 }
+
+/* Friends chat rank icons (app/web/ranks.py). The sprites are 3-9px, so
+ * they're drawn at 2x with crisp pixels inside a fixed box, keeping names
+ * lined up whatever the icon's size. */
+.rank-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  vertical-align: middle;
+}
+.rank-icon img {
+  image-rendering: pixelated;
+  transform: scale(2);
+}
+.rank-cell {
+  white-space: nowrap;
+}
+
+.rank-picker {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
+  gap: 0.25rem 1rem;
+}
+.rank-picker legend {
+  grid-column: 1 / -1;
+}
+.rank-picker label {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin: 0;
+}

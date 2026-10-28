@@ -64,11 +64,17 @@
         <input type="checkbox" name="observer_enabled" {% if group.observer_enabled %}checked{% endif %}>
         Enable FC observer (gear/DD scanning of other members)
       </label>
-      <label>Lowest FC rank that sees gear flags
-        <input type="number" name="flag_viewer_min_rank" min="-1" max="127" value="{{ group.flag_viewer_min_rank }}" required>
-      </label>
-      <small>-1 = anyone in the chat, 0 = any ranked member (friend and up), 1 = recruit, 2 = corporal, 3 = sergeant, ...
-        Lower ranks still get their own warning and still feed the dashboard, but see no list or labels for others.</small>
+      {% macro rank_picker(name, legend, current) %}
+      <fieldset class="rank-picker">
+        <legend>{{ legend }}</legend>
+        {% for r in pickable_ranks %}
+        <label><input type="radio" name="{{ name }}" value="{{ r.value }}" {% if r.value == current %}checked{% endif %}>
+          {{ rank_icon(r.value) }} {% if r.value == -1 %}Anyone in the chat{% elif r.value == 7 %}Owner only{% else %}{{ r.name }} and up{% endif %}</label>
+        {% endfor %}
+      </fieldset>
+      {% endmacro %}
+      {{ rank_picker("flag_viewer_min_rank", "Lowest FC rank that sees gear flags", group.flag_viewer_min_rank) }}
+      <small>Lower ranks still get their own warning and still feed the dashboard, but see no list or labels for others.</small>
     </article>
 
     <article>
@@ -76,8 +82,8 @@
         <strong>DD calls</strong>
         <small>Who can call a DD in FC chat, and how presence is timed.</small>
       </header>
+      {{ rank_picker("min_rank", "Lowest FC rank that can call a DD", group.dd_min_rank) }}
       <div class="two-col">
-        <label>Min rank to call DD<input type="number" name="min_rank" value="{{ group.dd_min_rank }}" required></label>
         <label>Max minutes per call<input type="number" name="max_minutes" value="{{ group.dd_max_minutes }}" required></label>
         <label>Arrive grace (seconds)<input type="number" name="arrive_grace_s" value="{{ group.dd_arrive_grace_s }}" required></label>
         <label>Leave grace (seconds)<input type="number" name="leave_grace_s" value="{{ group.dd_leave_grace_s }}" required></label>

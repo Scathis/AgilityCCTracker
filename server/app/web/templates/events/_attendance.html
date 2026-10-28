@@ -4,7 +4,7 @@
     {% for a in attendees %}
     <tr>
       <td>{{ a.player.rsn }}</td>
-      <td>{{ a.rank }}</td>
+      <td class="rank-cell">{{ rank_badge(a.rank) }}</td>
       <td>
         {% if a.currently_present %}🟢 Present
         {% else %}⚪ Away{% if a.last_left_at %} (since {{ a.last_left_at.strftime("%H:%M") }}){% endif %}

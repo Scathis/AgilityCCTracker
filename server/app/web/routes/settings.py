@@ -42,7 +42,7 @@ async def update_settings(
 ):
     # DD tiles are deliberately not settable from this form - see settings.html.
     # The DD call/break patterns live in code (api/v1/status.py).
-    group.dd_min_rank = min_rank
+    group.dd_min_rank = max(-1, min(min_rank, 127))
     group.dd_arrive_grace_s = arrive_grace_s
     group.dd_leave_grace_s = leave_grace_s
     group.dd_max_minutes = max_minutes
