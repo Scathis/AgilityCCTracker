@@ -10,13 +10,14 @@ end of any session that changes things; don't append to it.
 **Feature-complete for a first Hub submission; in-game test pass next.**
 Everything below is built, deployed (`https://agilitycc.grestinator.com`),
 committed and pushed (`github.com/Scathis/AgilityCCTracker`, public; head
-`7502241`). DB migration head `e5b0c8d1a624`. 111 server tests + plugin
-tests pass; CI green. 2026-10-27/28 was one long session of owner test notes
-(31 commits) - details in BUILD_LOG.md.
+see `git log`). DB migration head `f6c1d9e2b735`. 114 server tests +
+plugin tests pass; CI green. 2026-10-27/28 was one long session of owner test
+notes (36 commits) - details in BUILD_LOG.md.
 
 **Next, in order:**
 1. Owner's in-game test pass against `docs/DEV_SETUP.md` §5 (rewritten
-   2026-10-28, 74 items, all unticked; sections A-N). Fix whatever fails.
+   2026-10-28, all unticked; sections A-O, O = the new alerts). Fix
+   whatever fails.
 2. Phase 9: open the Plugin Hub PR - manifest, `warning=` text and PR
    description are drafted in `docs/PLUGIN_HUB_SUBMISSION.md` (pre-flight
    list there is done: README, description, warning, icon).
@@ -47,9 +48,13 @@ tests pass; CI green. 2026-10-27/28 was one long session of owner test notes
   at/above the dashboard's flag rank.
 - **Chat lines** (gear + kit) once on joining/logging in mid-mass, and on
   opening a bank only if something's missing.
-- **Alerts** (same in-game box style, dismissable): "Agility mass over" when
-  staff stop the mass (attending + in the course, 2 min); "Mass bank
-  starting" when staff press Call mass bank (runners in the course, 60s).
+- **Alerts** (`mass/MassNotices` + `ui/MassNoticeOverlay`, same in-game box
+  style, OK or × dismisses, also posted as a red chat line): "Agility mass
+  over" when staff stop the mass (attending + in the course, shown 2 min);
+  "Mass bank starting" - "Make your way to the mage bank to secure your
+  loot. 40+ laps is recommended" - when staff press Call mass bank (runners
+  in the course during the next 60s, timed on the server clock). Long
+  messages word-wrap.
 - **Settings:** Mass (My role), FC observer, Display (panel, "Pre-mass check
   messages", gear flags). No Share options any more.
 - **Panel** in the dashboard palette + RuneScape fonts: ring, name, all-time
@@ -69,6 +74,9 @@ tests pass; CI green. 2026-10-27/28 was one long session of owner test notes
   gear on the left and a live game-style inventory (nothing stacks except
   the 150K coins fee, so 27 items max) on the right.
 - Settings: runner gear rules, flag rank + observer switch, DD settings.
+- Mass bank: "Call mass bank" button on the Events list and the event page
+  (staff, only while a mass is running; stores `events.mass_bank_called_at`,
+  shown as "Last called at"; sent to plugins as `active_event.mass_bank_at`).
 - Gone: Players, Raggers, Loadouts pages; hiscores lookups; stored stats /
   equipment; FastAPI `/docs`. No per-request access log (IPs never written
   down); logs size-capped.
