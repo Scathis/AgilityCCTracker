@@ -18,7 +18,7 @@ No need to clone the RuneLite repo — Gradle pulls the released client.
 2. Open it in IntelliJ as a Gradle project. Set the project SDK to Java 11.
 3. Run the Gradle `run` task, or run `AgilityCCTrackerPluginTest.main`
    directly (`src/test/java/com/agilitycctracker/AgilityCCTrackerPluginTest.java`).
-   This launches RuneLite in developer mode with "Wildy Agility FC Tracker"
+   This launches RuneLite in developer mode with "Wildy Agility Mass"
    already loaded — no need to install anything into a normal RuneLite
    client for testing.
 

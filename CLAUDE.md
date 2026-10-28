@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-This repo is the **Wildy Agility FC Tracker**: a RuneLite plugin (Java 11, at the
+This repo is the **Wildy Agility Mass**: a RuneLite plugin (Java 11, at the
 repo root), a FastAPI + MySQL server (`server/`) and a web dashboard, self-hosted
 on the owner's server.
 

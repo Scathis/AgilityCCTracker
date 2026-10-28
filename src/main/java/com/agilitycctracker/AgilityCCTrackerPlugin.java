@@ -73,7 +73,7 @@ import net.runelite.client.util.Text;
  */
 @Slf4j
 @PluginDescriptor(
-	name = "Wildy Agility FC Tracker",
+	name = "Wildy Agility Mass",
 	description = "Opt-in attendance, laps, missing-gear checks, kits and DD calls for the Agility CC friends chat's Wilderness Agility Course masses",
 	tags = {"agility", "wilderness", "friends chat", "fc", "mass", "tracker", "dd"}
 )
@@ -197,7 +197,7 @@ public class AgilityCCTrackerPlugin extends Plugin
 	@Override
 	protected void startUp()
 	{
-		log.info("Wildy Agility FC Tracker started");
+		log.info("Wildy Agility Mass started");
 		lastAccountHash = client.getAccountHash();
 
 		lapTracker.setLapTimeListener(sessionHistory::onLapTime);
@@ -227,7 +227,7 @@ public class AgilityCCTrackerPlugin extends Plugin
 	@Override
 	protected void shutDown()
 	{
-		log.info("Wildy Agility FC Tracker stopped");
+		log.info("Wildy Agility Mass stopped");
 		overlayManager.remove(gearFlagOverlay);
 		overlayManager.remove(kitBankOverlay);
 		overlayManager.remove(massPromptOverlay);
@@ -245,7 +245,7 @@ public class AgilityCCTrackerPlugin extends Plugin
 		}
 		BufferedImage icon = loadIcon();
 		navigationButton = NavigationButton.builder()
-			.tooltip("Wildy Agility FC Tracker")
+			.tooltip("Wildy Agility Mass")
 			.icon(icon)
 			.panel(trackerPanel)
 			.priority(5)

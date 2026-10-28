@@ -2012,3 +2012,14 @@ height + 40, the same spot RuneLite's Player Indicators uses for names.
 `GearFlagOverlay` now takes that same point and lifts the label by one
 font line (+2px), so it sits just above the name. Not renderable offscreen
 (needs the scene); in-game check added to DEV_SETUP §5.
+
+## 2026-10-28 - Renamed to "Wildy Agility Mass"
+
+Owner decision: the display name is now **Wildy Agility Mass** (was "Wildy
+Agility FC Tracker") everywhere it's shown - `@PluginDescriptor` name,
+sidebar tooltip, log lines, `runelite-plugin.properties` displayName,
+dashboard page titles + header, FastAPI title, README, DEV_SETUP, repo
+CLAUDE.md, `/containers/CLAUDE.md`. Internal identifiers unchanged on
+purpose: package `com.agilitycctracker`, class names, config group
+`agilitycctracker` (renaming it would drop everyone's saved settings), repo,
+compose project, hostname. BUILD_PLAN/BUILD_LOG left as history.

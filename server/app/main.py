@@ -57,7 +57,7 @@ class BodySizeLimitMiddleware(BaseHTTPMiddleware):
 # Interactive docs / OpenAPI schema are off: they publish the full route map
 # (incl. admin routes) to anyone on the internet.
 app = FastAPI(
-    title="Wildy Agility FC Tracker",
+    title="Wildy Agility Mass",
     lifespan=lifespan,
     docs_url=None,
     redoc_url=None,

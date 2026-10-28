@@ -1,4 +1,4 @@
-# Wildy Agility FC Tracker
+# Wildy Agility Mass
 
 A RuneLite plugin for the **Agility CC** friends chat's Wilderness Agility
 Course masses. It handles attendance, laps, missing-gear checks, kits and DD calls
@@ -12,7 +12,7 @@ Questions, feedback or bugs: the **[Agility CC Discord](https://discord.gg/agili
 
 ### Getting started
 
-1. Install **Wildy Agility FC Tracker** from the RuneLite Plugin Hub.
+1. Install **Wildy Agility Mass** from the RuneLite Plugin Hub.
 2. Join the **Agility Cc** friends chat (Chat-channel tab).
 3. When the organisers start a mass, a prompt appears at the top of your game
    screen: **Agility mass started - are you attending?** Pick **Runner** or
@@ -78,7 +78,7 @@ get checked for missing gear by other people's plugins.
 
 ### Settings
 
-Open RuneLite's configuration for **Wildy Agility FC Tracker**:
+Open RuneLite's configuration for **Wildy Agility Mass**:
 
 | Setting | What it does |
 |---|---|

@@ -1,7 +1,7 @@
 [project]
 name = "agilitycctracker-server"
 version = "0.1.0"
-description = "Self-hosted API + dashboard for the Wildy Agility FC Tracker"
+description = "Self-hosted API + dashboard for the Wildy Agility Mass"
 requires-python = ">=3.12"
 dependencies = [
     "fastapi>=0.115",
