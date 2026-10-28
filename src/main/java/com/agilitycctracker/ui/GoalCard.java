@@ -3,11 +3,17 @@ package com.agilitycctracker.ui;
 import com.agilitycctracker.goal.AgilityGoal;
 import java.awt.BorderLayout;
 import java.awt.Component;
+import java.awt.Cursor;
 import java.awt.Dimension;
+import java.awt.FlowLayout;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
+import java.awt.Polygon;
 import java.awt.RenderingHints;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.util.function.Consumer;
+import javax.swing.Box;
 import javax.swing.DefaultListCellRenderer;
 import javax.swing.JComboBox;
 import javax.swing.JComponent;
@@ -19,8 +25,10 @@ import javax.swing.JPanel;
  * The sidebar's "Agility goal" card, the in-game version of the OSRS Hub
  * Agility Tracker: pick a goal (level 52-99 or 200m XP) and it shows laps to
  * go if every ticket is handed in at the end, and what handing in the stored
- * tickets (inventory + bank) is worth right now. Everything is computed and
- * kept locally; nothing here is sent anywhere.
+ * tickets (inventory + bank) is worth right now. Clicking the heading
+ * collapses it to a one-line summary ("1,234 laps to 99"), for runners who
+ * want it on but out of the way. Everything is computed and kept locally;
+ * nothing here is sent anywhere.
  */
 final class GoalCard
 {
@@ -39,13 +47,38 @@ final class GoalCard
 	private final JLabel ticketsAtGoalValue = TrackerPanel.label("", Theme.body(), Theme.TEXT);
 	private final JLabel done = TrackerPanel.label("", Theme.body(), Theme.GOOD);
 	private final JPanel toGo = TrackerPanel.transparent(new java.awt.GridBagLayout());
+	private final JPanel body = TrackerPanel.transparent(new java.awt.GridBagLayout());
+	private final Chevron chevron = new Chevron();
+	private final JLabel summary = TrackerPanel.label("", Theme.small(), Theme.GOLD_BRIGHT);
 	private boolean updating;
 
-	GoalCard(Consumer<String> onGoalPicked)
+	/**
+	 * @param onGoalPicked saves a goal picked in the dropdown
+	 * @param onToggle flips the saved collapsed/expanded state
+	 */
+	GoalCard(Consumer<String> onGoalPicked, Runnable onToggle)
 	{
-		TrackerPanel.Stack stack = new TrackerPanel.Stack(card);
+		TrackerPanel.Stack cardStack = new TrackerPanel.Stack(card);
 		JPanel top = TrackerPanel.transparent(new BorderLayout(8, 0));
-		top.add(TrackerPanel.heading("Agility goal"), BorderLayout.WEST);
+		JPanel title = TrackerPanel.transparent(new FlowLayout(FlowLayout.LEFT, 0, 0));
+		title.add(chevron);
+		title.add(Box.createHorizontalStrut(5));
+		title.add(TrackerPanel.heading("Agility goal"));
+		top.add(title, BorderLayout.WEST);
+		MouseAdapter toggle = new MouseAdapter()
+		{
+			@Override
+			public void mouseClicked(MouseEvent e)
+			{
+				onToggle.run();
+			}
+		};
+		for (JComponent clickable : new JComponent[]{title, summary})
+		{
+			clickable.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+			clickable.addMouseListener(toggle);
+		}
+		title.setToolTipText("Show or hide the details");
 		goalBox.setFont(Theme.body());
 		goalBox.setBackground(Theme.RAISED);
 		goalBox.setForeground(Theme.TEXT);
@@ -69,9 +102,15 @@ final class GoalCard
 				onGoalPicked.accept((String) goalBox.getSelectedItem());
 			}
 		});
-		top.add(goalBox, BorderLayout.EAST);
-		stack.add(top, 0);
-		stack.add(bar, 8);
+		JPanel right = TrackerPanel.transparent(new FlowLayout(FlowLayout.RIGHT, 0, 0));
+		right.add(goalBox);
+		right.add(summary);
+		top.add(right, BorderLayout.EAST);
+		cardStack.add(top, 0);
+		cardStack.add(body, 8);
+
+		TrackerPanel.Stack stack = new TrackerPanel.Stack(body);
+		stack.add(bar, 0);
 		stack.add(barCaption, 3);
 
 		stack.add(TrackerPanel.row("Tickets", ticketsValue), 8);
@@ -102,9 +141,15 @@ final class GoalCard
 	 * @param inventoryTickets tickets carried
 	 * @param bankTickets tickets banked when the bank was last opened, or null if never
 	 * @param goal the saved goal ("52".."99" or "200m")
+	 * @param collapsed show only the heading and a one-line summary
 	 */
-	void refresh(int xp, int inventoryTickets, Integer bankTickets, String goal)
+	void refresh(int xp, int inventoryTickets, Integer bankTickets, String goal, boolean collapsed)
 	{
+		chevron.setOpen(!collapsed);
+		body.setVisible(!collapsed);
+		goalBox.setVisible(!collapsed);
+		summary.setVisible(collapsed);
+
 		if (!goal.equals(goalBox.getSelectedItem()))
 		{
 			updating = true;
@@ -145,12 +190,15 @@ final class GoalCard
 		boolean reached = xp >= target;
 		toGo.setVisible(!reached);
 		done.setVisible(reached);
+		String shortGoal = AgilityGoal.MAX_GOAL.equals(goal) ? "200m" : goal;
 		if (reached)
 		{
 			done.setText("Reached " + AgilityGoal.goalLabel(goal) + " - nice work.");
+			summary.setText("Reached " + shortGoal);
 			return;
 		}
 		int laps = AgilityGoal.lapsToGoal(xp, tickets, target);
+		summary.setText(laps == 0 ? "Hand in for " + shortGoal : String.format("%,d laps to %s", laps, shortGoal));
 		xpToGoValue.setText(String.format("%,d", target - xp));
 		lapsValue.setText(laps == 0 ? "0 - just hand in" : String.format("%,d", laps));
 		timeValue.setText(hours(laps));
@@ -166,6 +214,41 @@ final class GoalCard
 			return "-";
 		}
 		return h < 1 ? "<1h" : h < 100 ? String.format("~%.1fh", h) : String.format("~%,dh", Math.round(h));
+	}
+
+	/** Small gold triangle: pointing right when collapsed, down when open. */
+	private static final class Chevron extends JComponent
+	{
+		private boolean open = true;
+
+		void setOpen(boolean open)
+		{
+			if (open != this.open)
+			{
+				this.open = open;
+				repaint();
+			}
+		}
+
+		@Override
+		public Dimension getPreferredSize()
+		{
+			return new Dimension(8, 14);
+		}
+
+		@Override
+		protected void paintComponent(Graphics graphics)
+		{
+			Graphics2D g = (Graphics2D) graphics.create();
+			g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+			g.setColor(Theme.GOLD);
+			int cy = getHeight() / 2;
+			Polygon p = open
+				? new Polygon(new int[]{0, 8, 4}, new int[]{cy - 2, cy - 2, cy + 3}, 3)
+				: new Polygon(new int[]{1, 6, 1}, new int[]{cy - 4, cy, cy + 4}, 3);
+			g.fillPolygon(p);
+			g.dispose();
+		}
 	}
 
 	/** Thin progress bar in the panel palette. */

@@ -120,8 +120,8 @@ public class TrackerPanel extends PluginPanel
 	@Inject
 	private TicketCount ticketCount;
 
-	// Agility goal card (saves the picked goal per account)
-	private final GoalCard goalCard = new GoalCard(goal -> ticketCount.setGoal(goal));
+	// Agility goal card (saves the picked goal per account; collapsing is remembered)
+	private final GoalCard goalCard = new GoalCard(goal -> ticketCount.setGoal(goal), this::toggleGoalCollapsed);
 
 	// Header
 	private final AgilityRing ring = new AgilityRing();
@@ -647,8 +647,14 @@ public class TrackerPanel extends PluginPanel
 		if (show)
 		{
 			goalCard.refresh(snapshot.getAgilityXp(), snapshot.getInventoryTickets(),
-				ticketCount.getBankTickets(), ticketCount.getGoal());
+				ticketCount.getBankTickets(), ticketCount.getGoal(), config.goalCollapsed());
 		}
+	}
+
+	private void toggleGoalCollapsed()
+	{
+		configManager.setConfiguration(AgilityCCTrackerConfig.GROUP, "goalCollapsed", !config.goalCollapsed());
+		refresh(lastSnapshot);
 	}
 
 	/**

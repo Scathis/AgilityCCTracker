@@ -140,6 +140,17 @@ public interface AgilityCCTrackerConfig extends Config
 	}
 
 	@ConfigItem(
+		keyName = "goalCollapsed",
+		name = "",
+		description = "Agility goal card collapsed to its one-line summary (toggled from the sidebar)",
+		hidden = true
+	)
+	default boolean goalCollapsed()
+	{
+		return false;
+	}
+
+	@ConfigItem(
 		keyName = "showPopups",
 		name = "Show pop-ups",
 		description = "Show the in-game mass boxes (chat messages still show)",

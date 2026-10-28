@@ -51,7 +51,8 @@ notes (36 commits) - details in BUILD_LOG.md.
   over-head flags follow the filter).
 - **Agility goal card** (local only): goal 52-99/200m per account, tickets
   carried + banked (counted on bank open), laps to goal, hand-in-now XP -
-  same maths as the OSRS Hub Agility Tracker (wiki batch ticket rates).
+  same maths as the OSRS Hub Agility Tracker (wiki batch ticket rates). Click
+  the heading to collapse it to a one-line summary (remembered).
 - **Chat lines** (gear + kit) once on joining/logging in mid-mass, and on
   opening a bank only if something's missing.
 - **Alerts** (`mass/MassNotices` + `ui/MassNoticeOverlay`, same in-game box

@@ -2077,3 +2077,12 @@ Owner requests before the Hub PR:
   overflowed the row (GridBag minimum sizes) - time moved to its own row and
   the bar given a minimum size. Real in-game placement of the icon still
   needs checking (DEV_SETUP §5 G/G2).
+
+## 2026-10-28 - Agility goal card collapsible
+
+Owner request: keep the goal card on but out of the way while running.
+Clicking the heading (gold ▸/▾ chevron, drawn not a glyph) collapses it to
+one line with a summary on the right - "13,430 laps to 99", "Hand in for
+80" (stored tickets already enough) or "Reached 99"; the goal dropdown shows
+only when expanded. State in hidden config `goalCollapsed` (global, default
+expanded). Checked by offscreen render of expanded and collapsed states.

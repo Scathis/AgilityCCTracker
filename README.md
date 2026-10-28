@@ -88,7 +88,7 @@ Open RuneLite's configuration for **Wildy Agility Mass**:
 | Pre-mass check messages | The red chat lines about your own gear and kit: once when you join the mass or log in during it, and when you open a bank if something's missing. |
 | Gear flag icon | A small icon left of the name of runners missing gear (ranked members only). |
 | Gear flag text | What they're missing, in amber above their name (ranked members only). Both follow the sidebar's Runners in view filter. |
-| Show agility goal | The Agility goal card: pick a level (52-99) or 200m XP and see laps to go, and what handing in your tickets (carried + banked) is worth now. |
+| Show agility goal | The Agility goal card: pick a level (52-99) or 200m XP and see laps to go, and what handing in your tickets (carried + banked) is worth now. Click its heading to collapse it to one line. |
 | Show pop-ups | The in-game boxes ("Agility mass started", "Mass bank starting", "Agility mass over"). With it off you still get the red chat lines, and you pick Runner or Anti in the sidebar panel. |
 | Pop-up size | Shrinks those boxes (50-100%) for small screens. |
 

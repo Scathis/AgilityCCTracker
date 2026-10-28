@@ -213,6 +213,9 @@ on the dashboard. Pull and rebuild the plugin first.
 - [ ] Do a lap → XP, tickets and laps to goal update within a second or two.
 - [ ] Goal already reached → "Reached Level N - nice work."
 - [ ] **Show agility goal** off → card goes.
+- [ ] Click the card's heading (or ▸/▾) → it collapses to one line
+      ("1,234 laps to 99" / "Hand in for 80" / "Reached 99"); click again →
+      details back. The state survives a restart.
 
 ### H. DD calls
 
