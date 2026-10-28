@@ -118,7 +118,9 @@ public class MassNotices
 		{
 			shownBankAt = bankAt;
 			pendingBankAt = NONE;
-			show("Mass bank starting", "The organisers have called a mass bank.", pendingBankUntil - now);
+			show("Mass bank starting",
+				"Make your way to the mage bank to secure your loot. Anything over 40+ laps is recommended",
+				pendingBankUntil - now);
 		}
 	}
 

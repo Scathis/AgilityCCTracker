@@ -1948,3 +1948,10 @@ transparent 16x16. Checked at 1x/8x on the toolbar grey and panel brown.
   drawing with the attending prompt via the new `ui/PromptPainter`.
   `MassNoticesTest` covers the pure timing helpers. Rendered offscreen to
   check the look.
+
+## 2026-10-28 - Mass bank alert wording
+
+Owner's text: "Make your way to the mage bank to secure your loot. Anything
+over 40+ laps is recommended". Too long for one line, so
+`MassNoticeOverlay` now word-wraps the message (greedy, box width minus
+padding) and sizes the box to fit, moving OK below it.

@@ -2,10 +2,13 @@ package com.agilitycctracker.ui;
 
 import com.agilitycctracker.mass.MassNotices;
 import java.awt.Dimension;
+import java.awt.FontMetrics;
 import java.awt.Graphics2D;
 import java.awt.Point;
 import java.awt.Rectangle;
 import java.awt.event.MouseEvent;
+import java.util.ArrayList;
+import java.util.List;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import javax.swing.SwingUtilities;
@@ -23,13 +26,14 @@ import net.runelite.client.ui.overlay.OverlayPosition;
 public class MassNoticeOverlay extends Overlay implements MouseListener
 {
 	private static final int WIDTH = 240;
-	private static final int HEIGHT = 86;
 	private static final int PAD = 10;
+	private static final int LINE = 16;
 	private static final int BUTTON_W = 80;
 	private static final int BUTTON_H = 24;
 
 	private final MassNotices notices;
-	private final Rectangle ok = new Rectangle((WIDTH - BUTTON_W) / 2, HEIGHT - PAD - BUTTON_H, BUTTON_W, BUTTON_H);
+	// The message wraps, so the box (and where OK sits) depends on its length.
+	private final Rectangle ok = new Rectangle((WIDTH - BUTTON_W) / 2, 0, BUTTON_W, BUTTON_H);
 	private final Rectangle close = new Rectangle(WIDTH - PAD - PromptPainter.CLOSE + 2, 7, PromptPainter.CLOSE, PromptPainter.CLOSE);
 	private volatile boolean hoverOk;
 	private volatile boolean hoverClose;
@@ -52,14 +56,47 @@ public class MassNoticeOverlay extends Overlay implements MouseListener
 		{
 			return null;
 		}
-		PromptPainter.box(g, WIDTH, HEIGHT);
+		g.setFont(Theme.body());
+		List<String> lines = wrap(notice.getMessage(), g.getFontMetrics(), WIDTH - PAD * 2);
+		int height = 40 + (lines.size() - 1) * LINE + 12 + BUTTON_H + PAD;
+		ok.y = height - PAD - BUTTON_H;
+
+		PromptPainter.box(g, WIDTH, height);
 		g.setFont(Theme.title());
 		PromptPainter.centred(g, notice.getTitle(), WIDTH, 22, Theme.GOLD_BRIGHT);
 		g.setFont(Theme.body());
-		PromptPainter.centred(g, notice.getMessage(), WIDTH, 40, Theme.TEXT);
+		for (int i = 0; i < lines.size(); i++)
+		{
+			PromptPainter.centred(g, lines.get(i), WIDTH, 40 + i * LINE, Theme.TEXT);
+		}
 		PromptPainter.button(g, ok, "OK", true, hoverOk);
 		PromptPainter.closeCross(g, close, hoverClose);
-		return new Dimension(WIDTH, HEIGHT);
+		return new Dimension(WIDTH, height);
+	}
+
+	/** Greedy word wrap to fit {@code maxWidth}. */
+	static List<String> wrap(String text, FontMetrics metrics, int maxWidth)
+	{
+		List<String> lines = new ArrayList<>();
+		StringBuilder line = new StringBuilder();
+		for (String word : text.split(" "))
+		{
+			String candidate = line.length() == 0 ? word : line + " " + word;
+			if (line.length() > 0 && metrics.stringWidth(candidate) > maxWidth)
+			{
+				lines.add(line.toString());
+				line = new StringBuilder(word);
+			}
+			else
+			{
+				line = new StringBuilder(candidate);
+			}
+		}
+		if (line.length() > 0)
+		{
+			lines.add(line.toString());
+		}
+		return lines;
 	}
 
 	private Point local(Point canvasPoint)
