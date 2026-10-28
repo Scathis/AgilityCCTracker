@@ -2086,3 +2086,14 @@ one line with a summary on the right - "13,430 laps to 99", "Hand in for
 80" (stored tickets already enough) or "Reached 99"; the goal dropdown shows
 only when expanded. State in hidden config `goalCollapsed` (global, default
 expanded). Checked by offscreen render of expanded and collapsed states.
+
+## 2026-10-28 - Pre-submission cleanup
+
+Owner's test pass came back good. Cleanups: LICENSE holder line renamed;
+plugin description/tags (properties + `@PluginDescriptor`) mention the
+Agility goal/ticket tracker; §5.11 grep checks re-run clean (only hit:
+`java.lang.reflect.Type` for Gson's TypeToken); PLUGIN_HUB_SUBMISSION.md
+pre-flight ticked and §4 turned into a paste-ready PR body covering the new
+gear icon/filter and goal card (dropped the old claim of a "payload-shape
+test" - no such test exists in the code). The owner's 1.1MB source art for
+the gear icon stays untracked.

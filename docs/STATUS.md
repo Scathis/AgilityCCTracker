@@ -14,13 +14,10 @@ see `git log`). DB migration head `a7d3e1f4c290`. 116 server tests +
 plugin tests pass; CI green. 2026-10-27/28 was one long session of owner test
 notes (36 commits) - details in BUILD_LOG.md.
 
-**Next, in order:**
-1. Owner's in-game test pass against `docs/DEV_SETUP.md` §5 (rewritten
-   2026-10-28, all unticked; sections A-O, O = the new alerts). Fix
-   whatever fails.
-2. Phase 9: open the Plugin Hub PR - manifest, `warning=` text and PR
-   description are drafted in `docs/PLUGIN_HUB_SUBMISSION.md` (pre-flight
-   list there is done: README, description, warning, icon).
+**Owner's in-game test pass: done 2026-10-28** ("all the testing seems to
+be good"). **Next:** Phase 9 - the Plugin Hub PR (`plugins/wildy-agility-mass`),
+paste-ready text and manifest in `docs/PLUGIN_HUB_SUBMISSION.md`. After that,
+watch the Hub CI on the PR and push fixes as new `commit=` shas to the same PR.
 
 ## The design as it is now
 

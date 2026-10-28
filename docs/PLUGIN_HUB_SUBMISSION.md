@@ -1,11 +1,9 @@
 # RuneLite Plugin Hub submission
 
-**Not yet executed.** This is Phase 9 in `BUILD_PLAN.md`, deliberately held
-until after real in-game testing (`DEV_SETUP.md`'s manual checklist) and
-until the owner has re-confirmed the DD/loadout observer design with the
-RuneLite plugin-hub maintainers — the crowdsourcing/"one class may read
-other players" rule is exactly the kind of thing that's worth a maintainer
-sanity-check before a PR, not after.
+**Status 2026-10-28:** owner's in-game test pass done; pre-flight checks
+below done; PR being opened from the owner's fork (no `gh` CLI on the host,
+so the fork and the PR itself are created in the browser; Claude pushes the
+manifest branch over the VS Code git socket).
 
 ## 1. Repo visibility
 
@@ -25,12 +23,13 @@ this build).
       outline makes it clean) and it was box-downscaled to 40x72 centred on a
       transparent 48x72 canvas (the Hub's maximum). The large original is not
       committed.
-- [ ] `LICENSE` present (BSD-2-Clause)
+- [x] `LICENSE` present (BSD-2-Clause; holder line renamed 2026-10-28)
 - [x] **`README.md` rewritten 2026-10-27** - players' guide (prompt, roles,
       panel, kits, missing-gear checks, settings, what's shared and when), organisers'
       dashboard summary, repo layout. Keep it in step with later changes.
-- [ ] `./gradlew build` passes clean on Java 11
-- [ ] The §5.11 Hub-readiness grep checks still pass (no `getPlayers()`
+- [x] `./gradlew build` passes clean on Java 11 (2026-10-28)
+- [x] The §5.11 Hub-readiness grep checks still pass (2026-10-28; the only
+      hit is `java.lang.reflect.Type` for Gson's `TypeToken` in `SessionHistory`, not reflection) (no `getPlayers()`
       outside `scan/FcMemberScanner`, no banned event subscriptions, no
       reflection/subprocess/manual `OkHttpClient`/`Gson` construction)
 
@@ -44,67 +43,55 @@ this build).
    warning=This plugin sends your RSN and IP address to a server not controlled or verified by the RuneLite developers, to check whether the Agility CC friends chat has a mass running. Only once you opt in to a mass (by picking Runner or Anti, or by entering the Wilderness Agility Course during it), and only for that mass, it also sends: that you are near the course and your friends chat rank, which of your required gear slots are empty, and your Wilderness Agility laps and deaths; and, for friends chat members you can see in the course, their names and ranks, which required gear slots they have empty, and their time on the chat's DD tiles during a DD call. No one's worn items, inventory, stats, world or position are ever sent, and the friends chat member list is not sent.
    ```
 
-## 4. PR description
+## 4. PR description (ready to paste)
 
-Should cover, explicitly:
+Title: `Add Wildy Agility Mass`
 
-- **Opt-in per mass.** The plugin does nothing (beyond polling the server for
-  whether a mass is running) until the player picks Runner or Anti on an
-  in-game prompt (drawn inside the game view, never a separate window) that
-  appears when the FC's organisers start a mass - or walks into the Wilderness
-  Agility Course while in that friends chat during the mass, which counts as
-  attending (they're told so in chat). The server also ignores
-  everything from a player who hasn't opted in. Antis (a player-chosen role)
-  are attendance-time only: no laps, no DD, no missing-gear checks, and observers
-  never report on antis or on players who answered No.
-- **Gear flags are rank-gated.** What a player wears is public in-game, but
-  the plugin only shows a ready-made list / over-head labels of other players'
-  gaps to friends chat members at or above an FC rank the organisers set
-  (default: any ranked member), so a stranger who installs the plugin gets no
-  target list. The scan itself only runs inside the tracked friends chat, and
-  the over-head overlay is passed only the flagged players by
-  `FcMemberScanner`; it reads nothing from them.
-- **Kit check is local.** The pre-course "are you ready?" check reads the
-  player's *own* worn items and inventory to compare with a recommended kit
-  and outline missing items in their bank; none of it is uploaded (the
-  inventory is never sent at all).
-- **Fixed server address.** The server URL and token are compiled in (this FC
-  tool has exactly one backend); the token is not a secret and is not relied
-  on for security - the opt-in rule above is.
+```markdown
+Adds **Wildy Agility Mass** - a tool for the Agility CC friends chat's
+Wilderness Agility Course masses: opt-in attendance, laps, missing-gear
+checks, recommended kits and DD call timing, plus a local Agility goal /
+ticket tracker. Source: https://github.com/Scathis/AgilityCCTracker
 
-- The **empty-slots-only design** — the server never learns what anyone is
-  wearing, the player included. Gear is only ever reported as which required
-  slots are empty or wrong (e.g. `"BOOTS"`, `"WEAPON"` for "no bow"), for
-  other players *and* for the player's own check. (An earlier build also
-  uploaded the player's own worn items; removed 2026-10-27 and the stored
-  data deleted, so this line holds without exceptions.) Reference the `rogue-chests` plugin as an
-  existing Hub precedent for "reads other players, uploads only a
-  derived signal, not raw data."
-- That exactly **one class** (`scan/FcMemberScanner`) ever reads other
-  players' state — this is enforced by the §5.11 grep checks, not just
-  convention.
-- The **payload-shape test** that proves the "no other player's raw
-  data leaves the client" boundary in code, not just in review.
-- The **DD observer**: booleans and durations only (arrival lateness, time
-  on tile, whether they kept running — never coordinates or gear), with a server-side `observer_enabled`
-  kill switch the FC owner controls independent of any plugin update.
-- **Scope is physically bounded, not just logically bounded.**
-  `FcMemberScanner` doesn't just limit *what* it uploads about other
-  players (gap keys, not raw gear) — it refuses to scan anyone at all
-  unless the reporting player is themselves standing inside the
-  Wilderness Agility Course region (confirmed deliberately kept strict
-  2026-10-01, not loosened to "nearby" even though that would have made
-  in-game testing marginally more convenient). A player a world away, or
-  even just outside the course boundary, is invisible to this plugin —
-  there's no way to use it as a general-purpose "who's near me" scanner.
-- **No gear/risk value calculation, deliberately.** An earlier version
-  computed each player's own worn-gear GP value and total at-risk value
-  (self only, never other players) for a possible future dashboard
-  display that was never actually built. Removed entirely 2026-10-01,
-  before ever being used for anything - a tool that estimates how much
-  GP someone is carrying reads as PK-target reconnaissance regardless of
-  intent, and this project has no legitimate use for it worth that
-  optics risk.
+**External server.** It talks to the FC's own server
+(`agilitycc.grestinator.com`); the URL and a non-secret token are compiled in.
+The `warning=` line lists exactly what is sent.
+
+**Opt-in per mass.** Until a player opts in, the only request is "is a mass
+running?" (with their RSN). When organisers start a mass, an in-game prompt
+(drawn in the game view, never a separate window) offers Runner / Anti /
+Not today; walking into the course during the mass also counts as attending,
+and the player is told so in chat. The server ignores anything from a player
+who hasn't opted in to the current mass. Antis are attendance time only.
+
+**Other players.** Exactly one class, `scan/FcMemberScanner`, reads other
+players, and only:
+- while the local player is inside the Wilderness Agility Course region,
+- for members of the tracked friends chat (never antis or people who said no),
+- uploading only their name, FC rank, which *required* gear slots are empty
+  (slot keys like `BOOTS`, `WEAPON`) and DD-tile durations.
+Never worn items, item ids, coordinates, world or the member list. The FC
+owner has a server-side switch to turn this off without a plugin update.
+`GearFlagOverlay` only draws the players the scanner hands it.
+
+**Gear flags are rank-gated.** The over-head icon/label and the sidebar list
+of runners missing gear are only shown to FC members at or above a rank the
+organisers set, so a stranger installing the plugin gets no target list.
+
+**Local only.** The kit check (own worn items, inventory, bank highlighting),
+the Agility goal card (own XP, carried and banked ticket counts) and session
+history are computed and kept on the player's machine and never uploaded.
+
+**No** reflection, subprocesses, or self-built HTTP/JSON clients (injected
+`OkHttpClient`/`Gson`), and no third-party dependencies.
+```
+
+Background for any maintainer questions (not in the PR body): the
+empty-slots-only design (an earlier build uploaded the player's own worn
+items; removed 2026-10-27 and the stored data deleted); no gear/risk value
+calculation, deliberately (removed 2026-10-01 - reads as PK reconnaissance);
+`rogue-chests` as Hub precedent for "reads other players, uploads only a
+derived signal".
 
 ## 5. After submission
 
