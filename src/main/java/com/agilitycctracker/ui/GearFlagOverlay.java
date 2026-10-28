@@ -7,6 +7,8 @@ import java.awt.Dimension;
 import java.awt.Graphics2D;
 import javax.inject.Inject;
 import javax.inject.Singleton;
+import net.runelite.api.Player;
+import net.runelite.api.Point;
 import net.runelite.client.ui.overlay.Overlay;
 import net.runelite.client.ui.overlay.OverlayLayer;
 import net.runelite.client.ui.overlay.OverlayPosition;
@@ -23,6 +25,8 @@ import net.runelite.client.ui.overlay.OverlayUtil;
 public class GearFlagOverlay extends Overlay
 {
 	private static final Color FLAG_COLOUR = new Color(0xff, 0x40, 0x40);
+	private static final int NAME_Z_OFFSET = 40;
+	private static final int LINE_GAP = 2;
 
 	private final FcMemberScanner fcMemberScanner;
 
@@ -37,9 +41,19 @@ public class GearFlagOverlay extends Overlay
 	@Override
 	public Dimension render(Graphics2D graphics)
 	{
+		// One line above where names go (Player Indicators draws them at
+		// logical height + 40, same as OverlayUtil.renderActorOverlay), so the
+		// label never sits on top of the name.
+		int lift = graphics.getFontMetrics().getHeight() + LINE_GAP;
 		for (FlaggedPlayer flagged : fcMemberScanner.getFlagged())
 		{
-			OverlayUtil.renderActorOverlay(graphics, flagged.getPlayer(), flagged.getLabel(), FLAG_COLOUR);
+			Player player = flagged.getPlayer();
+			String label = flagged.getLabel();
+			Point at = player.getCanvasTextLocation(graphics, label, player.getLogicalHeight() + NAME_Z_OFFSET);
+			if (at != null)
+			{
+				OverlayUtil.renderTextLocation(graphics, new Point(at.getX(), at.getY() - lift), label, FLAG_COLOUR);
+			}
 		}
 		return null;
 	}

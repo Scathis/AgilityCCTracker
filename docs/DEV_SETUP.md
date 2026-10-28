@@ -178,6 +178,8 @@ on the dashboard. Pull and rebuild the plugin first.
 - [ ] As a **ranked** member (at/above the Settings threshold) in the course
       during a mass: a red label ("No helm, boots") over runners missing gear,
       and the **Runners in view** card fills in.
+- [ ] With RuneLite's Player Indicators showing names above heads, the red
+      label sits one line above the name, not on top of it.
 - [ ] Runners with full gear, antis and people not attending never get a label.
 - [ ] As an **unranked** member (or with the threshold above your rank): no
       labels and no Runners in view card - you still get your own gear line,

@@ -2003,3 +2003,12 @@ untouched); form fields, route params and model columns removed; migration
 first). New tests: Settings saves without the patterns (flag rank -1), and
 `/status` sends the constants, which match "dd"/"DD!!"/"break dd" and not
 "dd at 5"/"break". API.md's example break pattern updated to the real one.
+
+## 2026-10-28 - Gear flag label above the name
+
+Owner test note: the red over-head gear label overlapped the player's name
+and was unreadable. `OverlayUtil.renderActorOverlay` draws at logical
+height + 40, the same spot RuneLite's Player Indicators uses for names.
+`GearFlagOverlay` now takes that same point and lifts the label by one
+font line (+2px), so it sits just above the name. Not renderable offscreen
+(needs the scene); in-game check added to DEV_SETUP §5.
