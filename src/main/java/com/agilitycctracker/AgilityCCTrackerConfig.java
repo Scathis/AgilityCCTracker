@@ -4,6 +4,8 @@ import net.runelite.client.config.Config;
 import net.runelite.client.config.ConfigGroup;
 import net.runelite.client.config.ConfigItem;
 import net.runelite.client.config.ConfigSection;
+import net.runelite.client.config.Range;
+import net.runelite.client.config.Units;
 
 @ConfigGroup("agilitycctracker")
 public interface AgilityCCTrackerConfig extends Config
@@ -98,5 +100,19 @@ public interface AgilityCCTrackerConfig extends Config
 	default boolean showGearFlags()
 	{
 		return true;
+	}
+
+	@Range(min = 50, max = 100)
+	@Units(Units.PERCENT)
+	@ConfigItem(
+		keyName = "popupScale",
+		name = "Pop-up size",
+		description = "Size of the in-game boxes (the \"Agility mass started\" prompt and the mass over / mass bank alerts). Lower it on a small screen; text gets slightly softer below about 75%.",
+		section = displaySection,
+		position = 3
+	)
+	default int popupScale()
+	{
+		return 100;
 	}
 }

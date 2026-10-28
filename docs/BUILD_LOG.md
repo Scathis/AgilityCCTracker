@@ -1955,3 +1955,17 @@ Owner's text: "Make your way to the mage bank to secure your loot. Anything
 over 40+ laps is recommended". Too long for one line, so
 `MassNoticeOverlay` now word-wraps the message (greedy, box width minus
 padding) and sizes the box to fit, moving OK below it.
+
+## 2026-10-28 - Pop-up size setting
+
+Test note: on a very small display the in-game boxes (attending prompt,
+mass over / mass bank alerts) were too big. New config item **Display →
+Pop-up size** (`popupScale`, 50-100%, `@Units(PERCENT)`, default 100).
+`MassPromptOverlay` and `MassNoticeOverlay` keep their full-size layout
+and draw it through a scaled copy of the Graphics (`PromptPainter.applyScale`,
+text antialiasing switched on below 100% since the RuneScape fonts are pixel
+fonts), return the scaled size so RuneLite's bounds/Alt+drag match, and map
+mouse points back with `PromptPainter.unscale` so hit-testing still uses the
+full-size rectangles. `PromptPainterTest` covers the clamp, the rounding of
+the box size and click mapping. Checked by an offscreen render at
+100/75/50%: layout and borders hold; text is soft but readable at 50%.

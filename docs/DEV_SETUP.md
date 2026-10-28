@@ -281,6 +281,10 @@ on the dashboard. Pull and rebuild the plugin first.
 - [ ] No Call mass bank button when no mass is running; a viewer never sees it.
 - [ ] Both boxes and the attending prompt can be Alt+dragged; clicks on them
       don't reach the game.
+- [ ] **Display → Pop-up size** (50-100%, default 100%) shrinks the attending
+      prompt and both alerts while open. At 50% every button and the × still
+      work where they're drawn, Alt+drag still works, and clicks just outside
+      the smaller box reach the game.
 
 ### N. Server (checked by Claude)
 

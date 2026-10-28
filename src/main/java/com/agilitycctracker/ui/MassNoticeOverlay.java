@@ -1,5 +1,6 @@
 package com.agilitycctracker.ui;
 
+import com.agilitycctracker.AgilityCCTrackerConfig;
 import com.agilitycctracker.mass.MassNotices;
 import java.awt.Dimension;
 import java.awt.FontMetrics;
@@ -32,16 +33,20 @@ public class MassNoticeOverlay extends Overlay implements MouseListener
 	private static final int BUTTON_H = 24;
 
 	private final MassNotices notices;
+	private final AgilityCCTrackerConfig config;
 	// The message wraps, so the box (and where OK sits) depends on its length.
 	private final Rectangle ok = new Rectangle((WIDTH - BUTTON_W) / 2, 0, BUTTON_W, BUTTON_H);
 	private final Rectangle close = new Rectangle(WIDTH - PAD - PromptPainter.CLOSE + 2, 7, PromptPainter.CLOSE, PromptPainter.CLOSE);
 	private volatile boolean hoverOk;
 	private volatile boolean hoverClose;
+	// "Pop-up size" as last drawn, so clicks map back to the full-size layout.
+	private volatile double scale = 1;
 
 	@Inject
-	MassNoticeOverlay(MassNotices notices)
+	MassNoticeOverlay(MassNotices notices, AgilityCCTrackerConfig config)
 	{
 		this.notices = notices;
+		this.config = config;
 		setPosition(OverlayPosition.TOP_CENTER);
 		setLayer(OverlayLayer.ABOVE_WIDGETS);
 		setPriority(PRIORITY_HIGH);
@@ -56,6 +61,23 @@ public class MassNoticeOverlay extends Overlay implements MouseListener
 		{
 			return null;
 		}
+		double s = PromptPainter.scale(config.popupScale());
+		scale = s;
+		Graphics2D g2 = (Graphics2D) g.create();
+		try
+		{
+			PromptPainter.applyScale(g2, s);
+			return PromptPainter.scaled(WIDTH, draw(g2, notice), s);
+		}
+		finally
+		{
+			g2.dispose();
+		}
+	}
+
+	/** Draws the notice at full size; returns its height. */
+	private int draw(Graphics2D g, MassNotices.Notice notice)
+	{
 		g.setFont(Theme.body());
 		List<String> lines = wrap(notice.getMessage(), g.getFontMetrics(), WIDTH - PAD * 2);
 		int height = 40 + (lines.size() - 1) * LINE + 12 + BUTTON_H + PAD;
@@ -71,7 +93,7 @@ public class MassNoticeOverlay extends Overlay implements MouseListener
 		}
 		PromptPainter.button(g, ok, "OK", true, hoverOk);
 		PromptPainter.closeCross(g, close, hoverClose);
-		return new Dimension(WIDTH, height);
+		return height;
 	}
 
 	/** Greedy word wrap to fit {@code maxWidth}. */
@@ -110,7 +132,7 @@ public class MassNoticeOverlay extends Overlay implements MouseListener
 		{
 			return null;
 		}
-		return new Point(canvasPoint.x - bounds.x, canvasPoint.y - bounds.y);
+		return PromptPainter.unscale(canvasPoint.x - bounds.x, canvasPoint.y - bounds.y, scale);
 	}
 
 	@Override

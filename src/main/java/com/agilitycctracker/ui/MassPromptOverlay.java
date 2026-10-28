@@ -1,5 +1,6 @@
 package com.agilitycctracker.ui;
 
+import com.agilitycctracker.AgilityCCTrackerConfig;
 import com.agilitycctracker.MassRole;
 import com.agilitycctracker.mass.MassParticipation;
 import com.agilitycctracker.model.ActiveEvent;
@@ -49,15 +50,19 @@ public class MassPromptOverlay extends Overlay implements MouseListener
 	}
 
 	private final MassParticipation massParticipation;
+	private final AgilityCCTrackerConfig config;
 
 	private final Rectangle[] buttons = new Rectangle[3];
 	private final Rectangle close;
 	private volatile Target hover;
+	// "Pop-up size" as last drawn, so clicks map back to the full-size layout.
+	private volatile double scale = 1;
 
 	@Inject
-	MassPromptOverlay(MassParticipation massParticipation)
+	MassPromptOverlay(MassParticipation massParticipation, AgilityCCTrackerConfig config)
 	{
 		this.massParticipation = massParticipation;
+		this.config = config;
 		setPosition(OverlayPosition.TOP_CENTER);
 		setLayer(OverlayLayer.ABOVE_WIDGETS);
 		setPriority(PRIORITY_HIGH);
@@ -79,6 +84,24 @@ public class MassPromptOverlay extends Overlay implements MouseListener
 		{
 			return null;
 		}
+		double s = PromptPainter.scale(config.popupScale());
+		scale = s;
+		Graphics2D g2 = (Graphics2D) g.create();
+		try
+		{
+			PromptPainter.applyScale(g2, s);
+			draw(g2);
+		}
+		finally
+		{
+			g2.dispose();
+		}
+		return PromptPainter.scaled(WIDTH, HEIGHT, s);
+	}
+
+	/** Draws the prompt at full size. */
+	private void draw(Graphics2D g)
+	{
 		PromptPainter.box(g, WIDTH, HEIGHT);
 		g.setFont(Theme.title());
 		PromptPainter.centred(g, "Agility mass started", WIDTH, 22, Theme.GOLD_BRIGHT);
@@ -92,7 +115,6 @@ public class MassPromptOverlay extends Overlay implements MouseListener
 			PromptPainter.button(g, buttons[i], target.label, i < 2, current == target);
 		}
 		PromptPainter.closeCross(g, close, current == Target.CLOSE);
-		return new Dimension(WIDTH, HEIGHT);
 	}
 
 	/** Which part of the prompt is under the mouse, or null when it's hidden or the mouse is elsewhere. */
@@ -107,7 +129,7 @@ public class MassPromptOverlay extends Overlay implements MouseListener
 		{
 			return null;
 		}
-		Point local = new Point(canvasPoint.x - bounds.x, canvasPoint.y - bounds.y);
+		Point local = PromptPainter.unscale(canvasPoint.x - bounds.x, canvasPoint.y - bounds.y, scale);
 		for (int i = 0; i < 3; i++)
 		{
 			if (buttons[i].contains(local))

@@ -56,7 +56,8 @@ notes (36 commits) - details in BUILD_LOG.md.
   in the course during the next 60s, timed on the server clock). Long
   messages word-wrap.
 - **Settings:** Mass (My role), FC observer, Display (panel, "Pre-mass check
-  messages", gear flags). No Share options any more.
+  messages", gear flags, "Pop-up size" 50-100% for the in-game boxes). No
+  Share options any more.
 - **Panel** in the dashboard palette + RuneScape fonts: ring, name, all-time
   fastest lap, status box, This mass / Previous sessions tabs, Discord link.
 - **Icons:** `icon.png` (Hub listing, 48x72) and `panel_icon.png` (sidebar

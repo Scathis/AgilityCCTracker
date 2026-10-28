@@ -2,8 +2,10 @@ package com.agilitycctracker.ui;
 
 import java.awt.BasicStroke;
 import java.awt.Color;
+import java.awt.Dimension;
 import java.awt.FontMetrics;
 import java.awt.Graphics2D;
+import java.awt.Point;
 import java.awt.Rectangle;
 import java.awt.RenderingHints;
 
@@ -14,6 +16,37 @@ final class PromptPainter
 
 	private PromptPainter()
 	{
+	}
+
+	/** The "Pop-up size" setting as a factor, clamped to 50-100%. */
+	static double scale(int percent)
+	{
+		return Math.max(50, Math.min(100, percent)) / 100.0;
+	}
+
+	/**
+	 * Starts drawing a box laid out at full size but shown at {@code scale}.
+	 * Smooths text when shrunk, since the RuneScape fonts are pixel fonts.
+	 */
+	static void applyScale(Graphics2D g, double scale)
+	{
+		if (scale < 1)
+		{
+			g.scale(scale, scale);
+			g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+		}
+	}
+
+	/** The on-screen size of a {@code width} x {@code height} box drawn at {@code scale}. */
+	static Dimension scaled(int width, int height, double scale)
+	{
+		return new Dimension((int) Math.ceil(width * scale), (int) Math.ceil(height * scale));
+	}
+
+	/** A point relative to the box on screen, mapped back to its full-size layout. */
+	static Point unscale(int x, int y, double scale)
+	{
+		return new Point((int) (x / scale), (int) (y / scale));
 	}
 
 	/** Dark box with a slow gold pulse on the border - noticed without being loud. */
