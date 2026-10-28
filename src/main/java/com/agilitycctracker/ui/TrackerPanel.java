@@ -7,6 +7,7 @@ import com.agilitycctracker.api.StatusHolder;
 import com.agilitycctracker.collect.LapTracker;
 import com.agilitycctracker.collect.SelfStateCollector;
 import com.agilitycctracker.dd.DdTracker;
+import com.agilitycctracker.goal.TicketCount;
 import com.agilitycctracker.history.MassSession;
 import com.agilitycctracker.history.SessionHistory;
 import com.agilitycctracker.kit.KitCheck;
@@ -17,6 +18,7 @@ import com.agilitycctracker.model.Kit;
 import com.agilitycctracker.model.StatusResponse;
 import com.agilitycctracker.scan.FcMemberScanner;
 import com.agilitycctracker.scan.FlagAccess;
+import com.agilitycctracker.scan.FlagFilter;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
@@ -32,9 +34,13 @@ import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
+import java.util.TreeMap;
+import java.util.stream.Collectors;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import javax.swing.BorderFactory;
@@ -111,6 +117,12 @@ public class TrackerPanel extends PluginPanel
 	@Inject
 	private SessionHistory sessionHistory;
 
+	@Inject
+	private TicketCount ticketCount;
+
+	// Agility goal card (saves the picked goal per account)
+	private final GoalCard goalCard = new GoalCard(goal -> ticketCount.setGoal(goal));
+
 	// Header
 	private final AgilityRing ring = new AgilityRing();
 	private final JLabel nameLabel = label("", Theme.title().deriveFont(18f), Theme.GOLD_BRIGHT);
@@ -164,9 +176,13 @@ public class TrackerPanel extends PluginPanel
 	private List<Long> shownKitIds = Collections.emptyList();
 	private boolean updatingKits;
 
-	// Observers card
+	// Observers card: runners in the course missing gear, filterable by gap type
 	private final JPanel observersCard = card();
+	private final JLabel observersHeading = heading("Runners in view");
+	private final JPanel filterChips = transparent(new GridLayout(0, 4, 4, 4));
+	private final JLabel filterNote = label("", Theme.small(), Theme.MUTED);
 	private final JPanel observersList = transparent(new GridBagLayout());
+	private List<String> shownFilterOptions = Collections.emptyList();
 
 	// Footer
 	private final JLabel connectionLabel = label("", Theme.small(), Theme.MUTED);
@@ -190,6 +206,7 @@ public class TrackerPanel extends PluginPanel
 		stack.add(header(), 0);
 		stack.add(new OrnamentDivider(), 6);
 		stack.add(statusBox(), 6);
+		stack.add(goalCard.getCard(), 8);
 		stack.add(tabStrip(), 10);
 		stack.add(tabBody(), 8);
 		stack.add(footer(), 14);
@@ -198,7 +215,7 @@ public class TrackerPanel extends PluginPanel
 		// init() runs on the client thread (called from startUp()), so these reads are safe here.
 		Player local = client.getLocalPlayer();
 		refresh(local != null && local.getName() != null
-			? new PanelSnapshot(local.getName(), client.getSkillExperience(net.runelite.api.Skill.AGILITY), false)
+			? new PanelSnapshot(local.getName(), client.getSkillExperience(net.runelite.api.Skill.AGILITY), false, 0)
 			: PanelSnapshot.LOGGED_OUT);
 	}
 
@@ -402,7 +419,9 @@ public class TrackerPanel extends PluginPanel
 	private JPanel observersCard()
 	{
 		Stack stack = new Stack(observersCard);
-		stack.add(heading("Runners in view"), 0);
+		stack.add(observersHeading, 0);
+		stack.add(filterChips, 6);
+		stack.add(filterNote, 4);
 		stack.add(observersList, 6);
 		return observersCard;
 	}
@@ -439,6 +458,7 @@ public class TrackerPanel extends PluginPanel
 
 		refreshHeader(snapshot);
 		refreshStatusBox(snapshot, status);
+		refreshGoal(snapshot);
 
 		boolean runner = massParticipation.isRunner();
 		sessionCard.setVisible(runner);
@@ -448,7 +468,7 @@ public class TrackerPanel extends PluginPanel
 		}
 
 		refreshKits(status);
-		refreshObservers();
+		refreshObservers(status);
 		nothingNow.setVisible(!sessionCard.isVisible() && !kitCard.isVisible() && !observersCard.isVisible());
 		refreshHistory(snapshot);
 		refreshFooter();
@@ -620,18 +640,90 @@ public class TrackerPanel extends PluginPanel
 		}
 	}
 
-	private void refreshObservers()
+	private void refreshGoal(PanelSnapshot snapshot)
 	{
-		Map<String, List<String>> results = fcMemberScanner.getLastResults();
-		observersCard.setVisible(!results.isEmpty());
+		boolean show = config.showAgilityGoal() && snapshot.getName() != null && snapshot.getAgilityXp() >= 0;
+		goalCard.getCard().setVisible(show);
+		if (show)
+		{
+			goalCard.refresh(snapshot.getAgilityXp(), snapshot.getInventoryTickets(),
+				ticketCount.getBankTickets(), ticketCount.getGoal());
+		}
+	}
+
+	/**
+	 * Runners in the course right now who are missing gear, narrowed by the
+	 * gap-type chips (none picked = everyone missing anything). The over-head
+	 * flags follow the same picks (FcMemberScanner reads the same setting).
+	 */
+	private void refreshObservers(StatusResponse status)
+	{
+		boolean entitled = fcMemberScanner.isViewerEntitled();
+		observersCard.setVisible(entitled);
+		if (!entitled)
+		{
+			return;
+		}
+		List<String> options = FlagFilter.options(status != null ? status.getGearRules() : null);
+		Set<String> picked = FlagFilter.effective(FlagFilter.parse(config.flagFilter()), options);
+		refreshFilterChips(options, picked);
+
+		Map<String, List<String>> issues = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
+		for (Map.Entry<String, List<String>> entry : fcMemberScanner.getInViewIssues().entrySet())
+		{
+			if (FlagFilter.matches(entry.getValue(), picked))
+			{
+				issues.put(entry.getKey(), entry.getValue());
+			}
+		}
+		observersHeading.setText("Runners in view (" + issues.size() + ")");
+		String types = picked.isEmpty() ? null : picked.stream().map(FlagFilter::label)
+			.collect(Collectors.joining(", ")).toLowerCase();
+		filterNote.setText(wrap(issues.isEmpty()
+			? (types == null ? "Nobody in view is missing gear." : "Nobody in view is missing: " + types + ".")
+			: (types == null ? "Missing anything - pick types to narrow it." : "Missing: " + types + ".")));
+
 		observersList.removeAll();
 		Stack stack = new Stack(observersList);
-		for (Map.Entry<String, List<String>> entry : results.entrySet())
+		for (Map.Entry<String, List<String>> entry : issues.entrySet())
 		{
-			boolean ok = entry.getValue().isEmpty();
-			JLabel value = label(ok ? "OK" : FlagAccess.describe(entry.getValue()), Theme.small(), ok ? Theme.GOOD : Theme.BAD);
+			JLabel value = label(FlagAccess.describe(entry.getValue()), Theme.small(), Theme.BAD);
 			stack.add(row(displayName(entry.getKey()), value), 3);
 		}
+	}
+
+	/** One toggle per gap type the gear rules can produce; rebuilt only when the rules change. */
+	private void refreshFilterChips(List<String> options, Set<String> picked)
+	{
+		if (!options.equals(shownFilterOptions))
+		{
+			filterChips.removeAll();
+			for (String key : options)
+			{
+				ThemedButton chip = new ThemedButton(FlagFilter.label(key), ThemedButton.Style.CHIP);
+				chip.setName(key);
+				chip.addActionListener(e -> toggleFilter(key));
+				filterChips.add(chip);
+			}
+			shownFilterOptions = options;
+		}
+		filterChips.setVisible(!options.isEmpty());
+		for (Component c : filterChips.getComponents())
+		{
+			((ThemedButton) c).setSelected(picked.contains(c.getName()));
+		}
+	}
+
+	private void toggleFilter(String key)
+	{
+		Set<String> picked = FlagFilter.effective(FlagFilter.parse(config.flagFilter()), shownFilterOptions);
+		Set<String> next = new LinkedHashSet<>(picked);
+		if (!next.remove(key))
+		{
+			next.add(key);
+		}
+		configManager.setConfiguration(AgilityCCTrackerConfig.GROUP, "flagFilter", FlagFilter.format(next));
+		refresh(lastSnapshot);
 	}
 
 	private void refreshHistory(PanelSnapshot snapshot)
@@ -764,14 +856,14 @@ public class TrackerPanel extends PluginPanel
 	}
 
 	/** JLabel HTML only wraps when given a width; without one it widens the whole panel instead. */
-	private static String wrap(String html)
+	static String wrap(String html)
 	{
 		return "<html><body style='width:155px'>" + html + "</body></html>";
 	}
 
 	// --- building blocks ----------------------------------------------------
 
-	private static JLabel label(String text, Font font, Color color)
+	static JLabel label(String text, Font font, Color color)
 	{
 		JLabel label = new JLabel(text);
 		label.setFont(font);
@@ -785,12 +877,12 @@ public class TrackerPanel extends PluginPanel
 		return label(text, Theme.title(), Theme.GOLD);
 	}
 
-	private static JLabel heading(String text)
+	static JLabel heading(String text)
 	{
 		return label(text, Theme.title(), Theme.GOLD);
 	}
 
-	private static JPanel row(String key, JLabel value)
+	static JPanel row(String key, JLabel value)
 	{
 		JPanel row = transparent(new BorderLayout(8, 0));
 		row.add(label(key, Theme.body(), Theme.MUTED), BorderLayout.WEST);
@@ -806,14 +898,14 @@ public class TrackerPanel extends PluginPanel
 		return gap;
 	}
 
-	private static JPanel transparent(java.awt.LayoutManager layout)
+	static JPanel transparent(java.awt.LayoutManager layout)
 	{
 		JPanel panel = new JPanel(layout);
 		panel.setOpaque(false);
 		return panel;
 	}
 
-	private static JPanel card()
+	static JPanel card()
 	{
 		JPanel card = new JPanel(new GridBagLayout());
 		card.setBackground(Theme.CARD);
@@ -824,7 +916,7 @@ public class TrackerPanel extends PluginPanel
 	}
 
 	/** Adds components top to bottom in a GridBagLayout panel, each stretched to full width. */
-	private static final class Stack
+	static final class Stack
 	{
 		private final JPanel panel;
 		private int y;

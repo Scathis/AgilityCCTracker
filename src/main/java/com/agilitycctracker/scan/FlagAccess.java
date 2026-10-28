@@ -51,7 +51,7 @@ public final class FlagAccess
 		return "No " + joined + (extra > 0 ? " +" + extra : "");
 	}
 
-	private static String friendly(String key)
+	static String friendly(String key)
 	{
 		switch (key.toUpperCase(Locale.ROOT))
 		{

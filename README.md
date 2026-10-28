@@ -86,7 +86,9 @@ Open RuneLite's configuration for **Wildy Agility Mass**:
 | FC observer | While you're in the course, report Agility CC members you can see there: name and FC rank (how players without the plugin get attendance), empty required slots, and DD tile time. |
 | Show sidebar panel | Show or hide the panel. |
 | Pre-mass check messages | The red chat lines about your own gear and kit: once when you join the mass or log in during it, and when you open a bank if something's missing. |
-| Show gear flags | The over-head labels on runners missing gear (ranked members only). |
+| Gear flag icon | A small icon left of the name of runners missing gear (ranked members only). |
+| Gear flag text | What they're missing, in amber above their name (ranked members only). Both follow the sidebar's Runners in view filter. |
+| Show agility goal | The Agility goal card: pick a level (52-99) or 200m XP and see laps to go, and what handing in your tickets (carried + banked) is worth now. |
 | Show pop-ups | The in-game boxes ("Agility mass started", "Mass bank starting", "Agility mass over"). With it off you still get the red chat lines, and you pick Runner or Anti in the sidebar panel. |
 | Pop-up size | Shrinks those boxes (50-100%) for small screens. |
 
@@ -116,7 +118,8 @@ or stored.
 For antis, laps, missing-gear checks and DD calls are ignored, and nobody's plugin
 reports on antis or on people who said **Not today**. The server ignores everything from a
 player who hasn't opted in to the current mass. Your Agility level in the
-panel is read locally and never sent.
+panel, your goal and your ticket count (carried, and banked - counted when you
+open a bank) are read and kept locally and never sent.
 
 ---
 

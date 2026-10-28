@@ -2034,3 +2034,46 @@ saved settings is fine). Plugin Hub file is now `plugins/wildy-agility-mass`
 the string literal repeated in 8 places. Old `agilitycctracker` settings and
 the per-account local history/best lap are not carried over. Java package,
 class names, repo and server are unchanged.
+
+## 2026-10-28 - Gear flag icon, Runners in view filter, Agility goal card
+
+Owner requests before the Hub PR:
+
+- **Gear flag icon.** Red labels were confusable with red PKer/skulled names.
+  New owner-supplied art (`missing gear icon.png`, 1254px RGB on black, kept
+  untracked at the repo root as the source) -> background made transparent
+  by flood-filling near-black from the edges (interior outlines kept),
+  cropped, box-downscaled to 16x16 -> `src/main/resources/.../ui/gear_flag.png`.
+  `GearFlagOverlay` draws it left of the player's name (same anchor as
+  Player Indicators: logical height + 40), clearing Player Indicators' FC
+  rank icon via `ChatIconManager.getRankImage` (that plugin centres the rank
+  icon on the name's left edge). The text label is now amber
+  (`Theme.GOLD_BRIGHT`), still one line above the name. Settings: "Show gear
+  flags" replaced by **Gear flag icon** and **Gear flag text** (both default on).
+- **Runners in view** lists only runners in the course *right now* with a
+  gap (scanner's new `getInViewIssues()`; the old `getLastResults()` kept
+  everyone ever seen), with a count in the heading. Filter chips (new
+  `ThemedButton.Style.CHIP`) for each gap type the gear rules can produce
+  (`scan/FlagFilter`); none picked = everyone missing anything, otherwise
+  runners missing any picked type. Saved in hidden config `flagFilter`; the
+  over-head flags follow it. Card shows whenever the viewer is entitled
+  (`isViewerEntitled()`), with "Nobody in view is missing ..." when empty.
+- **Agility goal card** (`ui/GoalCard`, maths in `goal/AgilityGoal`): the
+  OSRS Hub Agility Tracker in the sidebar. Goal 52-99 / 200m per account
+  (RSProfile `agilityGoal`); tickets = inventory (read into `PanelSnapshot`
+  each second) + bank (`goal/TicketCount`, counted on the BANK container
+  change, RSProfile `bankTickets`, any time - not only during a mass).
+  Shows progress, tickets, hand-in-now XP + level after, XP to go, laps to
+  goal (binary search; laps earn one ticket each, all tickets handed in at
+  the end), time at 45s a lap, tickets at goal. Local only.
+  Ticket XP uses the wiki rule (batch rate applies to every ticket:
+  1-10 200, 11-50 210, 51-100 220, 101+ 230); the website's tracker was
+  counting tiers marginally (101 tickets: 21,630 instead of 23,230) and was
+  fixed the same day (osrs-hub-config/AgilityTracker, backup
+  `/mnt/120ssd/containers/config/osrs-hub-AgilityTracker-index.html.bak-2026-10-28`).
+- Tests: `FlagFilterTest`, `AgilityGoalTest` (xp table, batch rates, minimal
+  laps). Offscreen render of the goal card (4 states), the filter card and a
+  mock name tag: first render showed the bar vanishing when "Laps (~hours)"
+  overflowed the row (GridBag minimum sizes) - time moved to its own row and
+  the bar given a minimum size. Real in-game placement of the icon still
+  needs checking (DEV_SETUP §5 G/G2).

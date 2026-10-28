@@ -176,21 +176,43 @@ on the dashboard. Pull and rebuild the plugin first.
 ### G. Gear flags and the observer
 
 - [ ] As a **ranked** member (at/above the Settings threshold) in the course
-      during a mass: a red label ("No helm, boots") over runners missing gear,
-      and the **Runners in view** card fills in.
-- [ ] With RuneLite's Player Indicators showing names above heads, the red
-      label sits one line above the name, not on top of it.
-- [ ] Runners with full gear, antis and people not attending never get a label.
+      during a mass: runners missing gear get the gear icon left of their name
+      and an amber label ("No helm, boots") one line above it, and the
+      **Runners in view (N)** card lists only them.
+- [ ] With Player Indicators showing names (and FC rank icons): the gear icon
+      sits left of the rank icon/name without overlapping; the label doesn't
+      cover the name. Neither is easy to confuse with a red PKer/skulled name.
+- [ ] Runners with full gear, antis and people not attending never get a flag
+      and aren't listed. Someone who leaves the course drops off the list.
+- [ ] Filter chips (only the types your gear rules can produce): pick Amulet →
+      list and over-head flags show only amulet missers; add Bow → amulet *or*
+      bow missers; untick all → everyone missing anything. Survives a restart.
 - [ ] As an **unranked** member (or with the threshold above your rank): no
-      labels and no Runners in view card - you still get your own gear line,
+      flags and no Runners in view card - you still get your own gear line,
       and your scans still reach the dashboard.
-- [ ] **Show gear flags** off → labels go. **FC observer** off → other members
-      stop being scanned/reported.
+- [ ] **Gear flag icon** off → icons go, text stays; **Gear flag text** off →
+      text goes, icon stays; both off → nothing over heads (the list still
+      shows). **FC observer** off → other members stop being scanned/reported.
 - [ ] In a different friends chat, or standing outside the course region →
       nothing scanned, no flags.
 - [ ] Change the flag rank on dashboard Settings → takes effect within ~10s.
 - [ ] A friend without the plugin is still checked as a runner and appears in
       attendance once seen in the course.
+
+### G2. Agility goal card
+
+- [ ] Logged in (mass or not): the **Agility goal** card shows under the
+      status box; pick a goal (Level 52-99 / 200m XP) → it's remembered per
+      account (log in on another account → its own goal).
+- [ ] Before opening a bank: tickets = carried only, with "open a bank to add
+      banked tickets". Open a bank → banked count appears ("N banked + M
+      carried") and stays after closing the bank and after a restart.
+- [ ] Hand in now = tickets × the batch rate (1-10: 200, 11-50: 210,
+      51-100: 220, 101+: 230 each); Level after matches. Compare laps to goal
+      with osrshub.grestinator.com/AgilityTracker/ for the same XP/tickets/goal.
+- [ ] Do a lap → XP, tickets and laps to goal update within a second or two.
+- [ ] Goal already reached → "Reached Level N - nice work."
+- [ ] **Show agility goal** off → card goes.
 
 ### H. DD calls
 

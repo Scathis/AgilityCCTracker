@@ -93,13 +93,48 @@ public interface AgilityCCTrackerConfig extends Config
 	}
 
 	@ConfigItem(
-		keyName = "showGearFlags",
-		name = "Show gear flags",
-		description = "Label runners with missing gear (FC ranks set by organisers)",
+		keyName = "gearFlagIcon",
+		name = "Gear flag icon",
+		description = "Icon left of runners' names when gear is missing (FC ranks set by organisers)",
 		section = displaySection,
 		position = 2
 	)
-	default boolean showGearFlags()
+	default boolean gearFlagIcon()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		keyName = "gearFlagText",
+		name = "Gear flag text",
+		description = "What's missing, shown above runners' names (FC ranks set by organisers)",
+		section = displaySection,
+		position = 3
+	)
+	default boolean gearFlagText()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		keyName = "flagFilter",
+		name = "",
+		description = "Gap types picked in the sidebar's Runners in view filter (empty = all)",
+		hidden = true
+	)
+	default String flagFilter()
+	{
+		return "";
+	}
+
+	@ConfigItem(
+		keyName = "showAgilityGoal",
+		name = "Show agility goal",
+		description = "Agility goal card in the sidebar: laps to go and what your tickets are worth",
+		section = displaySection,
+		position = 6
+	)
+	default boolean showAgilityGoal()
 	{
 		return true;
 	}
@@ -109,7 +144,7 @@ public interface AgilityCCTrackerConfig extends Config
 		name = "Show pop-ups",
 		description = "Show the in-game mass boxes (chat messages still show)",
 		section = displaySection,
-		position = 3
+		position = 4
 	)
 	default boolean showPopups()
 	{
@@ -123,7 +158,7 @@ public interface AgilityCCTrackerConfig extends Config
 		name = "Pop-up size",
 		description = "Size of the in-game mass boxes",
 		section = displaySection,
-		position = 4
+		position = 5
 	)
 	default int popupScale()
 	{

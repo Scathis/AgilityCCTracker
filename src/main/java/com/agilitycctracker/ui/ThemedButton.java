@@ -13,7 +13,8 @@ import javax.swing.JButton;
  * whatever look-and-feel the client is running. PRIMARY is filled gold,
  * SECONDARY is a raised brown box, PILL is a small gold-edged chip (for
  * inline actions like switching role), TAB is a tab-strip label underlined
- * while selected, LINK is text only.
+ * while selected, LINK is text only, CHIP is a small on/off toggle (filled
+ * gold while {@link #isSelected()}).
  */
 public class ThemedButton extends JButton
 {
@@ -23,7 +24,8 @@ public class ThemedButton extends JButton
 		SECONDARY,
 		PILL,
 		TAB,
-		LINK
+		LINK,
+		CHIP
 	}
 
 	private final Style style;
@@ -39,7 +41,7 @@ public class ThemedButton extends JButton
 		setOpaque(false);
 		setRolloverEnabled(true);
 		setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-		setFont(style == Style.LINK || style == Style.PILL ? Theme.small() : Theme.body());
+		setFont(style == Style.LINK || style == Style.PILL || style == Style.CHIP ? Theme.small() : Theme.body());
 	}
 
 	/** TAB only: draw as the active tab. */
@@ -56,8 +58,9 @@ public class ThemedButton extends JButton
 	public Dimension getPreferredSize()
 	{
 		FontMetrics metrics = getFontMetrics(getFont());
-		int w = metrics.stringWidth(getText()) + (style == Style.LINK ? 4 : style == Style.PILL ? 14 : 16);
-		int h = metrics.getHeight() + (style == Style.LINK ? 2 : style == Style.PILL ? 6 : 8);
+		boolean small = style == Style.PILL || style == Style.CHIP;
+		int w = metrics.stringWidth(getText()) + (style == Style.LINK ? 4 : style == Style.CHIP ? 8 : small ? 14 : 16);
+		int h = metrics.getHeight() + (style == Style.LINK ? 2 : small ? 6 : 8);
 		return new Dimension(w, h);
 	}
 
@@ -105,6 +108,14 @@ public class ThemedButton extends JButton
 				g.setColor(Theme.GOLD);
 				g.drawRoundRect(0, 0, w - 1, h - 1, h, h);
 				text = hover ? Theme.BACKGROUND : Theme.GOLD_BRIGHT;
+				break;
+			case CHIP:
+				boolean on = isSelected();
+				g.setColor(on ? (hover ? Theme.GOLD_PALE : Theme.GOLD_BRIGHT) : hover ? Theme.RAISED_HOVER : Theme.RAISED);
+				g.fillRoundRect(0, 0, w - 1, h - 1, 4, 4);
+				g.setColor(on || hover ? Theme.GOLD : Theme.CARD_BORDER);
+				g.drawRoundRect(0, 0, w - 1, h - 1, 4, 4);
+				text = on ? Theme.BACKGROUND : hover ? Theme.TEXT : Theme.MUTED;
 				break;
 			case TAB:
 				if (tabSelected)

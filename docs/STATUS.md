@@ -44,8 +44,14 @@ notes (36 commits) - details in BUILD_LOG.md.
   skills/stats, world, position, the FC member list.
 - **Local only:** kit check + bank outlines, Agility ring, previous sessions
   (last 30, per account) and fastest laps (per mass + all-time best).
-- **Gear flags** (over-head labels + "Runners in view") only for FC members
-  at/above the dashboard's flag rank.
+- **Gear flags** only for FC members at/above the dashboard's flag rank: an
+  icon left of the name and/or amber text above it (Settings: Gear flag
+  icon / Gear flag text), and the "Runners in view (N)" card listing only
+  runners in the course with a gap, filterable by gap type (chips; the
+  over-head flags follow the filter).
+- **Agility goal card** (local only): goal 52-99/200m per account, tickets
+  carried + banked (counted on bank open), laps to goal, hand-in-now XP -
+  same maths as the OSRS Hub Agility Tracker (wiki batch ticket rates).
 - **Chat lines** (gear + kit) once on joining/logging in mid-mass, and on
   opening a bank only if something's missing.
 - **Alerts** (`mass/MassNotices` + `ui/MassNoticeOverlay`, same in-game box

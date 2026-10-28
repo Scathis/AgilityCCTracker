@@ -9,7 +9,7 @@ import lombok.Value;
 @Value
 public class PanelSnapshot
 {
-	public static final PanelSnapshot LOGGED_OUT = new PanelSnapshot(null, -1, false);
+	public static final PanelSnapshot LOGGED_OUT = new PanelSnapshot(null, -1, false, 0);
 
 	/** Display name, or null when logged out. */
 	String name;
@@ -17,4 +17,6 @@ public class PanelSnapshot
 	int agilityXp;
 	/** In the friends chat the server tracks. */
 	boolean inTrackedFc;
+	/** Wilderness agility tickets in the inventory (for the Agility goal card). */
+	int inventoryTickets;
 }

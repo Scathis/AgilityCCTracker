@@ -9,6 +9,7 @@ import com.agilitycctracker.collect.SelfStateCollector;
 import com.agilitycctracker.dd.DdCallDetector;
 import com.agilitycctracker.dd.DdTracker;
 import com.agilitycctracker.dd.SelfDdSampler;
+import com.agilitycctracker.goal.TicketCount;
 import com.agilitycctracker.history.SessionHistory;
 import com.agilitycctracker.loadout.SelfLoadoutCheck;
 import com.agilitycctracker.mass.MassNotices;
@@ -157,6 +158,9 @@ public class AgilityCCTrackerPlugin extends Plugin
 
 	@Inject
 	private SessionHistory sessionHistory;
+
+	@Inject
+	private TicketCount ticketCount;
 
 	@Inject
 	private MouseManager mouseManager;
@@ -452,6 +456,8 @@ public class AgilityCCTrackerPlugin extends Plugin
 	@Subscribe
 	public void onItemContainerChanged(ItemContainerChanged event)
 	{
+		// Banked tickets for the Agility goal card - any time, mass or not (local only).
+		ticketCount.onItemContainerChanged(event);
 		if (unsupportedWorld() || !massParticipation.isAttending())
 		{
 			return;
@@ -546,7 +552,8 @@ public class AgilityCCTrackerPlugin extends Plugin
 		// TrackerPanel.refresh(), which runs on the EDT via invokeLater).
 		Player local = client.getLocalPlayer();
 		PanelSnapshot snapshot = local != null && local.getName() != null
-			? new PanelSnapshot(local.getName(), client.getSkillExperience(Skill.AGILITY), inTrackedFc(statusHolder.get()))
+			? new PanelSnapshot(local.getName(), client.getSkillExperience(Skill.AGILITY), inTrackedFc(statusHolder.get()),
+				TicketCount.count(client.getItemContainer(InventoryID.INV)))
 			: PanelSnapshot.LOGGED_OUT;
 		SwingUtilities.invokeLater(() -> trackerPanel.refresh(snapshot));
 	}

@@ -30,6 +30,7 @@ import javax.inject.Singleton;
 import net.runelite.api.Client;
 import net.runelite.api.FriendsChatManager;
 import net.runelite.api.FriendsChatMember;
+import net.runelite.api.FriendsChatRank;
 import net.runelite.api.Player;
 import net.runelite.api.PlayerComposition;
 import net.runelite.api.coords.WorldPoint;
@@ -99,12 +100,16 @@ public class FcMemberScanner
 	// configured rank. Refreshed every scanning tick; false whenever not scanning.
 	private volatile boolean viewerMaySeeFlags;
 	private volatile List<FlaggedPlayer> flagged = Collections.emptyList();
+	// Runners in the course right now with a gear gap (rsn -> gap keys), for
+	// the sidebar list. Rebuilt every scanning tick, empty unless entitled.
+	private volatile Map<String, List<String>> inViewIssues = Collections.emptyMap();
 
 	private void clearLive()
 	{
 		currentlyInCourse.clear();
 		viewerMaySeeFlags = false;
 		flagged = Collections.emptyList();
+		inViewIssues = Collections.emptyMap();
 	}
 
 	public void onTick()
@@ -137,8 +142,12 @@ public class FcMemberScanner
 			&& FlagAccess.canViewFlags(true, fc.getMyRank().getValue(), status.getFlagViewerMinRank());
 		viewerMaySeeFlags = maySeeFlags;
 		List<FlaggedPlayer> flaggedNow = new ArrayList<>();
+		Map<String, List<String>> issuesNow = new HashMap<>();
 
 		GearRules rules = status.getGearRules();
+		// The sidebar filter applies to the over-head flags too.
+		Set<String> picked = FlagFilter.effective(FlagFilter.parse(config.flagFilter()), FlagFilter.options(rules));
+		boolean drawFlags = config.gearFlagIcon() || config.gearFlagText();
 		List<DdTile> tiles = status.getDd() != null ? status.getDd().getTiles() : Collections.emptyList();
 		long now = System.currentTimeMillis();
 
@@ -178,7 +187,8 @@ public class FcMemberScanner
 			boolean onDdTile = isOnAnyTile(location, tiles);
 			boolean inCourseArea = location.getRegionID() == WILDERNESS_AGILITY_COURSE_REGION;
 			FriendsChatMember member = fc.findByName(rsn);
-			int rank = member != null && member.getRank() != null ? member.getRank().getValue() : -1;
+			FriendsChatRank fcRank = member != null ? member.getRank() : null;
+			int rank = fcRank != null ? fcRank.getValue() : -1;
 			if (inCourseArea)
 			{
 				currentlyInCourse.put(rsn, rank);
@@ -189,9 +199,13 @@ public class FcMemberScanner
 			{
 				List<String> failed = evaluator.evaluate(rules, worn, VISIBLE_SLOTS);
 				queueIfChanged(rsn, failed);
-				if (maySeeFlags && config.showGearFlags() && inCourseArea && !failed.isEmpty())
+				if (maySeeFlags && inCourseArea && !failed.isEmpty())
 				{
-					flaggedNow.add(new FlaggedPlayer(p, FlagAccess.describe(failed)));
+					issuesNow.put(rsn, failed);
+					if (drawFlags && FlagFilter.matches(failed, picked))
+					{
+						flaggedNow.add(new FlaggedPlayer(p, FlagAccess.describe(failed), fcRank));
+					}
 				}
 			}
 
@@ -209,6 +223,7 @@ public class FcMemberScanner
 			// worn/location/rsn all go out of scope here - never stored past this iteration.
 		}
 		flagged = flaggedNow;
+		inViewIssues = issuesNow;
 	}
 
 	/** Runners to draw a flag over (empty unless the viewer is entitled to see them). Replaced every tick. */
@@ -279,18 +294,20 @@ public class FcMemberScanner
 		}
 	}
 
-	/** For TrackerPanel's "FC members in view" list - labels (rsn + failed requirement ids) only. */
-	public Map<String, List<String>> getLastResults()
+	/**
+	 * For TrackerPanel's "Runners in view" list: runners in the course right
+	 * now with a gear gap (rsn -> gap keys), unfiltered. Empty for viewers
+	 * below the FC-rank threshold; their scans still feed the dashboard.
+	 */
+	public Map<String, List<String>> getInViewIssues()
 	{
-		// Viewers below the FC-rank threshold get no list at all; their scans still feed the dashboard.
-		if (!viewerMaySeeFlags)
-		{
-			return Collections.emptyMap();
-		}
-		synchronized (lastLoadoutResult)
-		{
-			return new HashMap<>(lastLoadoutResult);
-		}
+		return inViewIssues;
+	}
+
+	/** Scanning the course right now and allowed to see other runners' gear gaps (the sidebar card shows). */
+	public boolean isViewerEntitled()
+	{
+		return viewerMaySeeFlags;
 	}
 
 	/** For Uploader's course_sightings heartbeat - FC members seen in the course area this tick, with their FC rank. */
