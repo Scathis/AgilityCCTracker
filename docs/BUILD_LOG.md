@@ -1981,3 +1981,10 @@ The overlays check the toggle in their mouse handling too, not just in
 `render`, because `getBounds()` keeps the last drawn box and would otherwise
 keep swallowing clicks there. With it off, the "mass started" chat line
 says to pick Runner or Anti in the sidebar panel instead of on the prompt.
+
+## 2026-10-28 - Short settings tooltips
+
+Owner test note: the FC observer tooltip ran off the sides of a small
+screen. All config descriptions cut to one short line (max ~65 chars);
+the full explanations stay in the README's settings table and privacy
+section, which is what Hub reviewers and players read.

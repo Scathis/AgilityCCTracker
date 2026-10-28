@@ -19,7 +19,7 @@ public interface AgilityCCTrackerConfig extends Config
 
 	@ConfigSection(
 		name = "FC observer",
-		description = "What your plugin reports about other Agility CC members it can see in the course",
+		description = "Reporting on other FC members in the course",
 		position = 1
 	)
 	String observerSection = "observer";
@@ -34,7 +34,7 @@ public interface AgilityCCTrackerConfig extends Config
 	@ConfigItem(
 		keyName = "role",
 		name = "My role",
-		description = "Runner or Anti. Runners are tracked for laps and DD and get missing-gear checks; antis are attendance time only. Changing it mid-mass starts a separate record for the new role.",
+		description = "Runner (laps, DD, gear checks) or Anti (attendance only)",
 		section = massSection,
 		position = 0
 	)
@@ -57,7 +57,7 @@ public interface AgilityCCTrackerConfig extends Config
 	@ConfigItem(
 		keyName = "fcObserver",
 		name = "FC observer",
-		description = "While you're attending and standing in the course, report Agility CC members you can see there: their name and FC rank (this is how players without the plugin get attendance), which required gear slots they have empty (never what they're wearing), and their time on the DD tiles during a DD call. Antis and people not attending are skipped. Also needs the organisers' observer switch on.",
+		description = "Report FC members in the course: name, rank, empty slots, DD time",
 		section = observerSection,
 		position = 0
 	)
@@ -81,7 +81,7 @@ public interface AgilityCCTrackerConfig extends Config
 	@ConfigItem(
 		keyName = "loadoutWarnings",
 		name = "Pre-mass check messages",
-		description = "Red chat lines about your own gear (an empty required slot, no bow/crossbow, a crossbow without a shield) and your kit. Shown once when you join a mass or log in during one, and when you open a bank if something's still missing.",
+		description = "Chat warnings about missing gear or kit items",
 		section = displaySection,
 		position = 1
 	)
@@ -93,7 +93,7 @@ public interface AgilityCCTrackerConfig extends Config
 	@ConfigItem(
 		keyName = "showGearFlags",
 		name = "Show gear flags",
-		description = "Show a short label over runners with missing gear. Only shown to friends chat members at or above the rank the organisers set; ignored for everyone else.",
+		description = "Label runners with missing gear (FC ranks set by organisers)",
 		section = displaySection,
 		position = 2
 	)
@@ -105,7 +105,7 @@ public interface AgilityCCTrackerConfig extends Config
 	@ConfigItem(
 		keyName = "showPopups",
 		name = "Show pop-ups",
-		description = "Show the in-game boxes: the \"Agility mass started\" prompt and the mass over / mass bank alerts. Each one also sends a red chat line, which you still get with this off; answer Runner / Anti in the sidebar panel instead (walking into the course during a mass also marks you as attending).",
+		description = "Show the in-game mass boxes (chat messages still show)",
 		section = displaySection,
 		position = 3
 	)
@@ -119,7 +119,7 @@ public interface AgilityCCTrackerConfig extends Config
 	@ConfigItem(
 		keyName = "popupScale",
 		name = "Pop-up size",
-		description = "Size of the in-game boxes (the \"Agility mass started\" prompt and the mass over / mass bank alerts). Lower it on a small screen; text gets slightly softer below about 75%.",
+		description = "Size of the in-game mass boxes",
 		section = displaySection,
 		position = 4
 	)
