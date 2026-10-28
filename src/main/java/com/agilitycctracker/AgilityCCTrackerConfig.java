@@ -7,9 +7,11 @@ import net.runelite.client.config.ConfigSection;
 import net.runelite.client.config.Range;
 import net.runelite.client.config.Units;
 
-@ConfigGroup("agilitycctracker")
+@ConfigGroup(AgilityCCTrackerConfig.GROUP)
 public interface AgilityCCTrackerConfig extends Config
 {
+	String GROUP = "wildyagilitymass";
+
 	@ConfigSection(
 		name = "Mass",
 		description = "Your role in the Agility CC mass",

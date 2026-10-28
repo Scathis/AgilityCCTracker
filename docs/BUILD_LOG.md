@@ -2023,3 +2023,14 @@ CLAUDE.md, `/containers/CLAUDE.md`. Internal identifiers unchanged on
 purpose: package `com.agilitycctracker`, class names, config group
 `agilitycctracker` (renaming it would drop everyone's saved settings), repo,
 compose project, hostname. BUILD_PLAN/BUILD_LOG left as history.
+
+## 2026-10-28 - Hub ID and config group renamed
+
+Follow-up to the rename (owner: nobody else has it installed yet, wiping
+saved settings is fine). Plugin Hub file is now `plugins/wildy-agility-mass`
+(`PLUGIN_HUB_SUBMISSION.md`), `rootProject.name` is `wildy-agility-mass`
+(jar `wildy-agility-mass.jar`), and the RuneLite config group is
+`wildyagilitymass` - held once as `AgilityCCTrackerConfig.GROUP` instead of
+the string literal repeated in 8 places. Old `agilitycctracker` settings and
+the per-account local history/best lap are not carried over. Java package,
+class names, repo and server are unchanged.

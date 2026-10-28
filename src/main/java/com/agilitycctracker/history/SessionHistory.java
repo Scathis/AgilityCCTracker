@@ -1,5 +1,6 @@
 package com.agilitycctracker.history;
 
+import com.agilitycctracker.AgilityCCTrackerConfig;
 import com.google.gson.Gson;
 import com.google.gson.JsonParseException;
 import com.google.gson.reflect.TypeToken;
@@ -137,7 +138,7 @@ public class SessionHistory
 		if (bestLapMs == 0 || ms < bestLapMs)
 		{
 			bestLapMs = ms;
-			configManager.setRSProfileConfiguration("agilitycctracker", BEST_LAP_KEY, ms);
+			configManager.setRSProfileConfiguration(AgilityCCTrackerConfig.GROUP, BEST_LAP_KEY, ms);
 		}
 	}
 
@@ -174,9 +175,9 @@ public class SessionHistory
 		sessions.clear();
 		loadedFor = rsn;
 		dirty = false;
-		Long best = configManager.getRSProfileConfiguration("agilitycctracker", BEST_LAP_KEY, Long.class);
+		Long best = configManager.getRSProfileConfiguration(AgilityCCTrackerConfig.GROUP, BEST_LAP_KEY, Long.class);
 		bestLapMs = best != null ? best : 0;
-		String json = configManager.getRSProfileConfiguration("agilitycctracker", KEY);
+		String json = configManager.getRSProfileConfiguration(AgilityCCTrackerConfig.GROUP, KEY);
 		if (json == null || json.isEmpty())
 		{
 			return;
@@ -201,7 +202,7 @@ public class SessionHistory
 		{
 			return;
 		}
-		configManager.setRSProfileConfiguration("agilitycctracker", KEY,
+		configManager.setRSProfileConfiguration(AgilityCCTrackerConfig.GROUP, KEY,
 			gson.toJson(sessions.isEmpty() ? Collections.emptyList() : sessions, LIST_TYPE));
 		dirty = false;
 		lastSavedAt = System.currentTimeMillis();

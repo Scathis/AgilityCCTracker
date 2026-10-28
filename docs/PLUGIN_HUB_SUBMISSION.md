@@ -37,7 +37,7 @@ this build).
 ## 3. Open the PR
 
 1. Fork `runelite/plugin-hub`.
-2. Add `plugins/agility-cc-tracker`:
+2. Add `plugins/wildy-agility-mass`:
    ```
    repository=https://github.com/Scathis/AgilityCCTracker.git
    commit=<full 40-char commit sha to submit>
@@ -111,7 +111,7 @@ Should cover, explicitly:
 Watch the "RuneLite Plugin Hub Checks" CI run on the PR. Fix issues and
 push new `commit=` shas to the *same* PR rather than opening a new one.
 Later plugin updates (post-acceptance) are a new PR bumping `commit=` in
-this same `plugins/agility-cc-tracker` file — the plugin's own repo history
+this same `plugins/wildy-agility-mass` file — the plugin's own repo history
 doesn't need to change shape for this. Confirmed against the plugin-hub
 README 2026-10-27: branch from `upstream/master`, change only `commit=`, open
 a PR; every update is reviewed again (new third-party dependencies slow that

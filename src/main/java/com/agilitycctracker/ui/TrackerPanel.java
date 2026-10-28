@@ -299,7 +299,7 @@ public class TrackerPanel extends PluginPanel
 		switchRole.addActionListener(e ->
 		{
 			MassRole next = config.role() == MassRole.RUNNER ? MassRole.ANTI : MassRole.RUNNER;
-			configManager.setConfiguration("agilitycctracker", "role", next);
+			configManager.setConfiguration(AgilityCCTrackerConfig.GROUP, "role", next);
 		});
 		return box;
 	}
@@ -391,7 +391,7 @@ public class TrackerPanel extends PluginPanel
 			Kit chosen = (Kit) kitBox.getSelectedItem();
 			if (!updatingKits && chosen != null)
 			{
-				configManager.setConfiguration("agilitycctracker", "selectedKitId", chosen.getId());
+				configManager.setConfiguration(AgilityCCTrackerConfig.GROUP, "selectedKitId", chosen.getId());
 			}
 		});
 		stack.add(kitBox, 6);

@@ -306,7 +306,7 @@ on the dashboard. Pull and rebuild the plugin first.
 
 ```bash
 ./gradlew shadowJar
-java -jar build/libs/agility-cc-tracker-*-all.jar --developer-mode
+java -jar build/libs/wildy-agility-mass-*-all.jar --developer-mode
 ```
 
 Same one-time Jagex credentials step from §3 applies.

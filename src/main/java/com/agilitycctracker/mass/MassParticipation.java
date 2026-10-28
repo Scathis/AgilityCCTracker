@@ -199,7 +199,7 @@ public class MassParticipation
 		final MassRole chosen = role != null ? role : config.role();
 		if (yes && chosen != config.role())
 		{
-			configManager.setConfiguration("agilitycctracker", "role", chosen);
+			configManager.setConfiguration(AgilityCCTrackerConfig.GROUP, "role", chosen);
 		}
 		pendingPrompt = null;
 		sending = true;

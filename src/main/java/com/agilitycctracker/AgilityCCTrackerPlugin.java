@@ -502,7 +502,7 @@ public class AgilityCCTrackerPlugin extends Plugin
 	@Subscribe
 	public void onConfigChanged(ConfigChanged event)
 	{
-		if (!"agilitycctracker".equals(event.getGroup()))
+		if (!AgilityCCTrackerConfig.GROUP.equals(event.getGroup()))
 		{
 			return;
 		}
