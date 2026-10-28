@@ -102,6 +102,18 @@ public interface AgilityCCTrackerConfig extends Config
 		return true;
 	}
 
+	@ConfigItem(
+		keyName = "showPopups",
+		name = "Show pop-ups",
+		description = "Show the in-game boxes: the \"Agility mass started\" prompt and the mass over / mass bank alerts. Each one also sends a red chat line, which you still get with this off; answer Runner / Anti in the sidebar panel instead (walking into the course during a mass also marks you as attending).",
+		section = displaySection,
+		position = 3
+	)
+	default boolean showPopups()
+	{
+		return true;
+	}
+
 	@Range(min = 50, max = 100)
 	@Units(Units.PERCENT)
 	@ConfigItem(
@@ -109,7 +121,7 @@ public interface AgilityCCTrackerConfig extends Config
 		name = "Pop-up size",
 		description = "Size of the in-game boxes (the \"Agility mass started\" prompt and the mass over / mass bank alerts). Lower it on a small screen; text gets slightly softer below about 75%.",
 		section = displaySection,
-		position = 3
+		position = 4
 	)
 	default int popupScale()
 	{

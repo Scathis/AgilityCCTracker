@@ -80,7 +80,7 @@ public class MassPromptOverlay extends Overlay implements MouseListener
 	@Override
 	public Dimension render(Graphics2D g)
 	{
-		if (massParticipation.getPendingPrompt() == null)
+		if (visiblePrompt() == null)
 		{
 			return null;
 		}
@@ -120,7 +120,7 @@ public class MassPromptOverlay extends Overlay implements MouseListener
 	/** Which part of the prompt is under the mouse, or null when it's hidden or the mouse is elsewhere. */
 	private Target hit(Point canvasPoint)
 	{
-		if (massParticipation.getPendingPrompt() == null)
+		if (visiblePrompt() == null)
 		{
 			return null;
 		}
@@ -140,10 +140,17 @@ public class MassPromptOverlay extends Overlay implements MouseListener
 		return PromptPainter.closeHitArea(close).contains(local) ? Target.CLOSE : null;
 	}
 
+	/** The unanswered mass, unless there's none or pop-ups are switched off (the panel still answers it). */
+	private ActiveEvent visiblePrompt()
+	{
+		return config.showPopups() ? massParticipation.getPendingPrompt() : null;
+	}
+
 	private boolean insidePrompt(Point canvasPoint)
 	{
+		// Checked here too: getBounds() keeps the last drawn box after it stops being drawn.
 		Rectangle bounds = getBounds();
-		return massParticipation.getPendingPrompt() != null
+		return visiblePrompt() != null
 			&& bounds != null && !bounds.isEmpty() && bounds.contains(canvasPoint);
 	}
 

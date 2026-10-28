@@ -285,6 +285,10 @@ on the dashboard. Pull and rebuild the plugin first.
       prompt and both alerts while open. At 50% every button and the × still
       work where they're drawn, Alt+drag still works, and clicks just outside
       the smaller box reach the game.
+- [ ] **Display → Show pop-ups** off: Start mass, Call mass bank and Stop mass
+      show no boxes, but the red chat lines still come (the start line now
+      says to pick Runner or Anti "in the tracker's sidebar panel"), and the
+      panel can still answer. Clicking where a box used to be reaches the game.
 
 ### N. Server (checked by Claude)
 

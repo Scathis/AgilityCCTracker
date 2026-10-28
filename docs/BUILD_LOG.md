@@ -1969,3 +1969,15 @@ mouse points back with `PromptPainter.unscale` so hit-testing still uses the
 full-size rectangles. `PromptPainterTest` covers the clamp, the rounding of
 the box size and click mapping. Checked by an offscreen render at
 100/75/50%: layout and borders hold; text is soft but readable at 50%.
+
+## 2026-10-28 - Show pop-ups toggle
+
+Owner request: let players turn the in-game boxes off, since each one also
+sends a red chat line. New config item **Display → Show pop-ups**
+(`showPopups`, default on, above Pop-up size). Off hides the attending prompt
+and both alerts; the chat lines still go out and the sidebar panel still
+answers the prompt (walking into the course still auto-marks attending).
+The overlays check the toggle in their mouse handling too, not just in
+`render`, because `getBounds()` keeps the last drawn box and would otherwise
+keep swallowing clicks there. With it off, the "mass started" chat line
+says to pick Runner or Anti in the sidebar panel instead of on the prompt.

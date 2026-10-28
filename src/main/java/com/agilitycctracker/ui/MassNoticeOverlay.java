@@ -56,7 +56,7 @@ public class MassNoticeOverlay extends Overlay implements MouseListener
 	@Override
 	public Dimension render(Graphics2D g)
 	{
-		MassNotices.Notice notice = notices.getNotice();
+		MassNotices.Notice notice = visibleNotice();
 		if (notice == null)
 		{
 			return null;
@@ -121,9 +121,16 @@ public class MassNoticeOverlay extends Overlay implements MouseListener
 		return lines;
 	}
 
+	/** The notice, unless there's none or pop-ups are switched off (the chat line still goes out). */
+	private MassNotices.Notice visibleNotice()
+	{
+		return config.showPopups() ? notices.getNotice() : null;
+	}
+
 	private Point local(Point canvasPoint)
 	{
-		if (notices.getNotice() == null)
+		// Checked here too: getBounds() keeps the last drawn box after it stops being drawn.
+		if (visibleNotice() == null)
 		{
 			return null;
 		}
