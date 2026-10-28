@@ -87,6 +87,8 @@ Open RuneLite's configuration for **Wildy Agility FC Tracker**:
 | Show sidebar panel | Show or hide the panel. |
 | Pre-mass check messages | The red chat lines about your own gear and kit: once when you join the mass or log in during it, and when you open a bank if something's missing. |
 | Show gear flags | The over-head labels on runners missing gear (ranked members only). |
+| Show pop-ups | The in-game boxes ("Agility mass started", "Mass bank starting", "Agility mass over"). With it off you still get the red chat lines, and you pick Runner or Anti in the sidebar panel. |
+| Pop-up size | Shrinks those boxes (50-100%) for small screens. |
 
 ### What's shared, and when
 
