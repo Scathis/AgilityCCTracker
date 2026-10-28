@@ -162,8 +162,6 @@ async def test_viewer_cannot_change_settings(client, make_user, login_as, defaul
     response = await client.post(
         "/settings",
         data={
-            "call_regex": "x",
-            "break_regex": "x",
             "min_rank": "0",
             "arrive_grace_s": "0",
             "leave_grace_s": "0",

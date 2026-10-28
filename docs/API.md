@@ -53,7 +53,7 @@ every 10s (and once on startup / login) and caches it.
   "dd": {
     "tiles": [{"x": 0, "y": 0, "plane": 0}, {"x": 0, "y": 0, "plane": 0}],
     "call_regex": "^\\s*dd\\s*!*$",
-    "break_regex": "^\\s*(break|brk)\\s*(dd)?\\s*!*$",
+    "break_regex": "^(?=.*\\b(?:break|brk)\\b)(?=.*\\bdd\\b).*$",
     "min_rank": 3,
     "arrive_grace_s": 15,
     "leave_grace_s": 5,

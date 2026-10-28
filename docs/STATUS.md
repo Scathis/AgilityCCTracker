@@ -10,7 +10,7 @@ end of any session that changes things; don't append to it.
 **Feature-complete for a first Hub submission; in-game test pass next.**
 Everything below is built, deployed (`https://agilitycc.grestinator.com`),
 committed and pushed (`github.com/Scathis/AgilityCCTracker`, public; head
-see `git log`). DB migration head `f6c1d9e2b735`. 114 server tests +
+see `git log`). DB migration head `a7d3e1f4c290`. 116 server tests +
 plugin tests pass; CI green. 2026-10-27/28 was one long session of owner test
 notes (36 commits) - details in BUILD_LOG.md.
 
@@ -75,7 +75,10 @@ notes (36 commits) - details in BUILD_LOG.md.
   each item's worn slot - slot boxes only offer matching items; editor has
   gear on the left and a live game-style inventory (nothing stacks except
   the 150K coins fee, so 27 items max) on the right.
-- Settings: runner gear rules, flag rank + observer switch, DD settings.
+- Settings: runner gear rules, flag rank + observer switch, DD settings
+  (min rank, grace, max minutes). The DD call/break chat patterns are in
+  code (`DD_CALL_REGEX`/`DD_BREAK_REGEX` in `server/app/api/v1/status.py`)
+  - change there and redeploy; plugins pick them up on their next poll.
 - Mass bank: "Call mass bank" button on the Events list and the event page
   (staff, only while a mass is running; stores `events.mass_bank_called_at`,
   shown as "Last called at"; sent to plugins as `active_event.mass_bank_at`).

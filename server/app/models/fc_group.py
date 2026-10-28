@@ -25,8 +25,6 @@ class FcGroup(Base):
     required_slots: Mapped[list | None] = mapped_column(JSON, nullable=True)
     require_ranged_weapon: Mapped[bool] = mapped_column(Boolean, default=True, server_default="1")
     dd_tiles: Mapped[list | None] = mapped_column(JSON, nullable=True)
-    dd_call_regex: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    dd_break_regex: Mapped[str | None] = mapped_column(String(255), nullable=True)
     dd_min_rank: Mapped[int] = mapped_column(Integer, default=3)
     dd_arrive_grace_s: Mapped[int] = mapped_column(Integer, default=15)
     dd_leave_grace_s: Mapped[int] = mapped_column(Integer, default=5)

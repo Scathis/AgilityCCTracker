@@ -1988,3 +1988,18 @@ Owner test note: the FC observer tooltip ran off the sides of a small
 screen. All config descriptions cut to one short line (max ~65 chars);
 the full explanations stay in the README's settings table and privacy
 section, which is what Hub reviewers and players read.
+
+## 2026-10-28 - DD call/break patterns moved from Settings into code
+
+Owner test note: the Settings page couldn't be saved (e.g. to set the
+gear-flag rank to -1) because the "Call regex" field was empty and
+`required`. The live DB had `dd_call_regex` NULL and `dd_break_regex` equal
+to the built-in default, so the server was already sending the defaults.
+Owner decision: drop the fields from the site and keep the patterns in code.
+`DD_CALL_REGEX`/`DD_BREAK_REGEX` constants in `api/v1/status.py` (same values
+as before, so detection is unchanged and the plugin/API contract is
+untouched); form fields, route params and model columns removed; migration
+`a7d3e1f4c290` drops `fc_groups.dd_call_regex`/`dd_break_regex` (backup taken
+first). New tests: Settings saves without the patterns (flag rank -1), and
+`/status` sends the constants, which match "dd"/"DD!!"/"break dd" and not
+"dd at 5"/"break". API.md's example break pattern updated to the real one.

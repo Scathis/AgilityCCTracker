@@ -74,10 +74,8 @@
     <article>
       <header>
         <strong>DD calls</strong>
-        <small>How a DD call and its break are spotted in FC chat, and how presence is timed.</small>
+        <small>Who can call a DD in FC chat, and how presence is timed.</small>
       </header>
-      <label>Call regex<input type="text" name="call_regex" value="{{ group.dd_call_regex or '' }}" required></label>
-      <label>Break regex<input type="text" name="break_regex" value="{{ group.dd_break_regex or '' }}" required></label>
       <div class="two-col">
         <label>Min rank to call DD<input type="number" name="min_rank" value="{{ group.dd_min_rank }}" required></label>
         <label>Max minutes per call<input type="number" name="max_minutes" value="{{ group.dd_max_minutes }}" required></label>

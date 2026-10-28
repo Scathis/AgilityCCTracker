@@ -1,3 +1,8 @@
+import re
+
+from helpers import _headers
+
+from app.api.v1.status import DD_BREAK_REGEX, DD_CALL_REGEX
 from app.models.user import UserRole
 from app.web.security import read_flash
 
@@ -10,8 +15,6 @@ async def test_settings_update_persists(client, make_user, login_as, default_gro
     response = await client.post(
         "/settings",
         data={
-            "call_regex": r"^\s*dd\s*!*$",
-            "break_regex": r"^\s*(break|brk)\s*(dd)?\s*!*$",
             "min_rank": "3",
             "arrive_grace_s": "15",
             "leave_grace_s": "5",
@@ -32,6 +35,52 @@ async def test_settings_update_persists(client, make_user, login_as, default_gro
     assert default_group.observer_enabled is True
 
 
+async def test_flag_rank_saves_without_any_dd_patterns(
+    client, make_user, login_as, default_group, db_session
+):
+    # The DD call/break patterns moved into code; the form no longer has
+    # (or needs) them, so e.g. the gear-flag rank can be saved on its own.
+    csrf = login_as(await make_user(UserRole.ADMIN))
+    page = await client.get("/settings")
+    assert "call_regex" not in page.text
+    assert "break_regex" not in page.text
+
+    response = await client.post(
+        "/settings",
+        data={
+            "min_rank": "3",
+            "arrive_grace_s": "15",
+            "leave_grace_s": "5",
+            "max_minutes": "10",
+            "flag_viewer_min_rank": "-1",
+            "csrf_token": csrf,
+        },
+        follow_redirects=False,
+    )
+    assert response.status_code == 303
+    await db_session.refresh(default_group)
+    assert default_group.flag_viewer_min_rank == -1
+
+
+async def test_status_sends_the_dd_patterns_from_code(client, fc_group):
+    _, token = fc_group
+    dd = (await client.get("/api/v1/status", headers=_headers(token))).json()["dd"]
+    assert dd["call_regex"] == DD_CALL_REGEX
+    assert dd["break_regex"] == DD_BREAK_REGEX
+
+    # Same matching as the plugin: whole message, case-insensitive.
+    def call(m):
+        return re.fullmatch(DD_CALL_REGEX, m, re.IGNORECASE) is not None
+
+    def brk(m):
+        return re.fullmatch(DD_BREAK_REGEX, m, re.IGNORECASE) is not None
+
+    assert call("dd") and call("DD!!") and call(" dd ")
+    assert not call("dd at 5") and not call("add")
+    assert brk("break dd") and brk("DD brk") and brk("brk dd now")
+    assert not brk("break") and not brk("dd")
+
+
 async def test_settings_page_holds_the_runner_gear_rules(
     client, make_user, login_as, default_group, db_session
 ):
@@ -42,8 +91,6 @@ async def test_settings_page_holds_the_runner_gear_rules(
     assert "Flag runners with these slots empty" in page.text
 
     base = {
-        "call_regex": "dd",
-        "break_regex": "brk",
         "min_rank": "3",
         "arrive_grace_s": "15",
         "leave_grace_s": "5",
@@ -85,8 +132,6 @@ async def test_settings_checkbox_unchecked_persists_false(
     await client.post(
         "/settings",
         data={
-            "call_regex": "dd",
-            "break_regex": "brk",
             "min_rank": "3",
             "arrive_grace_s": "15",
             "leave_grace_s": "5",

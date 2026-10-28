@@ -27,8 +27,6 @@ async def settings_page(
 
 @router.post("/settings")
 async def update_settings(
-    call_regex: str = Form(...),
-    break_regex: str = Form(...),
     min_rank: int = Form(...),
     arrive_grace_s: int = Form(...),
     leave_grace_s: int = Form(...),
@@ -43,8 +41,7 @@ async def update_settings(
     _csrf: User = Depends(verify_csrf),
 ):
     # DD tiles are deliberately not settable from this form - see settings.html.
-    group.dd_call_regex = call_regex
-    group.dd_break_regex = break_regex
+    # The DD call/break patterns live in code (api/v1/status.py).
     group.dd_min_rank = min_rank
     group.dd_arrive_grace_s = arrive_grace_s
     group.dd_leave_grace_s = leave_grace_s

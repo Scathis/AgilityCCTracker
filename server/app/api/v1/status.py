@@ -26,6 +26,12 @@ from app.services.participation import participants_by_rsn
 
 router = APIRouter()
 
+# How the plugin spots a DD call and its break in FC chat (case-insensitive,
+# whole message). Kept in code rather than dashboard Settings: change here and
+# redeploy - plugins pick it up on their next status poll.
+DD_CALL_REGEX = r"^\s*dd\s*!*$"
+DD_BREAK_REGEX = r"^(?=.*\b(?:break|brk)\b)(?=.*\bdd\b).*$"
+
 
 @router.get("/status", response_model=StatusOut)
 async def get_status(
@@ -129,8 +135,8 @@ async def get_status(
         kits=kit_outs,
         dd=DdConfigOut(
             tiles=tiles,
-            call_regex=fc_group.dd_call_regex or r"^\s*dd\s*!*$",
-            break_regex=fc_group.dd_break_regex or r"^(?=.*\b(?:break|brk)\b)(?=.*\bdd\b).*$",
+            call_regex=DD_CALL_REGEX,
+            break_regex=DD_BREAK_REGEX,
             min_rank=fc_group.dd_min_rank,
             arrive_grace_s=fc_group.dd_arrive_grace_s,
             leave_grace_s=fc_group.dd_leave_grace_s,
