@@ -1,9 +1,9 @@
 # RuneLite Plugin Hub submission
 
-**Status 2026-10-28:** owner's in-game test pass done; pre-flight checks
-below done; PR being opened from the owner's fork (no `gh` CLI on the host,
-so the fork and the PR itself are created in the browser; Claude pushes the
-manifest branch over the VS Code git socket).
+**Submitted 2026-10-28: https://github.com/runelite/plugin-hub/pull/19618**
+(branch `Scathis/plugin-hub:wildy-agility-mass`, `commit=ac9bd68515b2733255d3c0ef71610cf75d1e1d96`).
+Hub "build" check passed; "upload" is skipped until merge. Opened with the `gh`
+CLI (installed 2026-10-28 in `~/.local/bin`, logged in as Scathis) - see §5 for updates.
 
 ## 1. Repo visibility
 
@@ -94,6 +94,11 @@ calculation, deliberately (removed 2026-10-01 - reads as PK reconnaissance);
 derived signal".
 
 ## 5. After submission
+
+To update the PR (or, after merge, to ship a new version): commit + push in
+this repo, then in a plugin-hub checkout branched from `upstream/master`
+change only `commit=` in `plugins/wildy-agility-mass`, push to
+`Scathis/plugin-hub`, and (post-merge) `gh pr create --repo runelite/plugin-hub`.
 
 Watch the "RuneLite Plugin Hub Checks" CI run on the PR. Fix issues and
 push new `commit=` shas to the *same* PR rather than opening a new one.

@@ -2097,3 +2097,14 @@ pre-flight ticked and §4 turned into a paste-ready PR body covering the new
 gear icon/filter and goal card (dropped the old claim of a "payload-shape
 test" - no such test exists in the code). The owner's 1.1MB source art for
 the gear icon stays untracked.
+
+## 2026-10-28 - Phase 9: Plugin Hub PR opened
+
+`gh` CLI installed (v2.102.0, checksum-verified, `~/.local/bin`, no sudo) and
+logged in by the owner as Scathis; `gh auth setup-git` wires git's HTTPS
+credentials to it. Fork `Scathis/plugin-hub`, branch `wildy-agility-mass`
+from `upstream/master` adding `plugins/wildy-agility-mass` (repository,
+`commit=ac9bd68515b2733255d3c0ef71610cf75d1e1d96`, the `warning=` text).
+PR https://github.com/runelite/plugin-hub/pull/19618 with the §4 body.
+Hub "build" check passed in 38s (packager log clean apart from GitHub
+tooling deprecation notices); awaiting maintainer review.

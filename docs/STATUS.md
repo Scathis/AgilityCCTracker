@@ -14,10 +14,13 @@ see `git log`). DB migration head `a7d3e1f4c290`. 116 server tests +
 plugin tests pass; CI green. 2026-10-27/28 was one long session of owner test
 notes (36 commits) - details in BUILD_LOG.md.
 
-**Owner's in-game test pass: done 2026-10-28** ("all the testing seems to
-be good"). **Next:** Phase 9 - the Plugin Hub PR (`plugins/wildy-agility-mass`),
-paste-ready text and manifest in `docs/PLUGIN_HUB_SUBMISSION.md`. After that,
-watch the Hub CI on the PR and push fixes as new `commit=` shas to the same PR.
+**Owner's in-game test pass: done 2026-10-28.** **Plugin Hub PR opened
+2026-10-28: https://github.com/runelite/plugin-hub/pull/19618** (manifest
+`plugins/wildy-agility-mass`, `commit=ac9bd685...`, from branch
+`Scathis/plugin-hub:wildy-agility-mass`). Hub build check passed (38s); waiting
+on maintainer review. Fixes for review comments: commit here, then push a new
+`commit=` sha to the same branch (`gh` CLI is logged in as Scathis on the
+host). Players get it automatically once merged.
 
 ## The design as it is now
 
