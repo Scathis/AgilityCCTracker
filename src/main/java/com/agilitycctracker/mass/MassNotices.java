@@ -119,7 +119,7 @@ public class MassNotices
 			shownBankAt = bankAt;
 			pendingBankAt = NONE;
 			show("Mass bank starting",
-				"Make your way to the mage bank to secure your loot. Anything over 40+ laps is recommended",
+				"Make your way to the mage bank to secure your loot. 40+ laps is recommended",
 				pendingBankUntil - now);
 		}
 	}
